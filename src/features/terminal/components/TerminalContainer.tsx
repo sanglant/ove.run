@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Terminal } from "lucide-react";
+import { Stack, Text, Button } from "@mantine/core";
 import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
@@ -15,35 +16,62 @@ export function TerminalContainer() {
   const projectPathMap = new Map(projects.map((p) => [p.id, p.path]));
 
   return (
-    <div className="flex flex-col w-full h-full">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <TerminalTabs
         sessions={projectSessions}
         onNewSession={() => setShowNewDialog(true)}
       />
 
-      <div className="flex-1 relative overflow-hidden bg-[var(--bg-primary)]">
+      <div
+        style={{
+          flex: 1,
+          position: "relative",
+          overflow: "hidden",
+          background: "var(--bg-primary)",
+        }}
+      >
         {sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center w-full h-full gap-4 text-[var(--text-secondary)]">
+          <Stack
+            align="center"
+            justify="center"
+            gap="md"
+            className="animate-fade-in"
+            style={{
+              width: "100%",
+              height: "100%",
+              color: "var(--text-secondary)",
+            }}
+          >
             <Terminal size={48} strokeWidth={1} />
-            <div className="text-center">
-              <p className="text-lg font-medium text-[var(--text-primary)]">
+            <div style={{ textAlign: "center" }}>
+              <Text size="lg" fw={500} style={{ color: "var(--text-primary)" }}>
                 No active sessions
-              </p>
-              <p className="text-sm mt-1">
+              </Text>
+              <Text size="sm" mt={4}>
                 {activeProjectId
                   ? "Start a new agent session to begin"
                   : "Select a project from the sidebar to get started"}
-              </p>
+              </Text>
             </div>
             {activeProjectId && (
-              <button
+              <Button
                 onClick={() => setShowNewDialog(true)}
-                className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--bg-primary)] font-medium text-sm hover:bg-[var(--accent-hover)] transition-colors"
+                style={{
+                  backgroundColor: "var(--accent)",
+                  color: "var(--bg-primary)",
+                }}
               >
                 New Agent Session
-              </button>
+              </Button>
             )}
-          </div>
+          </Stack>
         ) : (
           /* Render ALL sessions from all projects to preserve terminal state.
              Only the active session is visible; others are hidden via display:none. */

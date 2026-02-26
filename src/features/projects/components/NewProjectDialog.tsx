@@ -1,11 +1,37 @@
 import { useState } from "react";
-import { X, FolderOpen } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useProjectStore } from "@/stores/projectStore";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Group,
+  Text,
+  Stack,
+} from "@mantine/core";
 
 interface NewProjectDialogProps {
   onClose: () => void;
 }
+
+const inputStyles = {
+  input: {
+    backgroundColor: "var(--bg-tertiary)",
+    borderColor: "var(--border)",
+    color: "var(--text-primary)",
+    fontFamily: "inherit",
+    "& ::placeholder": { color: "var(--text-secondary)" },
+    "&:focus": { borderColor: "var(--accent)" },
+  },
+  label: {
+    color: "var(--text-secondary)",
+    fontSize: "10px",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+};
 
 export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
   const [name, setName] = useState("");
@@ -54,110 +80,150 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="new-project-title"
+    <Modal
+      opened={true}
+      onClose={onClose}
+      title="Add Project"
+      centered
+      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+      transitionProps={{ transition: "slide-up" }}
+      styles={{
+        header: {
+          backgroundColor: "var(--bg-elevated)",
+          borderBottom: "1px solid var(--border)",
+          padding: "16px 20px",
+        },
+        title: {
+          color: "var(--text-primary)",
+          fontSize: "14px",
+          fontWeight: 600,
+        },
+        body: {
+          padding: 0,
+          backgroundColor: "var(--bg-elevated)",
+        },
+        content: {
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-bright)",
+          width: "400px",
+        },
+        close: {
+          color: "var(--text-secondary)",
+        },
+      }}
     >
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg w-[400px] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h2
-            id="new-project-title"
-            className="text-sm font-semibold text-[var(--text-primary)]"
-          >
-            Add Project
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
+      {/* Body */}
+      <Stack gap="md" style={{ padding: "20px" }}>
+        <TextInput
+          id="project-name"
+          label="Project Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="My Project"
+          autoFocus
+          styles={inputStyles}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleAdd();
+          }}
+        />
 
-        {/* Body */}
-        <div className="p-5 space-y-4">
-          {/* Name */}
-          <div>
-            <label
-              htmlFor="project-name"
-              className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider"
-            >
-              Project Name
-            </label>
-            <input
-              id="project-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="My Project"
-              autoFocus
-              className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAdd();
+        <div>
+          <Text
+            size="xs"
+            style={{
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 500,
+              marginBottom: "6px",
+            }}
+          >
+            Directory Path
+          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              id="project-path"
+              value={path}
+              onChange={(e) => setPath(e.target.value)}
+              placeholder="/home/user/my-project"
+              style={{ flex: 1 }}
+              styles={{
+                input: {
+                  ...inputStyles.input,
+                  fontFamily: "monospace",
+                },
               }}
             />
-          </div>
-
-          {/* Path */}
-          <div>
-            <label
-              htmlFor="project-path"
-              className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wider"
+            <Button
+              variant="default"
+              leftSection={<FolderOpen size={14} />}
+              onClick={handleBrowse}
+              aria-label="Browse for directory"
+              styles={{
+                root: {
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border)",
+                  color: "var(--text-secondary)",
+                  "&:hover": {
+                    borderColor: "var(--accent)",
+                    color: "var(--text-primary)",
+                    backgroundColor: "var(--bg-tertiary)",
+                  },
+                },
+              }}
             >
-              Directory Path
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="project-path"
-                type="text"
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
-                placeholder="/home/user/my-project"
-                className="flex-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors font-mono"
-              />
-              <button
-                onClick={handleBrowse}
-                aria-label="Browse for directory"
-                className="flex items-center gap-1.5 px-3 py-2 rounded border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent)]/50 transition-colors text-xs"
-              >
-                <FolderOpen size={14} />
-                Browse
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-xs text-[var(--danger)]">{error}</p>
-          )}
+              Browse
+            </Button>
+          </Group>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border)]">
-          <button
+        {error && (
+          <Text size="xs" style={{ color: "var(--danger)" }}>
+            {error}
+          </Text>
+        )}
+      </Stack>
+
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: "1px solid var(--border)",
+          padding: "16px 20px",
+        }}
+      >
+        <Group justify="flex-end" gap="xs">
+          <Button
+            variant="subtle"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "transparent",
+                },
+              },
+            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleAdd}
             disabled={loading || !name.trim() || !path.trim()}
-            className="px-4 py-2 text-sm font-medium rounded bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            styles={{
+              root: {
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+                "&:hover": { backgroundColor: "var(--accent-hover)" },
+                "&:disabled": { opacity: 0.5 },
+              },
+            }}
           >
             {loading ? "Adding..." : "Add Project"}
-          </button>
-        </div>
+          </Button>
+        </Group>
       </div>
-    </div>
+    </Modal>
   );
 }

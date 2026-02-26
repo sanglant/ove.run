@@ -1,0 +1,7 @@
+.row:hover .revealOnHover {
+  opacity: 1;
+}
+.revealOnHover {
+  opacity: 0;
+  transition: opacity 150ms;
+}

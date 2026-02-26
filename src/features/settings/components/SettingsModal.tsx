@@ -1,13 +1,51 @@
 import { useState } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { AppSettings, AgentType } from "@/types";
+import {
+  Modal,
+  TextInput,
+  NumberInput,
+  Button,
+  Group,
+  Switch,
+  Tabs,
+  Textarea,
+  ActionIcon,
+  Code,
+  Text,
+  Stack,
+} from "@mantine/core";
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 type AgentTab = AgentType;
+
+const inputStyles = {
+  input: {
+    backgroundColor: "var(--bg-tertiary)",
+    borderColor: "var(--border)",
+    color: "var(--text-primary)",
+    "&::placeholder": { color: "var(--text-secondary)" },
+    "&:focus": { borderColor: "var(--accent)" },
+  },
+  label: {
+    color: "var(--text-secondary)",
+    fontSize: "10px",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+};
+
+const switchStyles = (active: boolean) => ({
+  track: {
+    backgroundColor: active ? undefined : "var(--bg-tertiary)",
+    borderColor: "var(--bg-tertiary)",
+  },
+});
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, updateSettings } = useSettingsStore();
@@ -78,10 +116,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   const agentSettings = draft.agents[activeAgentTab] ?? {
     default_yolo_mode: false,
     custom_args: [],
@@ -89,309 +123,385 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-title"
+    <Modal
+      opened={true}
+      onClose={onClose}
+      title="Settings"
+      size="lg"
+      centered
+      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+      transitionProps={{ transition: "slide-up" }}
+      styles={{
+        header: {
+          backgroundColor: "var(--bg-elevated)",
+          borderBottom: "1px solid var(--border)",
+          padding: "16px 20px",
+        },
+        title: {
+          color: "var(--text-primary)",
+          fontSize: "14px",
+          fontWeight: 600,
+        },
+        body: {
+          padding: 0,
+          backgroundColor: "var(--bg-elevated)",
+          maxHeight: "calc(80vh - 120px)",
+          overflowY: "auto",
+        },
+        content: {
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-bright)",
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+        },
+        close: {
+          color: "var(--text-secondary)",
+        },
+      }}
     >
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg w-[580px] max-h-[80vh] flex flex-col shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)] shrink-0">
-          <h2 id="settings-title" className="text-sm font-semibold text-[var(--text-primary)]">
-            Settings
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close settings"
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+      {/* Content */}
+      <Stack gap="xl" style={{ padding: "20px" }}>
+        {/* Global settings */}
+        <section>
+          <Text
+            size="xs"
+            style={{
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 600,
+              marginBottom: "16px",
+            }}
           >
-            <X size={16} />
-          </button>
-        </div>
+            Global
+          </Text>
+          <Stack gap="sm">
+            {/* Font family */}
+            <Group justify="space-between" align="center">
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                Terminal Font Family
+              </Text>
+              <TextInput
+                value={draft.global.font_family}
+                onChange={(e) => handleGlobalChange("font_family", e.target.value)}
+                style={{ width: "208px" }}
+                styles={inputStyles}
+              />
+            </Group>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Global settings */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-4">
-              Global
-            </h3>
-            <div className="space-y-3">
-              {/* Font family */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-[var(--text-primary)]">
-                  Terminal Font Family
-                </label>
-                <input
-                  type="text"
-                  value={draft.global.font_family}
-                  onChange={(e) => handleGlobalChange("font_family", e.target.value)}
-                  className="w-52 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
+            {/* Font size */}
+            <Group justify="space-between" align="center">
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                Terminal Font Size
+              </Text>
+              <NumberInput
+                min={8}
+                max={32}
+                value={draft.global.font_size}
+                onChange={(val) =>
+                  handleGlobalChange("font_size", typeof val === "number" ? val : parseInt(String(val), 10))
+                }
+                style={{ width: "80px" }}
+                styles={inputStyles}
+              />
+            </Group>
 
-              {/* Font size */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-[var(--text-primary)]">
-                  Terminal Font Size
-                </label>
-                <input
-                  type="number"
-                  min={8}
-                  max={32}
-                  value={draft.global.font_size}
-                  onChange={(e) =>
-                    handleGlobalChange("font_size", parseInt(e.target.value, 10))
-                  }
-                  className="w-20 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
+            {/* Scrollback */}
+            <Group justify="space-between" align="center">
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                Scrollback Lines
+              </Text>
+              <NumberInput
+                min={100}
+                max={100000}
+                step={1000}
+                value={draft.global.terminal_scrollback}
+                onChange={(val) =>
+                  handleGlobalChange(
+                    "terminal_scrollback",
+                    typeof val === "number" ? val : parseInt(String(val), 10),
+                  )
+                }
+                style={{ width: "112px" }}
+                styles={inputStyles}
+              />
+            </Group>
 
-              {/* Scrollback */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-[var(--text-primary)]">
-                  Scrollback Lines
-                </label>
-                <input
-                  type="number"
-                  min={100}
-                  max={100000}
-                  step={1000}
-                  value={draft.global.terminal_scrollback}
-                  onChange={(e) =>
-                    handleGlobalChange(
-                      "terminal_scrollback",
-                      parseInt(e.target.value, 10),
-                    )
-                  }
-                  className="w-28 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-2.5 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
+            {/* Notifications */}
+            <Group justify="space-between" align="center">
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                Notifications Enabled
+              </Text>
+              <Switch
+                checked={draft.global.notifications_enabled}
+                onChange={(e) =>
+                  handleGlobalChange("notifications_enabled", e.currentTarget.checked)
+                }
+                color="accent"
+                styles={switchStyles(draft.global.notifications_enabled)}
+              />
+            </Group>
 
-              {/* Notifications */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-[var(--text-primary)]">
-                  Notifications Enabled
-                </label>
-                <button
-                  role="switch"
-                  aria-checked={draft.global.notifications_enabled}
-                  onClick={() =>
-                    handleGlobalChange(
-                      "notifications_enabled",
-                      !draft.global.notifications_enabled,
-                    )
-                  }
-                  className={[
-                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                    draft.global.notifications_enabled
-                      ? "bg-[var(--accent)]"
-                      : "bg-[var(--bg-tertiary)]",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                      draft.global.notifications_enabled
-                        ? "translate-x-4"
-                        : "translate-x-0.5",
-                    ].join(" ")}
-                  />
-                </button>
-              </div>
+            {/* Minimize to tray */}
+            <Group justify="space-between" align="center">
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                Minimize to Tray
+              </Text>
+              <Switch
+                checked={draft.global.minimize_to_tray}
+                onChange={(e) =>
+                  handleGlobalChange("minimize_to_tray", e.currentTarget.checked)
+                }
+                color="accent"
+                styles={switchStyles(draft.global.minimize_to_tray)}
+              />
+            </Group>
+          </Stack>
+        </section>
 
-              {/* Minimize to tray */}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-[var(--text-primary)]">
-                  Minimize to Tray
-                </label>
-                <button
-                  role="switch"
-                  aria-checked={draft.global.minimize_to_tray}
-                  onClick={() =>
-                    handleGlobalChange(
-                      "minimize_to_tray",
-                      !draft.global.minimize_to_tray,
-                    )
-                  }
-                  className={[
-                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                    draft.global.minimize_to_tray
-                      ? "bg-[var(--accent)]"
-                      : "bg-[var(--bg-tertiary)]",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                      draft.global.minimize_to_tray
-                        ? "translate-x-4"
-                        : "translate-x-0.5",
-                    ].join(" ")}
-                  />
-                </button>
-              </div>
-            </div>
-          </section>
+        {/* Agent settings */}
+        <section>
+          <Text
+            size="xs"
+            style={{
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 600,
+              marginBottom: "16px",
+            }}
+          >
+            Agent Settings
+          </Text>
 
-          {/* Agent settings */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-4">
-              Agent Settings
-            </h3>
+          <Tabs
+            value={activeAgentTab}
+            onChange={(v) => setActiveAgentTab(v as AgentTab)}
+            styles={{
+              tab: {
+                color: "var(--text-secondary)",
+                fontSize: "12px",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "var(--bg-tertiary)",
+                },
+                "&[data-active]": {
+                  color: "var(--bg-primary)",
+                  backgroundColor: "var(--accent)",
+                },
+              },
+              list: {
+                marginBottom: "16px",
+                borderBottom: "1px solid var(--border)",
+              },
+            }}
+          >
+            <Tabs.List>
+              <Tabs.Tab value="claude">Claude</Tabs.Tab>
+              <Tabs.Tab value="gemini">Gemini</Tabs.Tab>
+            </Tabs.List>
 
-            {/* Agent tabs */}
-            <div className="flex gap-1 mb-4">
-              {(["claude", "gemini"] as AgentTab[]).map((agent) => (
-                <button
-                  key={agent}
-                  onClick={() => setActiveAgentTab(agent)}
-                  className={[
-                    "px-4 py-1.5 text-xs rounded transition-colors capitalize",
-                    activeAgentTab === agent
-                      ? "bg-[var(--accent)] text-[var(--bg-primary)] font-medium"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
-                  ].join(" ")}
-                >
-                  {agent === "claude" ? "Claude" : "Gemini"}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {/* Default YOLO */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-[var(--text-primary)]">
-                    Default YOLO Mode
-                  </p>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                    Skip confirmation prompts by default
-                  </p>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={agentSettings.default_yolo_mode}
-                  onClick={() =>
-                    handleAgentChange(
-                      activeAgentTab,
-                      "default_yolo_mode",
-                      !agentSettings.default_yolo_mode,
-                    )
-                  }
-                  className={[
-                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                    agentSettings.default_yolo_mode
-                      ? "bg-[var(--danger)]"
-                      : "bg-[var(--bg-tertiary)]",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                      agentSettings.default_yolo_mode
-                        ? "translate-x-4"
-                        : "translate-x-0.5",
-                    ].join(" ")}
-                  />
-                </button>
-              </div>
-
-              {/* Custom args */}
-              <div>
-                <label className="block text-sm text-[var(--text-primary)] mb-1.5">
-                  Custom Arguments
-                  <span className="text-xs text-[var(--text-secondary)] ml-2 font-normal">
-                    (one per line)
-                  </span>
-                </label>
-                <textarea
-                  rows={3}
-                  value={agentSettings.custom_args.join("\n")}
-                  onChange={(e) =>
-                    handleCustomArgsChange(activeAgentTab, e.target.value)
-                  }
-                  placeholder="--verbose&#10;--no-cache"
-                  className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] font-mono resize-none"
-                />
-              </div>
-
-              {/* Env vars */}
-              <div>
-                <label className="block text-sm text-[var(--text-primary)] mb-1.5">
-                  Environment Variables
-                </label>
-                <div className="space-y-1.5 mb-2">
-                  {Object.entries(agentSettings.env_vars ?? {}).map(([k, v]) => (
-                    <div key={k} className="flex items-center gap-2">
-                      <code className="flex-1 px-2 py-1 rounded bg-[var(--bg-tertiary)] text-xs font-mono text-[var(--accent)] truncate">
-                        {k}
-                      </code>
-                      <span className="text-[var(--text-secondary)]">=</span>
-                      <code className="flex-1 px-2 py-1 rounded bg-[var(--bg-tertiary)] text-xs font-mono text-[var(--text-primary)] truncate">
-                        {v}
-                      </code>
-                      <button
-                        onClick={() => handleRemoveEnvVar(activeAgentTab, k)}
-                        aria-label={`Remove env var ${k}`}
-                        className="text-[var(--danger)] hover:text-[var(--danger)] opacity-60 hover:opacity-100 transition-opacity"
+            {(["claude", "gemini"] as AgentTab[]).map((agent) => (
+              <Tabs.Panel key={agent} value={agent}>
+                <Stack gap="md">
+                  {/* Default YOLO */}
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                        Default YOLO Mode
+                      </Text>
+                      <Text
+                        size="xs"
+                        style={{ color: "var(--text-secondary)", marginTop: "2px" }}
                       >
-                        <Trash2 size={12} />
-                      </button>
+                        Skip confirmation prompts by default
+                      </Text>
                     </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newEnvKey}
-                    onChange={(e) => setNewEnvKey(e.target.value)}
-                    placeholder="KEY"
-                    className="flex-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-2 py-1.5 text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
-                  />
-                  <span className="text-[var(--text-secondary)]">=</span>
-                  <input
-                    type="text"
-                    value={newEnvVal}
-                    onChange={(e) => setNewEnvVal(e.target.value)}
-                    placeholder="value"
-                    className="flex-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-2 py-1.5 text-xs font-mono text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddEnvVar(activeAgentTab);
-                    }}
-                  />
-                  <button
-                    onClick={() => handleAddEnvVar(activeAgentTab)}
-                    aria-label="Add environment variable"
-                    className="text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+                    <Switch
+                      checked={agentSettings.default_yolo_mode}
+                      onChange={(e) =>
+                        handleAgentChange(
+                          activeAgentTab,
+                          "default_yolo_mode",
+                          e.currentTarget.checked,
+                        )
+                      }
+                      color="red"
+                      styles={switchStyles(agentSettings.default_yolo_mode)}
+                    />
+                  </Group>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border)] shrink-0">
-          <button
+                  {/* Custom args */}
+                  <div>
+                    <Text size="sm" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>
+                      Custom Arguments
+                      <Text
+                        component="span"
+                        size="xs"
+                        style={{ color: "var(--text-secondary)", marginLeft: "8px", fontWeight: 400 }}
+                      >
+                        (one per line)
+                      </Text>
+                    </Text>
+                    <Textarea
+                      rows={3}
+                      value={agentSettings.custom_args.join("\n")}
+                      onChange={(e) =>
+                        handleCustomArgsChange(activeAgentTab, e.target.value)
+                      }
+                      placeholder={"--verbose\n--no-cache"}
+                      styles={{
+                        input: {
+                          ...inputStyles.input,
+                          fontFamily: "monospace",
+                          resize: "none" as const,
+                          fontSize: "12px",
+                        },
+                      }}
+                    />
+                  </div>
+
+                  {/* Env vars */}
+                  <div>
+                    <Text size="sm" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>
+                      Environment Variables
+                    </Text>
+                    <Stack gap="xs" style={{ marginBottom: "8px" }}>
+                      {Object.entries(agentSettings.env_vars ?? {}).map(([k, v]) => (
+                        <Group key={k} gap="xs" wrap="nowrap">
+                          <Code
+                            style={{
+                              flex: 1,
+                              backgroundColor: "var(--bg-tertiary)",
+                              color: "var(--accent)",
+                              fontSize: "12px",
+                              padding: "4px 8px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {k}
+                          </Code>
+                          <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                            =
+                          </Text>
+                          <Code
+                            style={{
+                              flex: 1,
+                              backgroundColor: "var(--bg-tertiary)",
+                              color: "var(--text-primary)",
+                              fontSize: "12px",
+                              padding: "4px 8px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {v}
+                          </Code>
+                          <ActionIcon
+                            variant="subtle"
+                            onClick={() => handleRemoveEnvVar(activeAgentTab, k)}
+                            aria-label={`Remove env var ${k}`}
+                            style={{ color: "var(--danger)" }}
+                          >
+                            <Trash2 size={12} />
+                          </ActionIcon>
+                        </Group>
+                      ))}
+                    </Stack>
+                    <Group gap="xs" wrap="nowrap">
+                      <TextInput
+                        value={newEnvKey}
+                        onChange={(e) => setNewEnvKey(e.target.value)}
+                        placeholder="KEY"
+                        style={{ flex: 1 }}
+                        styles={{
+                          input: {
+                            ...inputStyles.input,
+                            fontFamily: "monospace",
+                            fontSize: "12px",
+                          },
+                        }}
+                      />
+                      <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                        =
+                      </Text>
+                      <TextInput
+                        value={newEnvVal}
+                        onChange={(e) => setNewEnvVal(e.target.value)}
+                        placeholder="value"
+                        style={{ flex: 1 }}
+                        styles={{
+                          input: {
+                            ...inputStyles.input,
+                            fontFamily: "monospace",
+                            fontSize: "12px",
+                          },
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAddEnvVar(activeAgentTab);
+                        }}
+                      />
+                      <ActionIcon
+                        variant="subtle"
+                        onClick={() => handleAddEnvVar(activeAgentTab)}
+                        aria-label="Add environment variable"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        <Plus size={14} />
+                      </ActionIcon>
+                    </Group>
+                  </div>
+                </Stack>
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </section>
+      </Stack>
+
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: "1px solid var(--border)",
+          padding: "16px 20px",
+          flexShrink: 0,
+        }}
+      >
+        <Group justify="flex-end" gap="xs">
+          <Button
+            variant="subtle"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "transparent",
+                },
+              },
+            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-sm font-medium rounded bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-colors"
+            styles={{
+              root: {
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+                "&:hover": { backgroundColor: "var(--accent-hover)" },
+                "&:disabled": { opacity: 0.5 },
+              },
+            }}
           >
             {saving ? "Saving..." : "Save Settings"}
-          </button>
-        </div>
+          </Button>
+        </Group>
       </div>
-    </div>
+    </Modal>
   );
 }

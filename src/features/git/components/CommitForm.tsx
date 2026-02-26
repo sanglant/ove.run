@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { GitCommit } from "lucide-react";
+import { Button, Text, Textarea } from "@mantine/core";
 
 interface CommitFormProps {
   stagedCount: number;
@@ -32,48 +33,79 @@ export function CommitForm({ stagedCount, onCommit }: CommitFormProps) {
   };
 
   return (
-    <div className="border-t border-[var(--border)] p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-[var(--text-secondary)]">
-          {stagedCount > 0 ? (
-            <span className="text-[var(--success)]">{stagedCount} staged</span>
-          ) : (
-            <span>No staged changes</span>
-          )}
-        </span>
+    <div
+      style={{
+        borderTop: "1px solid var(--border)",
+        padding: "12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {stagedCount > 0 ? (
+          <Text size="xs" c="var(--success)">
+            {stagedCount} staged
+          </Text>
+        ) : (
+          <Text size="xs" c="var(--text-secondary)">
+            No staged changes
+          </Text>
+        )}
       </div>
 
-      <textarea
+      <Textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Commit message..."
         rows={3}
-        className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] resize-none transition-colors font-mono"
+        aria-label="Commit message"
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             handleCommit();
           }
         }}
-        aria-label="Commit message"
+        styles={{
+          input: {
+            backgroundColor: "var(--bg-tertiary)",
+            borderColor: "var(--border)",
+            color: "var(--text-primary)",
+            fontFamily: "monospace",
+            fontSize: "13px",
+            resize: "none",
+            "&::placeholder": { color: "var(--text-secondary)" },
+            "&:focus": { borderColor: "var(--accent)" },
+          },
+        }}
       />
 
       {error && (
-        <p className="text-xs text-[var(--danger)]">{error}</p>
+        <Text size="xs" c="var(--danger)">
+          {error}
+        </Text>
       )}
 
-      <button
+      <Button
         onClick={handleCommit}
         disabled={!canCommit}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        leftSection={<GitCommit size={14} />}
+        fullWidth
         aria-label="Commit staged changes"
+        styles={{
+          root: {
+            backgroundColor: "var(--accent)",
+            color: "var(--bg-primary)",
+            "&:hover:not(:disabled)": { backgroundColor: "var(--accent-hover)" },
+            "&:disabled": { opacity: 0.4, cursor: "not-allowed" },
+          },
+        }}
       >
-        <GitCommit size={14} />
         {loading ? "Committing..." : "Commit"}
-      </button>
+      </Button>
 
-      <p className="text-[10px] text-[var(--text-secondary)] text-center">
+      <Text size="xs" c="var(--text-secondary)" style={{ textAlign: "center", fontSize: "10px" }}>
         Ctrl+Enter to commit
-      </p>
+      </Text>
     </div>
   );
 }

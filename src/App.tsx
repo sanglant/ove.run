@@ -26,24 +26,45 @@ export default function App() {
   }, [loadProjects, loadSettings]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[var(--bg-primary)]">
+    <div
+      style={{
+        display: "flex",
+        height: "100%",
+        width: "100%",
+        overflow: "hidden",
+        background: "var(--bg-primary)",
+      }}
+    >
       {/* Sidebar */}
       {!sidebarCollapsed && (
         <div
-          className="flex flex-col shrink-0 overflow-hidden"
-          style={{ width: 240 }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flexShrink: 0,
+            overflow: "hidden",
+            width: 240,
+          }}
         >
           <Sidebar />
         </div>
       )}
 
       {/* Main area */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+        }}
+      >
         {/* TopBar: only shown for terminal panel */}
         {activePanel === "terminal" && <TopBar />}
 
         {/* Content */}
-        <main className="flex-1 overflow-hidden relative">
+        <main style={{ flex: 1, overflow: "hidden", position: "relative" }}>
           {/* Terminal is always mounted but hidden when not active */}
           <div
             style={{
@@ -57,21 +78,21 @@ export default function App() {
 
           {/* Git panel */}
           {activePanel === "git" && (
-            <div className="absolute inset-0 overflow-hidden">
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
               <GitPanel />
             </div>
           )}
 
           {/* Knowledge panel */}
           {activePanel === "knowledge" && (
-            <div className="absolute inset-0 overflow-hidden">
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
               <KnowledgePanel />
             </div>
           )}
 
           {/* Notifications panel */}
           {activePanel === "notifications" && (
-            <div className="absolute inset-0 overflow-hidden">
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
               <NotificationCenter />
             </div>
           )}

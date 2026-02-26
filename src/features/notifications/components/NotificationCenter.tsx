@@ -2,6 +2,7 @@ import { Bell, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
+import { Badge, Button, Text, Divider, Group } from "@mantine/core";
 
 export function NotificationCenter() {
   const { notifications, markRead, markAllRead, clearAll } =
@@ -33,64 +34,128 @@ export function NotificationCenter() {
     }
   };
 
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] shrink-0">
-        <div className="flex items-center gap-2">
-          <Bell size={14} className="text-[var(--accent)]" />
-          <span className="text-sm font-medium text-[var(--text-primary)]">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+        }}
+      >
+        <Group gap={8} wrap="nowrap">
+          <Bell size={14} color="var(--accent)" />
+          <Text
+            size="sm"
+            style={{ fontWeight: 500, color: "var(--text-primary)" }}
+          >
             Notifications
-          </span>
-          {notifications.filter((n) => !n.read).length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-[var(--accent)] text-[var(--bg-primary)] text-[10px] font-bold">
-              {notifications.filter((n) => !n.read).length}
-            </span>
+          </Text>
+          {unreadCount > 0 && (
+            <Badge
+              size="xs"
+              styles={{
+                root: {
+                  backgroundColor: "var(--accent)",
+                  color: "var(--bg-primary)",
+                  fontWeight: 700,
+                  fontSize: "10px",
+                  padding: "0 6px",
+                  height: "18px",
+                },
+              }}
+            >
+              {unreadCount}
+            </Badge>
           )}
-        </div>
-        <div className="flex items-center gap-1">
-          <button
+        </Group>
+        <Group gap={4} wrap="nowrap">
+          <Button
+            variant="subtle"
+            size="xs"
+            leftSection={<CheckCheck size={12} />}
             onClick={markAllRead}
             aria-label="Mark all as read"
-            className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors rounded hover:bg-[var(--bg-tertiary)]"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                fontSize: "12px",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "var(--bg-tertiary)",
+                },
+              },
+            }}
           >
-            <CheckCheck size={12} />
             All read
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="subtle"
+            size="xs"
+            leftSection={<Trash2 size={12} />}
             onClick={clearAll}
             aria-label="Clear all notifications"
-            className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:text-[var(--danger)] transition-colors rounded hover:bg-[var(--bg-tertiary)]"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                fontSize: "12px",
+                "&:hover": {
+                  color: "var(--danger)",
+                  backgroundColor: "var(--bg-tertiary)",
+                },
+              },
+            }}
           >
-            <Trash2 size={12} />
             Clear
-          </button>
-        </div>
+          </Button>
+        </Group>
       </div>
 
       {/* Notification list */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ flex: 1, overflowY: "auto" }}>
         {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-secondary)]">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              gap: "12px",
+              color: "var(--text-secondary)",
+            }}
+          >
             <Bell size={40} strokeWidth={1} />
-            <div className="text-center">
-              <p className="text-sm text-[var(--text-primary)]">No notifications</p>
-              <p className="text-xs mt-1">
+            <div style={{ textAlign: "center" }}>
+              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                No notifications
+              </Text>
+              <Text size="xs" c="dimmed" style={{ marginTop: "4px" }}>
                 Agent events will appear here
-              </p>
+              </Text>
             </div>
           </div>
         ) : (
-          <ul role="list">
+          <ul role="list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
             {notifications.map((notification) => (
               <li
                 key={notification.id}
-                className={[
-                  "group relative cursor-pointer transition-colors",
-                  !notification.read
-                    ? "border-l-2 border-[var(--accent)] bg-[var(--accent)]/5"
-                    : "border-l-2 border-transparent",
-                ].join(" ")}
+                style={{
+                  position: "relative",
+                  cursor: "pointer",
+                  borderLeft: notification.read
+                    ? "2px solid transparent"
+                    : "2px solid var(--accent)",
+                  backgroundColor: notification.read
+                    ? "transparent"
+                    : "color-mix(in srgb, var(--accent) 5%, transparent)",
+                }}
                 onClick={() =>
                   handleNotificationClick(notification.id, notification.sessionId)
                 }
@@ -103,35 +168,82 @@ export function NotificationCenter() {
                 }}
                 aria-label={`Notification: ${notification.title}`}
               >
-                <div className="px-4 py-3 hover:bg-[var(--bg-tertiary)] transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={[
-                          "text-sm font-medium truncate",
-                          !notification.read
-                            ? "text-[var(--text-primary)]"
-                            : "text-[var(--text-secondary)]",
-                        ].join(" ")}
+                <div
+                  style={{ padding: "12px 16px", transition: "background-color 150ms" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "var(--bg-tertiary)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        size="sm"
+                        style={{
+                          fontWeight: 500,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: notification.read
+                            ? "var(--text-secondary)"
+                            : "var(--text-primary)",
+                        }}
                       >
                         {notification.title}
-                      </p>
-                      <p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">
+                      </Text>
+                      <Text
+                        size="xs"
+                        lineClamp={2}
+                        style={{
+                          color: "var(--text-secondary)",
+                          marginTop: "2px",
+                        }}
+                      >
                         {notification.body}
-                      </p>
+                      </Text>
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-[10px] text-[var(--text-secondary)]">
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-end",
+                        gap: "4px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Text size="xs" c="dimmed">
                         {formatTime(notification.timestamp)}
-                      </span>
+                      </Text>
                       <ExternalLink
                         size={10}
-                        className="text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{
+                          color: "var(--text-secondary)",
+                          opacity: 0,
+                          transition: "opacity 150ms",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.opacity = "1")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.opacity = "0")
+                        }
                       />
                     </div>
                   </div>
                 </div>
-                <div className="border-b border-[var(--border)] mx-4" />
+                <Divider
+                  style={{ marginLeft: "16px", marginRight: "16px" }}
+                  color="var(--border)"
+                />
               </li>
             ))}
           </ul>

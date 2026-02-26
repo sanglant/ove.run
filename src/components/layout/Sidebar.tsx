@@ -10,6 +10,14 @@ import {
   ChevronDown,
   Folder,
 } from "lucide-react";
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Indicator,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -17,19 +25,20 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { Project } from "@/types";
+import classes from "./Sidebar.module.css";
 
-const STATUS_COLORS: Record<string, string> = {
-  starting: "bg-[var(--warning)]",
-  idle: "bg-[var(--text-secondary)]",
-  working: "bg-[var(--accent)] animate-pulse",
-  needs_input: "bg-[var(--warning)] animate-pulse",
-  finished: "bg-[var(--success)]",
-  error: "bg-[var(--danger)]",
+const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
+  starting: { bg: "var(--warning)" },
+  idle: { bg: "var(--text-secondary)" },
+  working: { bg: "var(--accent)", className: "animate-pulse-glow" },
+  needs_input: { bg: "var(--warning)", className: "animate-status-pulse" },
+  finished: { bg: "var(--success)" },
+  error: { bg: "var(--danger)" },
 };
 
 const AGENT_ICON: Record<string, { label: string; color: string }> = {
-  claude: { label: "C", color: "text-[var(--accent)]" },
-  gemini: { label: "G", color: "text-[var(--success)]" },
+  claude: { label: "C", color: "var(--claude)" },
+  gemini: { label: "G", color: "var(--gemini)" },
 };
 
 export function Sidebar() {
@@ -106,25 +115,42 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col h-full bg-[var(--bg-secondary)] border-r border-[var(--border)]"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        backgroundColor: "var(--bg-secondary)",
+        borderRight: "1px solid var(--border)",
+      }}
       aria-label="Sidebar navigation"
     >
       {/* App title */}
-      <div className="px-4 py-3 border-b border-[var(--border)]">
-        <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-          <span className="text-[var(--accent)]">Ag</span>entic
+      <div
+        style={{
+          padding: "12px 16px",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>
+          <span style={{ color: "var(--accent-glow)" }}>Ag</span>
+          <span style={{ color: "var(--text-primary)" }}>entic</span>
         </h1>
       </div>
 
       {/* Project list */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-3 pt-3 pb-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ padding: "12px 12px 4px" }}>
+          <Text
+            size="xs"
+            tt="uppercase"
+            c="dimmed"
+            style={{ letterSpacing: "0.05em", fontWeight: 600, fontSize: 10 }}
+          >
             Projects
-          </span>
+          </Text>
         </div>
 
-        <ul role="list" className="px-2 space-y-0.5">
+        <ul role="list" style={{ padding: "0 8px", margin: 0, listStyle: "none" }}>
           {projects.map((project) => {
             const projectSessions = sessions.filter(
               (s) => s.projectId === project.id,
@@ -133,15 +159,22 @@ export function Sidebar() {
             const isActiveProject = project.id === activeProjectId;
 
             return (
-              <li key={project.id}>
+              <li key={project.id} style={{ marginBottom: 2 }}>
                 {/* Project row */}
                 <div
-                  className={[
-                    "flex items-center gap-1 px-1 py-1.5 rounded cursor-pointer transition-colors group",
-                    isActiveProject
-                      ? "text-[var(--text-primary)]"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                  ].join(" ")}
+                  className={classes.row}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 4px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    transition: "color 150ms",
+                    color: isActiveProject
+                      ? "var(--text-primary)"
+                      : "var(--text-secondary)",
+                  }}
                   onClick={() => handleProjectClick(project)}
                   role="button"
                   tabIndex={0}
@@ -157,7 +190,18 @@ export function Sidebar() {
                     }}
                     aria-label={isExpanded ? "Collapse" : "Expand"}
                     aria-expanded={isExpanded}
-                    className="shrink-0 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors w-4"
+                    style={{
+                      flexShrink: 0,
+                      width: 16,
+                      color: "var(--text-secondary)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
                     {isExpanded ? (
                       <ChevronDown size={12} />
@@ -170,27 +214,46 @@ export function Sidebar() {
                   {project.git_enabled ? (
                     <FolderGit2
                       size={14}
-                      className={
-                        isActiveProject ? "text-[var(--accent)]" : "shrink-0"
-                      }
+                      style={{
+                        flexShrink: 0,
+                        color: isActiveProject ? "var(--accent)" : undefined,
+                      }}
                     />
                   ) : (
                     <Folder
                       size={14}
-                      className={
-                        isActiveProject ? "text-[var(--accent)]" : "shrink-0"
-                      }
+                      style={{
+                        flexShrink: 0,
+                        color: isActiveProject ? "var(--accent)" : undefined,
+                      }}
                     />
                   )}
 
                   {/* Project name */}
-                  <span className="flex-1 text-xs truncate font-medium">
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 12,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontWeight: 500,
+                    }}
+                  >
                     {project.name}
                   </span>
 
                   {/* Session count badge */}
                   {projectSessions.length > 0 && (
-                    <span className="text-[10px] px-1 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "0 4px",
+                        borderRadius: 9999,
+                        backgroundColor: "var(--bg-tertiary)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
                       {projectSessions.length}
                     </span>
                   )}
@@ -199,7 +262,16 @@ export function Sidebar() {
                   <button
                     onClick={(e) => handleNewAgent(e, project.id)}
                     aria-label={`New agent session for ${project.name}`}
-                    className="opacity-0 group-hover:opacity-100 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-opacity"
+                    className={classes.revealOnHover}
+                    style={{
+                      color: "var(--text-secondary)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
                   >
                     <Plus size={12} />
                   </button>
@@ -207,41 +279,89 @@ export function Sidebar() {
 
                 {/* Sessions list */}
                 {isExpanded && projectSessions.length > 0 && (
-                  <ul className="ml-5 mt-0.5 space-y-0.5" role="list">
+                  <ul
+                    style={{ marginLeft: 20, marginTop: 2, listStyle: "none", padding: 0 }}
+                    role="list"
+                  >
                     {projectSessions.map((session) => {
                       const isActive = session.id === activeSessionId;
                       const agentIcon = AGENT_ICON[session.agentType];
+                      const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
 
                       return (
-                        <li key={session.id}>
-                          <button
+                        <li key={session.id} style={{ marginBottom: 2 }}>
+                          <UnstyledButton
                             onClick={() => handleSessionClick(session.id, project.id)}
-                            className={[
-                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left transition-colors",
-                              isActive
-                                ? "bg-[var(--accent)]/15 text-[var(--text-primary)]"
-                                : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]",
-                            ].join(" ")}
+                            style={{
+                              width: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "6px 8px",
+                              borderRadius: 4,
+                              fontSize: 12,
+                              textAlign: "left",
+                              transition: "background-color 150ms, color 150ms",
+                              backgroundColor: isActive
+                                ? "color-mix(in srgb, var(--accent) 15%, transparent)"
+                                : "transparent",
+                              color: isActive
+                                ? "var(--text-primary)"
+                                : "var(--text-secondary)",
+                            }}
                           >
                             {/* Status dot */}
                             <span
-                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLORS[session.status] ?? "bg-[var(--text-secondary)]"}`}
+                              className={statusColor.className}
+                              style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: "50%",
+                                flexShrink: 0,
+                                backgroundColor: statusColor.bg,
+                                display: "inline-block",
+                              }}
                             />
                             {/* Agent icon */}
                             <span
-                              className={`font-bold text-[10px] w-3 text-center ${agentIcon?.color ?? "text-[var(--accent)]"}`}
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 10,
+                                width: 12,
+                                textAlign: "center",
+                                color: agentIcon?.color ?? "var(--accent)",
+                              }}
                             >
                               {agentIcon?.label ?? "?"}
                             </span>
                             {/* Session label */}
-                            <span className="flex-1 truncate">{session.label}</span>
+                            <span
+                              style={{
+                                flex: 1,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {session.label}
+                            </span>
                             {/* YOLO badge */}
                             {session.yoloMode && (
-                              <span className="text-[9px] font-bold text-[var(--danger)] px-1 rounded bg-[var(--danger)]/10">
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color: "var(--danger)",
+                                  padding: "0 4px",
+                                  borderRadius: 4,
+                                  backgroundColor: "rgba(229,115,127,0.15)",
+                                  border: "1px solid rgba(229,115,127,0.2)",
+                                }}
+                              >
                                 Y
                               </span>
                             )}
-                          </button>
+                          </UnstyledButton>
                         </li>
                       );
                     })}
@@ -254,43 +374,81 @@ export function Sidebar() {
       </div>
 
       {/* Add project button */}
-      <div className="px-3 py-2 border-t border-[var(--border)]">
-        <button
+      <div
+        style={{
+          padding: "8px 12px",
+          borderTop: "1px solid var(--border)",
+        }}
+      >
+        <Button
+          variant="subtle"
+          fullWidth
+          leftSection={<Plus size={13} />}
           onClick={() => setShowNewProject(true)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+          size="xs"
+          styles={{
+            root: {
+              color: "var(--text-secondary)",
+              justifyContent: "flex-start",
+              fontSize: 12,
+              height: "auto",
+              padding: "8px 12px",
+              "--button-hover-color": "var(--text-primary)",
+              "--button-hover": "var(--bg-tertiary)",
+            },
+          }}
         >
-          <Plus size={13} />
           Add Project
-        </button>
+        </Button>
       </div>
 
       {/* Bottom nav icons */}
       <nav
-        className="flex items-center justify-around px-2 py-2 border-t border-[var(--border)]"
         aria-label="Panel navigation"
+        style={{
+          borderTop: "1px solid var(--border)",
+          padding: "8px",
+        }}
       >
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActivePanel(item.id)}
-            aria-label={item.label}
-            aria-pressed={activePanel === item.id}
-            title={item.label}
-            className={[
-              "relative flex items-center justify-center w-8 h-8 rounded transition-colors",
-              activePanel === item.id
-                ? "text-[var(--accent)] bg-[var(--accent)]/10"
-                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
-            ].join(" ")}
-          >
-            {item.icon}
-            {item.badge !== undefined && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-[var(--danger)] text-white text-[9px] font-bold px-0.5">
-                {item.badge > 99 ? "99+" : item.badge}
-              </span>
-            )}
-          </button>
-        ))}
+        <Group justify="space-around" gap={0}>
+          {navItems.map((item) => {
+            const isActive = activePanel === item.id;
+            return (
+              <Indicator
+                key={item.id}
+                disabled={!item.badge}
+                label={item.badge && item.badge > 99 ? "99+" : item.badge}
+                size={14}
+                color="var(--danger)"
+                styles={{ indicator: { fontSize: 9, fontWeight: 700 } }}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => setActivePanel(item.id)}
+                  aria-label={item.label}
+                  aria-pressed={isActive}
+                  title={item.label}
+                  size={32}
+                  styles={{
+                    root: {
+                      color: isActive ? "var(--accent-glow)" : "var(--text-secondary)",
+                      backgroundColor: isActive
+                        ? "color-mix(in srgb, var(--accent) 10%, transparent)"
+                        : "transparent",
+                      borderTop: isActive
+                        ? "1px solid color-mix(in srgb, var(--accent) 40%, transparent)"
+                        : "1px solid transparent",
+                      borderRadius: 4,
+                      transition: "color 150ms, background-color 150ms",
+                    },
+                  }}
+                >
+                  {item.icon}
+                </ActionIcon>
+              </Indicator>
+            );
+          })}
+        </Group>
       </nav>
 
       {/* Dialogs */}

@@ -10,6 +10,8 @@ import {
 } from "@/lib/tauri";
 import { KnowledgeEditor } from "./KnowledgeEditor";
 import type { KnowledgeEntry, KnowledgeType } from "@/types";
+import { TextInput, Select, Button, Group } from "@mantine/core";
+import classes from "./KnowledgePanel.module.css";
 
 const TYPE_ICONS: Record<KnowledgeType, React.ReactNode> = {
   system_prompt: <Cpu size={12} />,
@@ -29,6 +31,15 @@ interface NewEntryForm {
   name: string;
   type: KnowledgeType;
 }
+
+const inputStyles = {
+  input: {
+    backgroundColor: "var(--bg-secondary)",
+    borderColor: "var(--border)",
+    color: "var(--text-primary)",
+    fontSize: "12px",
+  },
+};
 
 export function KnowledgePanel() {
   const { activeProjectId } = useProjectStore();
@@ -130,7 +141,16 @@ export function KnowledgePanel() {
 
   if (!activeProjectId) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "var(--text-secondary)",
+          fontSize: "14px",
+        }}
+      >
         Select a project to view knowledge base
       </div>
     );
@@ -145,20 +165,58 @@ export function KnowledgePanel() {
   );
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
       {/* Left: Entry list */}
-      <div className="flex flex-col w-60 shrink-0 border-r border-[var(--border)]">
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
-          <div className="flex items-center gap-2">
-            <BookOpen size={14} className="text-[var(--accent)]" />
-            <span className="text-sm font-medium text-[var(--text-primary)]">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          width: "240px",
+          flexShrink: 0,
+          borderRight: "1px solid var(--border)",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 12px",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          <Group gap={8} wrap="nowrap">
+            <BookOpen size={14} color="var(--accent)" />
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "var(--text-primary)",
+              }}
+            >
               Knowledge
             </span>
-          </div>
+          </Group>
           <button
             onClick={() => setShowNewForm(true)}
             aria-label="New knowledge entry"
-            className="text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-secondary)",
+              padding: 0,
+              display: "flex",
+              alignItems: "center",
+              transition: "color 150ms",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--accent)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--text-secondary)")
+            }
           >
             <Plus size={14} />
           </button>
@@ -166,59 +224,114 @@ export function KnowledgePanel() {
 
         {/* New entry form */}
         {showNewForm && (
-          <div className="p-3 border-b border-[var(--border)] space-y-2 bg-[var(--bg-tertiary)]">
-            <input
-              type="text"
+          <div
+            style={{
+              padding: "12px",
+              borderBottom: "1px solid var(--border)",
+              backgroundColor: "var(--bg-tertiary)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+            }}
+          >
+            <TextInput
               value={newForm.name}
               onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="Entry name..."
               autoFocus
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+              styles={inputStyles}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleCreate();
                 if (e.key === "Escape") setShowNewForm(false);
               }}
             />
-            <select
+            <Select
+              data={KNOWLEDGE_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
               value={newForm.type}
-              onChange={(e) =>
-                setNewForm((f) => ({ ...f, type: e.target.value as KnowledgeType }))
+              onChange={(v) =>
+                setNewForm((f) => ({ ...f, type: (v ?? "notes") as KnowledgeType }))
               }
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded px-2 py-1.5 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)]"
-            >
-              {KNOWLEDGE_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {TYPE_LABELS[t]}
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-1.5">
-              <button
+              styles={{
+                input: {
+                  backgroundColor: "var(--bg-secondary)",
+                  borderColor: "var(--border)",
+                  color: "var(--text-primary)",
+                  fontSize: "12px",
+                },
+                dropdown: {
+                  backgroundColor: "var(--bg-elevated)",
+                  borderColor: "var(--border)",
+                },
+                option: {
+                  fontSize: "12px",
+                  "&[data-selected]": { backgroundColor: "var(--accent)" },
+                },
+              }}
+            />
+            <Group gap={6} grow>
+              <Button
                 onClick={handleCreate}
                 disabled={creating || !newForm.name.trim()}
-                className="flex-1 py-1 text-xs rounded bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-40"
+                size="xs"
+                styles={{
+                  root: {
+                    backgroundColor: "var(--accent)",
+                    color: "var(--bg-primary)",
+                    "&:hover": { backgroundColor: "var(--accent-hover)" },
+                    "&:disabled": { opacity: 0.4 },
+                  },
+                }}
               >
                 {creating ? "Creating..." : "Create"}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="default"
+                size="xs"
                 onClick={() => setShowNewForm(false)}
-                className="flex-1 py-1 text-xs rounded border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                styles={{
+                  root: {
+                    backgroundColor: "transparent",
+                    borderColor: "var(--border)",
+                    color: "var(--text-secondary)",
+                    "&:hover": {
+                      backgroundColor: "transparent",
+                      color: "var(--text-primary)",
+                    },
+                  },
+                }}
               >
                 Cancel
-              </button>
-            </div>
+              </Button>
+            </Group>
           </div>
         )}
 
         {/* Grouped entries */}
-        <div className="flex-1 overflow-y-auto">
+        <div style={{ flex: 1, overflowY: "auto" }}>
           {loading ? (
-            <div className="px-3 py-8 text-center text-xs text-[var(--text-secondary)]">
+            <div
+              style={{
+                padding: "32px 12px",
+                textAlign: "center",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+              }}
+            >
               Loading...
             </div>
           ) : entries.length === 0 ? (
-            <div className="px-3 py-8 text-center text-xs text-[var(--text-secondary)]">
-              <BookOpen size={24} className="mx-auto mb-2 opacity-40" />
+            <div
+              style={{
+                padding: "32px 12px",
+                textAlign: "center",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <BookOpen
+                size={24}
+                style={{ margin: "0 auto 8px", display: "block", opacity: 0.4 }}
+              />
               No knowledge entries
             </div>
           ) : (
@@ -227,39 +340,95 @@ export function KnowledgePanel() {
               if (typeEntries.length === 0) return null;
               return (
                 <div key={type}>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      fontSize: "10px",
+                      fontWeight: 600,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--text-secondary)",
+                    }}
+                  >
                     {TYPE_ICONS[type]}
                     {TYPE_LABELS[type]}
                   </div>
-                  {typeEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className={[
-                        "group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors",
-                        selectedEntry?.id === entry.id
-                          ? "bg-[var(--bg-tertiary)] text-[var(--text-primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]",
-                      ].join(" ")}
-                      onClick={() => handleSelectEntry(entry)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSelectEntry(entry);
-                      }}
-                    >
-                      <span className="flex-1 text-xs truncate">{entry.name}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(entry);
+                  {typeEntries.map((entry) => {
+                    const isSelected = selectedEntry?.id === entry.id;
+                    return (
+                      <div
+                        key={entry.id}
+                        className={classes.row}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          backgroundColor: isSelected
+                            ? "var(--bg-tertiary)"
+                            : "transparent",
+                          color: isSelected
+                            ? "var(--text-primary)"
+                            : "var(--text-secondary)",
+                          transition: "background-color 150ms, color 150ms",
                         }}
-                        aria-label={`Delete ${entry.name}`}
-                        className="opacity-0 group-hover:opacity-100 text-[var(--danger)] transition-opacity"
+                        onClick={() => handleSelectEntry(entry)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSelectEntry(entry);
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor =
+                              "var(--bg-tertiary)";
+                            e.currentTarget.style.color = "var(--text-primary)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = "transparent";
+                            e.currentTarget.style.color = "var(--text-secondary)";
+                          }
+                        }}
                       >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  ))}
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: "12px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {entry.name}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(entry);
+                          }}
+                          aria-label={`Delete ${entry.name}`}
+                          className={classes.revealOnHover}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "var(--danger)",
+                            padding: 0,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })
@@ -268,7 +437,7 @@ export function KnowledgePanel() {
       </div>
 
       {/* Right: Editor */}
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflow: "hidden" }}>
         {selectedEntry ? (
           <KnowledgeEditor
             entry={selectedEntry}
@@ -280,9 +449,19 @@ export function KnowledgePanel() {
             }}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-secondary)]">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              gap: "12px",
+              color: "var(--text-secondary)",
+            }}
+          >
             <BookOpen size={40} strokeWidth={1} />
-            <p className="text-sm">Select an entry to edit</p>
+            <p style={{ fontSize: "14px", margin: 0 }}>Select an entry to edit</p>
           </div>
         )}
       </div>

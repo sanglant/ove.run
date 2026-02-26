@@ -1,3 +1,6 @@
+import type { CSSProperties } from "react";
+import { ScrollArea } from "@mantine/core";
+
 interface DiffViewerProps {
   diff: string;
   filePath?: string;
@@ -37,12 +40,12 @@ function parseDiff(raw: string): DiffLine[] {
   return result;
 }
 
-const LINE_STYLES: Record<DiffLine["type"], string> = {
-  addition: "bg-[var(--success)]/10 text-[var(--success)]",
-  deletion: "bg-[var(--danger)]/10 text-[var(--danger)]",
-  context: "text-[var(--text-secondary)]",
-  header: "text-[var(--accent)] font-medium bg-[var(--bg-tertiary)]",
-  hunk: "text-[var(--warning)] bg-[var(--bg-tertiary)] italic",
+const LINE_STYLES: Record<DiffLine["type"], CSSProperties> = {
+  addition: { backgroundColor: "rgba(140, 192, 132, 0.1)", color: "var(--success)" },
+  deletion: { backgroundColor: "rgba(229, 115, 127, 0.1)", color: "var(--danger)" },
+  context: { color: "var(--text-secondary)" },
+  header: { color: "var(--accent)", fontWeight: 500, backgroundColor: "var(--bg-tertiary)" },
+  hunk: { color: "var(--warning)", backgroundColor: "var(--bg-tertiary)", fontStyle: "italic" },
 };
 
 const LINE_PREFIX: Record<DiffLine["type"], string> = {
@@ -56,7 +59,16 @@ const LINE_PREFIX: Record<DiffLine["type"], string> = {
 export function DiffViewer({ diff, filePath }: DiffViewerProps) {
   if (!diff) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          color: "var(--text-secondary)",
+          fontSize: "13px",
+        }}
+      >
         {filePath ? "No changes in selected file" : "Select a file to view diff"}
       </div>
     );
@@ -65,34 +77,73 @@ export function DiffViewer({ diff, filePath }: DiffViewerProps) {
   const lines = parseDiff(diff);
 
   return (
-    <div className="h-full overflow-auto font-mono text-xs">
+    <ScrollArea h="100%" style={{ fontFamily: "monospace", fontSize: "12px" }}>
       {filePath && (
-        <div className="sticky top-0 px-4 py-2 bg-[var(--bg-tertiary)] border-b border-[var(--border)] text-[var(--text-secondary)] font-mono text-xs">
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            padding: "6px 16px",
+            backgroundColor: "var(--bg-secondary)",
+            borderBottom: "1px solid var(--border)",
+            color: "var(--text-secondary)",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            zIndex: 1,
+          }}
+        >
           {filePath}
         </div>
       )}
-      <table className="w-full border-collapse">
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <tbody>
           {lines.map((line, i) => (
             <tr
               key={i}
-              className={`${LINE_STYLES[line.type]} leading-relaxed hover:brightness-110`}
+              style={{ ...LINE_STYLES[line.type], lineHeight: 1.6 }}
             >
-              <td className="select-none pl-3 pr-2 text-[var(--text-secondary)] text-right w-10 border-r border-[var(--border)] opacity-60">
+              <td
+                style={{
+                  userSelect: "none",
+                  paddingLeft: "12px",
+                  paddingRight: "8px",
+                  color: "var(--text-secondary)",
+                  textAlign: "right",
+                  width: "40px",
+                  borderRight: "1px solid var(--border)",
+                  opacity: 0.6,
+                }}
+              >
                 {line.type === "addition" || line.type === "context"
                   ? line.lineNum ?? ""
                   : ""}
               </td>
-              <td className="select-none pl-2 pr-3 w-5 text-center opacity-70">
+              <td
+                style={{
+                  userSelect: "none",
+                  paddingLeft: "8px",
+                  paddingRight: "12px",
+                  width: "20px",
+                  textAlign: "center",
+                  opacity: 0.7,
+                }}
+              >
                 {LINE_PREFIX[line.type]}
               </td>
-              <td className="pl-2 pr-4 whitespace-pre-wrap break-all">
+              <td
+                style={{
+                  paddingLeft: "8px",
+                  paddingRight: "16px",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}
+              >
                 {line.content}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollArea>
   );
 }

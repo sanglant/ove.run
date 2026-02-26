@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { X, Plus, AlertTriangle } from "lucide-react";
+import { ActionIcon, Group, Modal, Alert, Text, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { killPty } from "@/lib/tauri";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  starting: { label: "Starting", color: "text-[var(--warning)]" },
-  idle: { label: "Idle", color: "text-[var(--text-secondary)]" },
-  working: { label: "Working", color: "text-[var(--accent)]" },
-  needs_input: { label: "Needs Input", color: "text-[var(--warning)]" },
-  finished: { label: "Finished", color: "text-[var(--success)]" },
-  error: { label: "Error", color: "text-[var(--danger)]" },
+  starting: { label: "Starting", color: "var(--warning)" },
+  idle: { label: "Idle", color: "var(--text-secondary)" },
+  working: { label: "Working", color: "var(--accent)" },
+  needs_input: { label: "Needs Input", color: "var(--warning)" },
+  finished: { label: "Finished", color: "var(--success)" },
+  error: { label: "Error", color: "var(--danger)" },
 };
 
 export function TopBar() {
@@ -23,7 +24,7 @@ export function TopBar() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const statusMeta = activeSession
-    ? (STATUS_LABELS[activeSession.status] ?? { label: activeSession.status, color: "text-[var(--text-secondary)]" })
+    ? (STATUS_LABELS[activeSession.status] ?? { label: activeSession.status, color: "var(--text-secondary)" })
     : null;
 
   const handleKill = async () => {
@@ -55,44 +56,73 @@ export function TopBar() {
 
   return (
     <>
-      <header className="flex items-center justify-between h-9 px-3 bg-[var(--bg-secondary)] border-b border-[var(--border)] shrink-0">
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: 36,
+          paddingLeft: 12,
+          paddingRight: 12,
+          backgroundColor: "var(--bg-secondary)",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+        }}
+      >
         {/* Left: Session info */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           {activeSession ? (
             <>
               {/* Agent type badge */}
               <span
-                className={[
-                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                  activeSession.agentType === "claude"
-                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
-                    : "bg-[var(--success)]/15 text-[var(--success)]",
-                ].join(" ")}
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  backgroundColor:
+                    activeSession.agentType === "claude"
+                      ? "color-mix(in srgb, var(--claude) 15%, transparent)"
+                      : "color-mix(in srgb, var(--gemini) 15%, transparent)",
+                  color:
+                    activeSession.agentType === "claude"
+                      ? "var(--claude)"
+                      : "var(--gemini)",
+                }}
               >
                 {activeSession.agentType === "claude" ? "Claude" : "Gemini"}
               </span>
 
               {/* Session label */}
-              <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[200px]">
+              <Text
+                size="sm"
+                fw={500}
+                truncate="end"
+                style={{
+                  color: "var(--text-primary)",
+                  maxWidth: 200,
+                }}
+              >
                 {activeSession.label}
-              </span>
+              </Text>
 
               {/* Status */}
               {statusMeta && (
-                <span className={`text-xs ${statusMeta.color}`}>
+                <Text size="xs" style={{ color: statusMeta.color }}>
                   {statusMeta.label}
-                </span>
+                </Text>
               )}
             </>
           ) : (
-            <span className="text-xs text-[var(--text-secondary)]">
+            <Text size="xs" style={{ color: "var(--text-secondary)" }}>
               No active session
-            </span>
+            </Text>
           )}
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1">
+        <Group gap={4}>
           {activeSession && (
             <>
               {/* YOLO toggle */}
@@ -104,89 +134,155 @@ export function TopBar() {
                     ? "YOLO mode active — click to disable (will respawn)"
                     : "Enable YOLO mode (will respawn)"
                 }
-                className={[
-                  "flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition-colors",
-                  activeSession.yoloMode
-                    ? "bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/40"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] border border-transparent",
-                ].join(" ")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  cursor: "pointer",
+                  transition: "color 150ms, background-color 150ms",
+                  backgroundColor: activeSession.yoloMode
+                    ? "color-mix(in srgb, var(--danger) 20%, transparent)"
+                    : "transparent",
+                  color: activeSession.yoloMode
+                    ? "var(--danger)"
+                    : "var(--text-secondary)",
+                  border: activeSession.yoloMode
+                    ? "1px solid color-mix(in srgb, var(--danger) 40%, transparent)"
+                    : "1px solid transparent",
+                  boxShadow: activeSession.yoloMode
+                    ? "0 0 8px 0 color-mix(in srgb, var(--danger) 25%, transparent)"
+                    : "none",
+                }}
               >
                 {activeSession.yoloMode && (
-                  <AlertTriangle size={10} className="shrink-0" />
+                  <AlertTriangle size={10} style={{ flexShrink: 0 }} />
                 )}
                 YOLO
               </button>
 
               {/* Kill session */}
-              <button
-                onClick={handleKill}
-                aria-label="Kill session"
-                title="Kill session"
-                className="flex items-center justify-center w-7 h-7 rounded text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
-              >
-                <X size={14} />
-              </button>
+              <Tooltip label="Kill session" withArrow>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={handleKill}
+                  aria-label="Kill session"
+                  size={28}
+                  style={{ color: "var(--text-secondary)" }}
+                  styles={{
+                    root: {
+                      "--ai-hover-color": "var(--danger)",
+                      "--ai-hover-bg": "color-mix(in srgb, var(--danger) 10%, transparent)",
+                    },
+                  }}
+                >
+                  <X size={14} />
+                </ActionIcon>
+              </Tooltip>
             </>
           )}
 
           {/* New session */}
           {activeProjectId && (
-            <button
-              onClick={() => setShowNewDialog(true)}
-              aria-label="New agent session"
-              title="New session"
-              className="flex items-center justify-center w-7 h-7 rounded text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-colors"
-            >
-              <Plus size={14} />
-            </button>
+            <Tooltip label="New session" withArrow>
+              <ActionIcon
+                variant="subtle"
+                onClick={() => setShowNewDialog(true)}
+                aria-label="New agent session"
+                size={28}
+                style={{ color: "var(--text-secondary)" }}
+                styles={{
+                  root: {
+                    "--ai-hover-color": "var(--accent)",
+                    "--ai-hover-bg": "color-mix(in srgb, var(--accent) 10%, transparent)",
+                  },
+                }}
+              >
+                <Plus size={14} />
+              </ActionIcon>
+            </Tooltip>
           )}
-        </div>
+        </Group>
       </header>
 
-      {/* YOLO confirmation */}
-      {showYoloWarning && activeSession && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowYoloWarning(false);
-          }}
-        >
-          <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg w-[360px] p-5 shadow-2xl">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={18} className="text-[var(--warning)]" />
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                {activeSession.yoloMode
-                  ? "Disable YOLO Mode"
-                  : "Enable YOLO Mode"}
-              </h3>
-            </div>
-            <p className="text-xs text-[var(--text-secondary)] mb-5">
+      {/* YOLO confirmation modal */}
+      <Modal
+        opened={showYoloWarning && !!activeSession}
+        onClose={() => setShowYoloWarning(false)}
+        title={activeSession?.yoloMode ? "Disable YOLO Mode" : "Enable YOLO Mode"}
+        centered
+        size="sm"
+        overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+        styles={{
+          header: { backgroundColor: "var(--bg-elevated)", borderBottom: "1px solid var(--border)" },
+          title: { color: "var(--text-primary)", fontSize: 14, fontWeight: 600 },
+          body: { padding: 20, backgroundColor: "var(--bg-elevated)" },
+          content: { backgroundColor: "var(--bg-elevated)", border: "1px solid var(--border)" },
+          close: { color: "var(--text-secondary)" },
+        }}
+      >
+        {activeSession && (
+          <>
+            <Alert
+              color={activeSession.yoloMode ? "yellow" : "red"}
+              icon={<AlertTriangle size={16} />}
+              mb="md"
+              styles={{
+                root: { backgroundColor: "transparent", border: "none", padding: 0 },
+                message: { color: "var(--text-secondary)", fontSize: 12 },
+                icon: { color: activeSession.yoloMode ? "var(--warning)" : "var(--danger)" },
+              }}
+            >
               {activeSession.yoloMode
                 ? "Disabling YOLO mode will respawn the agent process without the bypass flag."
                 : "YOLO mode bypasses all confirmation prompts. The agent will be respawned with the danger flag. Proceed with caution."}
-            </p>
-            <div className="flex justify-end gap-2">
+            </Alert>
+
+            <Group justify="flex-end" gap={8}>
               <button
                 onClick={() => setShowYoloWarning(false)}
-                className="px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 14,
+                  color: "var(--text-secondary)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  borderRadius: 4,
+                  transition: "color 150ms",
+                }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleYoloConfirm}
-                className={[
-                  "px-3 py-1.5 text-sm font-medium rounded transition-colors",
-                  activeSession.yoloMode
-                    ? "bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--border)]"
-                    : "bg-[var(--danger)] text-white hover:opacity-90",
-                ].join(" ")}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  borderRadius: 4,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "opacity 150ms",
+                  backgroundColor: activeSession.yoloMode
+                    ? "var(--bg-tertiary)"
+                    : "var(--danger)",
+                  color: activeSession.yoloMode
+                    ? "var(--text-primary)"
+                    : "white",
+                }}
               >
                 {activeSession.yoloMode ? "Disable" : "Enable YOLO"}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </Group>
+          </>
+        )}
+      </Modal>
 
       {showNewDialog && (
         <NewAgentDialog

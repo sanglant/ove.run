@@ -1,15 +1,44 @@
 import { useState, useEffect } from "react";
-import { X, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { listAgentTypes } from "@/lib/tauri";
 import type { AgentType, AgentDefinition, AgentSession } from "@/types";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Group,
+  Switch,
+  Alert,
+  SimpleGrid,
+  Paper,
+  Text,
+  Stack,
+} from "@mantine/core";
 
 interface NewAgentDialogProps {
   projectId: string;
   onClose: () => void;
 }
+
+const inputStyles = {
+  input: {
+    backgroundColor: "var(--bg-tertiary)",
+    borderColor: "var(--border)",
+    color: "var(--text-primary)",
+    "&::placeholder": { color: "var(--text-secondary)" },
+    "&:focus": { borderColor: "var(--accent)" },
+  },
+  label: {
+    color: "var(--text-secondary)",
+    fontSize: "10px",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+  },
+};
 
 export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
   const [agentType, setAgentType] = useState<AgentType>("claude");
@@ -84,155 +113,265 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
     onClose();
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   const claudeDef = agentDefs.find((d) => d.agent_type === "claude");
   const geminiDef = agentDefs.find((d) => d.agent_type === "gemini");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="new-agent-title"
+    <Modal
+      opened={true}
+      onClose={onClose}
+      title="New Agent Session"
+      centered
+      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+      transitionProps={{ transition: "slide-up" }}
+      styles={{
+        header: {
+          backgroundColor: "var(--bg-elevated)",
+          borderBottom: "1px solid var(--border)",
+          padding: "16px 20px",
+        },
+        title: {
+          color: "var(--text-primary)",
+          fontSize: "14px",
+          fontWeight: 600,
+        },
+        body: {
+          padding: 0,
+          backgroundColor: "var(--bg-elevated)",
+        },
+        content: {
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-bright)",
+          width: "420px",
+        },
+        close: {
+          color: "var(--text-secondary)",
+        },
+      }}
     >
-      <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg w-[420px] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h2 id="new-agent-title" className="text-sm font-semibold text-[var(--text-primary)]">
-            New Agent Session
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+      {/* Body */}
+      <Stack gap="lg" style={{ padding: "20px" }}>
+        {/* Agent type selector */}
+        <div>
+          <Text
+            size="xs"
+            style={{
+              color: "var(--text-secondary)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 500,
+              marginBottom: "8px",
+            }}
           >
-            <X size={16} />
-          </button>
+            Agent Type
+          </Text>
+          <SimpleGrid cols={2} spacing="xs">
+            {/* Claude card */}
+            <Paper
+              withBorder
+              p="sm"
+              style={{
+                cursor: "pointer",
+                backgroundColor:
+                  agentType === "claude"
+                    ? "color-mix(in srgb, var(--claude) 10%, transparent)"
+                    : "var(--bg-tertiary)",
+                borderColor:
+                  agentType === "claude" ? "var(--claude)" : "var(--border)",
+                transition: "border-color 0.15s, background-color 0.15s",
+              }}
+              onClick={() => setAgentType("claude")}
+            >
+              <Group gap="sm" wrap="nowrap">
+                <Text
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    color: "var(--claude)",
+                    lineHeight: 1,
+                  }}
+                >
+                  C
+                </Text>
+                <div>
+                  <Text
+                    size="sm"
+                    fw={500}
+                    style={{
+                      color:
+                        agentType === "claude"
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                    }}
+                  >
+                    Claude
+                  </Text>
+                  <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                    {claudeDef?.display_name ?? "Claude Code"}
+                  </Text>
+                </div>
+              </Group>
+            </Paper>
+
+            {/* Gemini card */}
+            <Paper
+              withBorder
+              p="sm"
+              style={{
+                cursor: "pointer",
+                backgroundColor:
+                  agentType === "gemini"
+                    ? "color-mix(in srgb, var(--gemini) 10%, transparent)"
+                    : "var(--bg-tertiary)",
+                borderColor:
+                  agentType === "gemini" ? "var(--gemini)" : "var(--border)",
+                transition: "border-color 0.15s, background-color 0.15s",
+              }}
+              onClick={() => setAgentType("gemini")}
+            >
+              <Group gap="sm" wrap="nowrap">
+                <Text
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: 700,
+                    color: "var(--gemini)",
+                    lineHeight: 1,
+                  }}
+                >
+                  G
+                </Text>
+                <div>
+                  <Text
+                    size="sm"
+                    fw={500}
+                    style={{
+                      color:
+                        agentType === "gemini"
+                          ? "var(--text-primary)"
+                          : "var(--text-secondary)",
+                    }}
+                  >
+                    Gemini
+                  </Text>
+                  <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                    {geminiDef?.display_name ?? "Gemini CLI"}
+                  </Text>
+                </div>
+              </Group>
+            </Paper>
+          </SimpleGrid>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-5">
-          {/* Agent type selector */}
-          <div>
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">
-              Agent Type
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setAgentType("claude")}
-                className={[
-                  "flex items-center gap-3 p-3 rounded border transition-all text-left",
-                  agentType === "claude"
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--text-primary)]"
-                    : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/50 hover:text-[var(--text-primary)]",
-                ].join(" ")}
-              >
-                <span className="text-lg font-bold text-[var(--accent)]">C</span>
-                <div>
-                  <div className="text-sm font-medium">Claude</div>
-                  <div className="text-xs text-[var(--text-secondary)]">
-                    {claudeDef?.display_name ?? "Claude Code"}
-                  </div>
-                </div>
-              </button>
-              <button
-                onClick={() => setAgentType("gemini")}
-                className={[
-                  "flex items-center gap-3 p-3 rounded border transition-all text-left",
-                  agentType === "gemini"
-                    ? "border-[var(--success)] bg-[var(--success)]/10 text-[var(--text-primary)]"
-                    : "border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--success)]/50 hover:text-[var(--text-primary)]",
-                ].join(" ")}
-              >
-                <span className="text-lg font-bold text-[var(--success)]">G</span>
-                <div>
-                  <div className="text-sm font-medium">Gemini</div>
-                  <div className="text-xs text-[var(--text-secondary)]">
-                    {geminiDef?.display_name ?? "Gemini CLI"}
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Label input */}
-          <div>
-            <label
-              htmlFor="session-label"
-              className="block text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider"
-            >
+        {/* Label input */}
+        <TextInput
+          id="session-label"
+          label={
+            <>
               Label{" "}
-              <span className="normal-case font-normal">(optional)</span>
-            </label>
-            <input
-              id="session-label"
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Feature branch, Bug fix..."
-              className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleStart();
+              <Text
+                component="span"
+                size="xs"
+                style={{ color: "var(--text-secondary)", fontWeight: 400 }}
+              >
+                (optional)
+              </Text>
+            </>
+          }
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. Feature branch, Bug fix..."
+          styles={inputStyles}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleStart();
+          }}
+        />
+
+        {/* YOLO mode toggle */}
+        <Stack gap="xs">
+          <Group justify="space-between">
+            <Text
+              size="xs"
+              style={{
+                color: "var(--text-secondary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                fontWeight: 500,
+              }}
+            >
+              YOLO Mode
+            </Text>
+            <Switch
+              checked={yoloMode}
+              onChange={(e) => setYoloMode(e.currentTarget.checked)}
+              color="red"
+              styles={{
+                track: {
+                  backgroundColor: yoloMode ? undefined : "var(--bg-tertiary)",
+                  borderColor: "var(--bg-tertiary)",
+                },
               }}
             />
-          </div>
+          </Group>
+          {yoloMode && (
+            <Alert
+              icon={<AlertTriangle size={14} />}
+              color="red"
+              styles={{
+                root: {
+                  backgroundColor: "color-mix(in srgb, var(--danger) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+                  padding: "10px",
+                },
+                icon: { color: "var(--danger)" },
+                message: { color: "var(--danger)", fontSize: "12px" },
+              }}
+            >
+              YOLO mode bypasses all confirmation prompts. The agent will
+              execute commands without asking for permission.
+            </Alert>
+          )}
+        </Stack>
+      </Stack>
 
-          {/* YOLO mode toggle */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                YOLO Mode
-              </label>
-              <button
-                role="switch"
-                aria-checked={yoloMode}
-                onClick={() => setYoloMode((v) => !v)}
-                className={[
-                  "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                  yoloMode ? "bg-[var(--danger)]" : "bg-[var(--bg-tertiary)]",
-                ].join(" ")}
-              >
-                <span
-                  className={[
-                    "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                    yoloMode ? "translate-x-4" : "translate-x-0.5",
-                  ].join(" ")}
-                />
-              </button>
-            </div>
-            {yoloMode && (
-              <div className="flex items-start gap-2 p-2.5 rounded bg-[var(--danger)]/10 border border-[var(--danger)]/30">
-                <AlertTriangle size={14} className="text-[var(--danger)] mt-0.5 shrink-0" />
-                <p className="text-xs text-[var(--danger)]">
-                  YOLO mode bypasses all confirmation prompts. The agent will
-                  execute commands without asking for permission.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-[var(--border)]">
-          <button
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: "1px solid var(--border)",
+          padding: "16px 20px",
+        }}
+      >
+        <Group justify="flex-end" gap="xs">
+          <Button
+            variant="subtle"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "transparent",
+                },
+              },
+            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleStart}
             disabled={loading || !projectId}
-            className="px-4 py-2 text-sm font-medium rounded bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            styles={{
+              root: {
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+                "&:hover": { backgroundColor: "var(--accent-hover)" },
+                "&:disabled": { opacity: 0.5 },
+              },
+            }}
           >
             {loading ? "Starting..." : "Start Session"}
-          </button>
-        </div>
+          </Button>
+        </Group>
       </div>
-    </div>
+    </Modal>
   );
 }

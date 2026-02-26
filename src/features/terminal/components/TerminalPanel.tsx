@@ -74,27 +74,27 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
 
     const term = new Terminal({
       theme: {
-        background: "#0f0f14",
-        foreground: "#c0caf5",
-        cursor: "#7aa2f7",
-        cursorAccent: "#0f0f14",
-        selectionBackground: "#3d4471",
-        black: "#15161e",
-        red: "#f7768e",
-        green: "#9ece6a",
-        yellow: "#e0af68",
-        blue: "#7aa2f7",
+        background: "#090909",
+        foreground: "#e8e8f0",
+        cursor: "#6c7ee1",
+        cursorAccent: "#090909",
+        selectionBackground: "#2e2e3e",
+        black: "#111114",
+        red: "#e5737f",
+        green: "#8cc084",
+        yellow: "#d4a56a",
+        blue: "#6c7ee1",
         magenta: "#bb9af7",
         cyan: "#7dcfff",
-        white: "#a9b1d6",
-        brightBlack: "#414868",
-        brightRed: "#f7768e",
-        brightGreen: "#9ece6a",
-        brightYellow: "#e0af68",
-        brightBlue: "#7aa2f7",
+        white: "#8888a0",
+        brightBlack: "#50505f",
+        brightRed: "#e5737f",
+        brightGreen: "#8cc084",
+        brightYellow: "#d4a574",
+        brightBlue: "#8b9cf7",
         brightMagenta: "#bb9af7",
         brightCyan: "#7dcfff",
-        brightWhite: "#c0caf5",
+        brightWhite: "#e8e8f0",
       },
       fontFamily: settings.global.font_family || "JetBrains Mono, Cascadia Code, monospace",
       fontSize: settings.global.font_size || 14,
@@ -262,8 +262,13 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
   return (
     <div
       ref={containerRef}
-      style={{ display: isActive ? "flex" : "none" }}
-      className="w-full h-full flex-1 overflow-hidden"
+      style={{
+        display: isActive ? "flex" : "none",
+        width: "100%",
+        height: "100%",
+        flex: 1,
+        overflow: "hidden",
+      }}
       aria-label={`Terminal for session ${session.label}`}
     />
   );

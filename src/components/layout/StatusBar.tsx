@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import { Group, Text } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useNotificationStore } from "@/stores/notificationStore";
@@ -15,12 +16,12 @@ const STATUS_ORDER: AgentStatus[] = [
 ];
 
 const STATUS_COLORS: Record<AgentStatus, string> = {
-  working: "text-[var(--accent)]",
-  needs_input: "text-[var(--warning)]",
-  starting: "text-[var(--warning)]",
-  idle: "text-[var(--text-secondary)]",
-  error: "text-[var(--danger)]",
-  finished: "text-[var(--success)]",
+  working: "var(--accent)",
+  needs_input: "var(--warning)",
+  starting: "var(--warning)",
+  idle: "var(--text-secondary)",
+  error: "var(--danger)",
+  finished: "var(--success)",
 };
 
 export function StatusBar() {
@@ -43,27 +44,60 @@ export function StatusBar() {
   const totalSessions = sessions.length;
 
   return (
-    <footer className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] shrink-0 text-[10px]">
+    <footer
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        height: 24,
+        paddingLeft: 12,
+        paddingRight: 12,
+        backgroundColor: "var(--bg-secondary)",
+        borderTop: "1px solid var(--border)",
+        flexShrink: 0,
+        fontSize: 10,
+      }}
+    >
       {/* Left: Session summary */}
-      <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+      <Group gap={12} style={{ color: "var(--text-secondary)" }}>
         {totalSessions === 0 ? (
-          <span>No sessions</span>
+          <Text span size="xs" style={{ fontSize: 10 }}>No sessions</Text>
         ) : (
           <>
-            <span>{totalSessions} session{totalSessions !== 1 ? "s" : ""}</span>
+            <Text span size="xs" style={{ fontSize: 10 }}>
+              {totalSessions} session{totalSessions !== 1 ? "s" : ""}
+            </Text>
             {STATUS_ORDER.filter((s) => statusCounts[s]).map((status) => (
-              <span key={status} className={STATUS_COLORS[status]}>
+              <Text
+                key={status}
+                span
+                size="xs"
+                style={{ fontSize: 10, color: STATUS_COLORS[status] }}
+              >
                 {statusCounts[status]} {status.replace("_", " ")}
-              </span>
+              </Text>
             ))}
           </>
         )}
-      </div>
+      </Group>
 
       {/* Center: Project path */}
       {activeProject && (
-        <div className="flex-1 text-center text-[var(--text-secondary)] truncate px-4">
-          <span className="font-mono opacity-70">{activeProject.path}</span>
+        <div
+          style={{
+            flex: 1,
+            textAlign: "center",
+            color: "var(--text-secondary)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            paddingLeft: 16,
+            paddingRight: 16,
+          }}
+        >
+          <Text span ff="monospace" style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+            {activeProject.path}
+          </Text>
         </div>
       )}
 
@@ -71,13 +105,23 @@ export function StatusBar() {
       <button
         onClick={() => setActivePanel("notifications")}
         aria-label={`${unreadCount} unread notifications`}
-        className="flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          color: "var(--text-secondary)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          fontSize: 10,
+        }}
       >
         <Bell size={10} />
         {unreadCount > 0 && (
-          <span className="text-[var(--danger)] font-bold">
+          <Text span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 700 }}>
             {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+          </Text>
         )}
       </button>
     </footer>

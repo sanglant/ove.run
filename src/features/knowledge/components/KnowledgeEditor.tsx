@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Save, X } from "lucide-react";
 import type { KnowledgeEntry } from "@/types";
+import { ActionIcon, Button, Group, Text, Textarea } from "@mantine/core";
 
 interface KnowledgeEditorProps {
   entry: KnowledgeEntry;
@@ -35,48 +36,94 @@ export function KnowledgeEditor({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Editor header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] shrink-0">
+      <Group
+        justify="space-between"
+        style={{
+          padding: "10px 16px",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+        }}
+      >
         <div>
-          <h3 className="text-sm font-medium text-[var(--text-primary)]">
+          <Text size="sm" fw={500} c="var(--text-primary)">
             {entry.name}
-          </h3>
-          <span className="text-xs text-[var(--text-secondary)]">
+          </Text>
+          <Text size="xs" c="var(--text-secondary)">
             {entry.content_type.replace("_", " ")}
-          </span>
+          </Text>
         </div>
-        <div className="flex items-center gap-2">
+
+        <Group gap="xs" align="center">
           {dirty && (
-            <span className="text-xs text-[var(--warning)]">Unsaved changes</span>
+            <Text size="xs" c="var(--warning)">
+              Unsaved changes
+            </Text>
           )}
-          <button
+
+          <ActionIcon
+            variant="subtle"
             onClick={onCancel}
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1"
             aria-label="Cancel editing"
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                "&:hover": { color: "var(--text-primary)" },
+              },
+            }}
           >
             <X size={14} />
-          </button>
-          <button
+          </ActionIcon>
+
+          <Button
+            size="xs"
+            leftSection={<Save size={12} />}
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-[var(--accent)] text-[var(--bg-primary)] hover:bg-[var(--accent-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             aria-label="Save knowledge entry"
+            styles={{
+              root: {
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+                "&:hover:not(:disabled)": { backgroundColor: "var(--accent-hover)" },
+                "&:disabled": { opacity: 0.4, cursor: "not-allowed" },
+              },
+            }}
           >
-            <Save size={12} />
             {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Group>
+      </Group>
 
       {/* Editor body */}
-      <textarea
+      <Textarea
         value={content}
         onChange={(e) => handleChange(e.target.value)}
-        className="flex-1 w-full bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono text-sm p-4 resize-none focus:outline-none border-none leading-relaxed"
         placeholder="Enter content here..."
         aria-label={`Content for ${entry.name}`}
         spellCheck={false}
+        autosize
+        style={{ flex: 1 }}
+        styles={{
+          root: { flex: 1, display: "flex", flexDirection: "column" },
+          wrapper: { flex: 1 },
+          input: {
+            flex: 1,
+            backgroundColor: "var(--bg-primary)",
+            color: "var(--text-primary)",
+            fontFamily: "monospace",
+            fontSize: "13px",
+            padding: "16px",
+            resize: "none",
+            border: "none",
+            borderRadius: 0,
+            lineHeight: 1.6,
+            height: "100%",
+            "&::placeholder": { color: "var(--text-secondary)" },
+            "&:focus": { outline: "none" },
+          },
+        }}
       />
     </div>
   );
