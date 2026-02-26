@@ -1,0 +1,63 @@
+import { create } from "zustand";
+import type { AppSettings } from "@/types";
+import {
+  getSettings as apiGetSettings,
+  updateSettings as apiUpdateSettings,
+} from "@/lib/tauri";
+
+const DEFAULT_SETTINGS: AppSettings = {
+  global: {
+    theme: "dark",
+    font_family: "JetBrains Mono",
+    font_size: 14,
+    notifications_enabled: true,
+    minimize_to_tray: false,
+    terminal_scrollback: 10000,
+  },
+  agents: {
+    claude: {
+      default_yolo_mode: false,
+      custom_args: [],
+      env_vars: {},
+    },
+    gemini: {
+      default_yolo_mode: false,
+      custom_args: [],
+      env_vars: {},
+    },
+  },
+};
+
+interface SettingsState {
+  settings: AppSettings;
+  loading: boolean;
+  loadSettings: () => Promise<void>;
+  updateSettings: (settings: AppSettings) => Promise<void>;
+}
+
+export const useSettingsStore = create<SettingsState>((set) => ({
+  settings: DEFAULT_SETTINGS,
+  loading: false,
+
+  loadSettings: async () => {
+    set({ loading: true });
+    try {
+      const settings = await apiGetSettings();
+      set({ settings, loading: false });
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+      // Keep defaults on error
+      set({ loading: false });
+    }
+  },
+
+  updateSettings: async (settings: AppSettings) => {
+    try {
+      await apiUpdateSettings(settings);
+      set({ settings });
+    } catch (err) {
+      console.error("Failed to update settings:", err);
+      throw err;
+    }
+  },
+}));
