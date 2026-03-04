@@ -30,5 +30,27 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
             icon: "gemini".to_string(),
         },
+        AgentDefinition {
+            agent_type: AgentType::Copilot,
+            display_name: "GitHub Copilot".to_string(),
+            command: "copilot".to_string(),
+            default_args: vec![],
+            yolo_flag: "--yolo".to_string(),
+            detect_idle_pattern: r"(?i)(copilot>\s*$|>\s*$|\$\s*$)".to_string(),
+            detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|allow)".to_string(),
+            detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
+            icon: "copilot".to_string(),
+        },
+        AgentDefinition {
+            agent_type: AgentType::Codex,
+            display_name: "Codex CLI".to_string(),
+            command: "codex".to_string(),
+            default_args: vec![],
+            yolo_flag: "--full-auto".to_string(),
+            detect_idle_pattern: r"(?i)(codex>\s*$|>\s*$|\$\s*$)".to_string(),
+            detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|apply changes)".to_string(),
+            detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
+            icon: "codex".to_string(),
+        },
     ]
 }
