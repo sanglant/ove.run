@@ -137,6 +137,140 @@ export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
       label: "Idle",
     },
   ],
+  copilot: [
+    // needs_input — Copilot tool/action approval prompts
+    {
+      pattern: /\(y\/n\)/i,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /\[Y\/n\]|\[y\/N\]/,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /Allow|Deny|Approve|approve|deny/i,
+      status: "needs_input",
+      label: "Waiting for permission",
+    },
+    {
+      pattern: /Do you want to proceed|Do you want to continue/i,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /Press Enter/i,
+      status: "needs_input",
+      label: "Waiting for enter",
+    },
+    // working
+    {
+      pattern: /Planning\.\.\.|Thinking\.\.\.|Generating\.\.\./i,
+      status: "working",
+      label: "Planning",
+    },
+    {
+      pattern: /Executing|Running tool|Calling tool/i,
+      status: "working",
+      label: "Executing",
+    },
+    {
+      pattern: /Reading|Writing|Editing|Searching/i,
+      status: "working",
+      label: "Working",
+    },
+    // error
+    {
+      pattern: /Error:|ERROR:|error:|FATAL/,
+      status: "error",
+      label: "Error",
+    },
+    // finished
+    {
+      pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
+      status: "finished",
+      label: "Task complete",
+    },
+    // idle
+    {
+      pattern: /copilot>\s*$/i,
+      status: "idle",
+      label: "Idle",
+    },
+    {
+      pattern: />\s*$/,
+      status: "idle",
+      label: "Idle",
+    },
+  ],
+  codex: [
+    // needs_input — Codex action approval prompts
+    {
+      pattern: /\(y\/n\)/i,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /\[Y\/n\]|\[y\/N\]/,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /Apply changes\?|apply changes/i,
+      status: "needs_input",
+      label: "Waiting for approval",
+    },
+    {
+      pattern: /Allow|Deny|approve|deny/i,
+      status: "needs_input",
+      label: "Waiting for permission",
+    },
+    {
+      pattern: /Press Enter/i,
+      status: "needs_input",
+      label: "Waiting for enter",
+    },
+    // working
+    {
+      pattern: /Thinking\.\.\.|Planning\.\.\.|Generating\.\.\./i,
+      status: "working",
+      label: "Thinking",
+    },
+    {
+      pattern: /Running|Executing|Applying/i,
+      status: "working",
+      label: "Executing",
+    },
+    {
+      pattern: /Reading|Writing|Editing|Searching/i,
+      status: "working",
+      label: "Working",
+    },
+    // error
+    {
+      pattern: /Error:|ERROR:|error:|FATAL/,
+      status: "error",
+      label: "Error",
+    },
+    // finished
+    {
+      pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
+      status: "finished",
+      label: "Task complete",
+    },
+    // idle
+    {
+      pattern: /codex>\s*$/i,
+      status: "idle",
+      label: "Idle",
+    },
+    {
+      pattern: />\s*$/,
+      status: "idle",
+      label: "Idle",
+    },
+  ],
 };
 
 export function detectStatusFromOutput(
