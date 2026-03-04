@@ -84,6 +84,19 @@ const gemini: MantineColorsTuple = [
   "#208043",
 ];
 
+const guardian: MantineColorsTuple = [
+  "#e6faf7",  // 0 - lightest
+  "#ccf5ef",  // 1
+  "#99ebe0",  // 2
+  "#66e0d0",  // 3
+  "#4ecdc4",  // 4 - primary
+  "#3dbdb5",  // 5
+  "#2eada6",  // 6
+  "#1f9d97",  // 7
+  "#108d88",  // 8
+  "#007d79",  // 9 - darkest
+];
+
 export const agenticTheme = createTheme({
   colors: {
     dark: [
@@ -104,6 +117,7 @@ export const agenticTheme = createTheme({
     warning,
     claude,
     gemini,
+    guardian,
   },
   primaryColor: "accent",
   fontFamily: "Geist, sans-serif",
@@ -134,6 +148,8 @@ export const cssResolver: CSSVariablesResolver = () => ({
     /* Agent tones */
     "--claude": "#d4a574",
     "--gemini": "#6bcf8e",
+    "--guardian": "#4ecdc4",
+    "--guardian-glow": "#6ee7de",
 
     /* Semantic */
     "--danger": "#e5737f",
@@ -153,5 +169,7 @@ export const cssResolver: CSSVariablesResolver = () => ({
       "0 0 0 1px var(--claude), 0 0 12px 0 color-mix(in srgb, var(--claude) 35%, transparent)",
     "--glow-gemini":
       "0 0 0 1px var(--gemini), 0 0 12px 0 color-mix(in srgb, var(--gemini) 35%, transparent)",
+    "--glow-guardian":
+      "0 0 0 1px var(--guardian), 0 0 12px 0 color-mix(in srgb, var(--guardian) 35%, transparent)",
   },
 });

@@ -17,6 +17,10 @@ pub struct Project {
     pub path: String,
     pub created_at: String,
     pub git_enabled: bool,
+    #[serde(default)]
+    pub guardian_enabled: bool,
+    #[serde(default)]
+    pub guardian_agent_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +28,8 @@ pub struct Project {
 pub enum AgentType {
     Claude,
     Gemini,
+    Copilot,
+    Codex,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

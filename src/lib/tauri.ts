@@ -79,6 +79,10 @@ export async function removeProject(id: string): Promise<void> {
   return invoke("remove_project", { id });
 }
 
+export async function updateProject(project: Project): Promise<void> {
+  return invoke("update_project", { updatedProject: project });
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return invoke("get_settings");
 }
@@ -124,4 +128,8 @@ export async function deleteKnowledge(
   knowledgeId: string,
 ): Promise<void> {
   return invoke("delete_knowledge", { projectId, knowledgeId });
+}
+
+export async function guardianReview(prompt: string, projectPath: string): Promise<string> {
+  return invoke("guardian_review", { prompt, projectPath });
 }

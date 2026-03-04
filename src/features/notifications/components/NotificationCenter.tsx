@@ -2,7 +2,9 @@ import { Bell, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
+import { writePty } from "@/lib/tauri";
 import { Badge, Button, Text, Divider, Group } from "@mantine/core";
+import type { NotificationAction } from "@/types";
 
 export function NotificationCenter() {
   const { notifications, markRead, markAllRead, clearAll } =
@@ -14,6 +16,22 @@ export function NotificationCenter() {
     markRead(notificationId);
     setActiveSession(sessionId);
     setActivePanel("terminal");
+  };
+
+  const handleAction = (
+    e: React.MouseEvent,
+    notificationId: string,
+    action: NotificationAction,
+  ) => {
+    e.stopPropagation();
+    if (action.action === "approve_override") {
+      // Send Enter (\r) to confirm the pre-selected "Allow" in Claude Code's TUI
+      writePty(action.sessionId, Array.from(new TextEncoder().encode("\r"))).catch(() => {});
+      markRead(notificationId);
+    } else if (action.action === "view_session" || action.action === "view_guardian") {
+      setActiveSession(action.sessionId);
+      setActivePanel("terminal");
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -239,6 +257,58 @@ export function NotificationCenter() {
                       />
                     </div>
                   </div>
+                  {notification.actions && notification.actions.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "6px",
+                        marginTop: "8px",
+                      }}
+                    >
+                      {notification.actions.map((action) => (
+                        <button
+                          key={action.action + action.sessionId}
+                          onClick={(e) => handleAction(e, notification.id, action)}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "9999px",
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            border: "1px solid",
+                            cursor: "pointer",
+                            transition: "background-color 150ms, color 150ms",
+                            backgroundColor:
+                              action.action === "approve_override"
+                                ? "color-mix(in srgb, var(--warning) 15%, transparent)"
+                                : "color-mix(in srgb, var(--accent) 10%, transparent)",
+                            borderColor:
+                              action.action === "approve_override"
+                                ? "color-mix(in srgb, var(--warning) 40%, transparent)"
+                                : "color-mix(in srgb, var(--accent) 30%, transparent)",
+                            color:
+                              action.action === "approve_override"
+                                ? "var(--warning)"
+                                : "var(--accent)",
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                              action.action === "approve_override"
+                                ? "color-mix(in srgb, var(--warning) 25%, transparent)"
+                                : "color-mix(in srgb, var(--accent) 20%, transparent)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                              action.action === "approve_override"
+                                ? "color-mix(in srgb, var(--warning) 15%, transparent)"
+                                : "color-mix(in srgb, var(--accent) 10%, transparent)";
+                          }}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Divider
                   style={{ marginLeft: "16px", marginRight: "16px" }}

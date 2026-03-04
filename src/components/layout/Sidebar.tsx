@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ChevronDown,
   Folder,
+  Shield,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -22,6 +23,8 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useGuardianStore } from "@/stores/guardianStore";
+import { spawnGuardianSession, teardownGuardian } from "@/lib/guardian";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { Project } from "@/types";
@@ -42,10 +45,11 @@ const AGENT_ICON: Record<string, { label: string; color: string }> = {
 };
 
 export function Sidebar() {
-  const { projects, activeProjectId, setActiveProject } = useProjectStore();
+  const { projects, activeProjectId, setActiveProject, updateProject } = useProjectStore();
   const { sessions, activeSessionId, setActiveSession } = useSessionStore();
   const { activePanel, setActivePanel } = useUiStore();
   const { unreadCount } = useNotificationStore();
+  const guardianSessionIds = useGuardianStore((s) => s.guardianSessionIds);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(),
@@ -82,6 +86,18 @@ export function Sidebar() {
     e.stopPropagation();
     setActiveProject(projectId);
     setNewAgentProjectId(projectId);
+  };
+
+  const handleGuardianToggle = async (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    const isActive = !!guardianSessionIds[project.id];
+    if (isActive) {
+      await teardownGuardian(project.id);
+      await updateProject({ ...project, guardian_enabled: false, guardian_agent_type: undefined });
+    } else {
+      await updateProject({ ...project, guardian_enabled: true, guardian_agent_type: "claude" });
+      await spawnGuardianSession(project.id, "claude");
+    }
   };
 
   const navItems = [
@@ -258,6 +274,33 @@ export function Sidebar() {
                     </span>
                   )}
 
+                  {/* Guardian toggle button */}
+                  {(() => {
+                    const guardianActive = !!guardianSessionIds[project.id];
+                    return (
+                      <button
+                        onClick={(e) => handleGuardianToggle(e, project)}
+                        aria-label={guardianActive ? `Disable guardian for ${project.name}` : `Enable guardian for ${project.name}`}
+                        aria-pressed={guardianActive}
+                        className={guardianActive ? undefined : classes.revealOnHover}
+                        style={{
+                          color: guardianActive ? "var(--guardian)" : "var(--text-secondary)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Shield
+                          size={12}
+                          className={guardianActive ? "guardian-glow" : undefined}
+                        />
+                      </button>
+                    );
+                  })()}
+
                   {/* New agent button */}
                   <button
                     onClick={(e) => handleNewAgent(e, project.id)}
@@ -322,18 +365,25 @@ export function Sidebar() {
                                 display: "inline-block",
                               }}
                             />
-                            {/* Agent icon */}
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                fontSize: 10,
-                                width: 12,
-                                textAlign: "center",
-                                color: agentIcon?.color ?? "var(--accent)",
-                              }}
-                            >
-                              {agentIcon?.label ?? "?"}
-                            </span>
+                            {/* Agent icon — Shield for guardian sessions */}
+                            {session.isGuardian ? (
+                              <Shield
+                                size={10}
+                                style={{ flexShrink: 0, color: "var(--guardian)" }}
+                              />
+                            ) : (
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  fontSize: 10,
+                                  width: 12,
+                                  textAlign: "center",
+                                  color: agentIcon?.color ?? "var(--accent)",
+                                }}
+                              >
+                                {agentIcon?.label ?? "?"}
+                              </span>
+                            )}
                             {/* Session label */}
                             <span
                               style={{
@@ -345,8 +395,8 @@ export function Sidebar() {
                             >
                               {session.label}
                             </span>
-                            {/* YOLO badge */}
-                            {session.yoloMode && (
+                            {/* YOLO badge — hidden for guardian (uses YOLO internally) */}
+                            {session.yoloMode && !session.isGuardian && (
                               <span
                                 style={{
                                   fontSize: 9,

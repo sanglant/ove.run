@@ -106,6 +106,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
       yoloMode,
       createdAt: new Date().toISOString(),
       label: sessionLabel,
+      isGuardian: false,
     };
 
     addSession(session);

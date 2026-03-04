@@ -1,10 +1,11 @@
 import { useRef } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Shield } from "lucide-react";
 import { ActionIcon } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
 import { killPty } from "@/lib/tauri";
+import { teardownGuardian } from "@/lib/guardian";
 import type { AgentSession } from "@/types";
 import classes from "./TerminalTabs.module.css";
 
@@ -34,7 +35,7 @@ const AGENT_COLOR: Record<string, string> = {
 
 export function TerminalTabs({ sessions, onNewSession }: TerminalTabsProps) {
   const { activeSessionId, setActiveSession, removeSession } = useSessionStore();
-  const { activeProjectId } = useProjectStore();
+  const { activeProjectId, projects, updateProject } = useProjectStore();
   const { setActivePanel } = useUiStore();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +46,18 @@ export function TerminalTabs({ sessions, onNewSession }: TerminalTabsProps) {
 
   const handleClose = async (e: React.MouseEvent, session: AgentSession) => {
     e.stopPropagation();
+    if (session.isGuardian) {
+      const confirmed = window.confirm(
+        "This will disable the Guardian for this project. Continue?"
+      );
+      if (!confirmed) return;
+      const project = projects.find((p) => p.id === session.projectId);
+      await teardownGuardian(session.projectId);
+      if (project) {
+        await updateProject({ ...project, guardian_enabled: false }).catch(() => {});
+      }
+      return;
+    }
     try {
       await killPty(session.id);
     } catch {
@@ -133,17 +146,27 @@ export function TerminalTabs({ sessions, onNewSession }: TerminalTabsProps) {
                     }}
                   />
                 )}
-                <span
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: "10px",
-                    width: "1rem",
-                    textAlign: "center",
-                    color: AGENT_COLOR[session.agentType] ?? "var(--accent)",
-                  }}
-                >
-                  {AGENT_LABEL[session.agentType] ?? "?"}
-                </span>
+                {session.isGuardian ? (
+                  <Shield
+                    size={13}
+                    style={{
+                      flexShrink: 0,
+                      color: "var(--guardian)",
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: "10px",
+                      width: "1rem",
+                      textAlign: "center",
+                      color: AGENT_COLOR[session.agentType] ?? "var(--accent)",
+                    }}
+                  >
+                    {AGENT_LABEL[session.agentType] ?? "?"}
+                  </span>
+                )}
                 <span
                   className={statusColor.className}
                   style={{

@@ -19,7 +19,7 @@ use commands::git_commands::{
 use commands::knowledge_commands::{
     create_knowledge, delete_knowledge, list_knowledge, read_knowledge_content, update_knowledge,
 };
-use commands::project_commands::{add_project, list_projects, remove_project};
+use commands::project_commands::{add_project, guardian_review, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::settings_commands::{get_settings, update_settings};
 use notifications::notifier::{run_notification_loop, NotificationEvent};
@@ -101,6 +101,8 @@ pub fn run() {
             list_projects,
             add_project,
             remove_project,
+            update_project,
+            guardian_review,
             // Knowledge commands
             list_knowledge,
             create_knowledge,

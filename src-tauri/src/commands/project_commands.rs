@@ -65,6 +65,8 @@ pub async fn add_project(
         path,
         created_at: Utc::now().to_rfc3339(),
         git_enabled,
+        guardian_enabled: false,
+        guardian_agent_type: None,
     };
 
     let mut projects = state.projects.write().await;
@@ -91,7 +93,46 @@ pub async fn remove_project(
     save_projects_to_disk(&projects)
 }
 
+#[tauri::command]
+pub async fn update_project(
+    state: State<'_, AppState>,
+    updated_project: Project,
+) -> Result<(), String> {
+    let mut projects = state.projects.write().await;
+
+    let pos = projects
+        .iter()
+        .position(|p| p.id == updated_project.id)
+        .ok_or_else(|| format!("Project {} not found", updated_project.id))?;
+
+    projects[pos] = updated_project;
+    save_projects_to_disk(&projects)
+}
+
 /// Load persisted projects from disk. Called during app startup (sync).
 pub fn load_projects_sync() -> Vec<Project> {
     load_projects_from_disk()
+}
+
+/// Run a one-shot guardian review using `claude -p <prompt>`.
+/// This is non-interactive: the process receives the prompt, responds, and exits.
+/// Returns the full stdout of the claude process.
+#[tauri::command]
+pub async fn guardian_review(prompt: String, project_path: String) -> Result<String, String> {
+    let output = tokio::process::Command::new("claude")
+        .arg("--dangerously-skip-permissions")
+        .arg("-p")
+        .arg(&prompt)
+        .current_dir(&project_path)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run claude for guardian review: {}", e))?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .map_err(|e| format!("Invalid UTF-8 in guardian output: {}", e))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Guardian review process failed: {}", stderr))
+    }
 }

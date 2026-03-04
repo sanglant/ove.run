@@ -6,15 +6,37 @@ export interface PatternEntry {
   label?: string;
 }
 
+/**
+ * Strip ANSI escape codes from terminal output so pattern matching
+ * works against the visible text content.
+ */
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
+
+export function stripAnsi(text: string): string {
+  return text.replace(ANSI_RE, "");
+}
+
 export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
   claude: [
+    // needs_input — Claude Code CLI permission / input prompts
     {
-      pattern: /Human:|human:/,
+      pattern: /\(y\/n\)/i,
       status: "needs_input",
-      label: "Waiting for input",
+      label: "Waiting for confirmation",
     },
     {
-      pattern: /\? Do you want to proceed/i,
+      pattern: /\[Y\/n\]|\[y\/N\]/,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /Allow|Deny|approve|reject/i,
+      status: "needs_input",
+      label: "Waiting for permission",
+    },
+    {
+      pattern: /Do you want to proceed|Do you want to continue/i,
       status: "needs_input",
       label: "Waiting for confirmation",
     },
@@ -24,10 +46,11 @@ export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
       label: "Waiting for enter",
     },
     {
-      pattern: /ToolUseBlock|tool_use|<tool_call>/i,
-      status: "working",
-      label: "Using tool",
+      pattern: /Human:|❯\s*$/,
+      status: "needs_input",
+      label: "Waiting for input",
     },
+    // working — active processing indicators
     {
       pattern: /Thinking\.\.\.|thinking\.\.\./,
       status: "working",
@@ -39,29 +62,47 @@ export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
       label: "Running",
     },
     {
-      pattern: /\$ |> |bash-/,
+      pattern: /Reading|Writing|Editing|Searching/i,
+      status: "working",
+      label: "Working",
+    },
+    {
+      pattern: /\$ |bash-/,
       status: "working",
       label: "Executing command",
     },
+    // error
     {
-      pattern: /Error:|ERROR:|error:/,
+      pattern: /Error:|ERROR:|error:|FATAL/,
       status: "error",
       label: "Error",
     },
+    // finished
     {
       pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
       status: "finished",
       label: "Task complete",
     },
+    // idle — prompt ready for input (lowest priority)
     {
-      pattern: /claude>/i,
+      pattern: /claude>\s*$/i,
+      status: "idle",
+      label: "Idle",
+    },
+    {
+      pattern: />\s*$/,
       status: "idle",
       label: "Idle",
     },
   ],
   gemini: [
     {
-      pattern: /\? /,
+      pattern: /\(y\/n\)/i,
+      status: "needs_input",
+      label: "Waiting for confirmation",
+    },
+    {
+      pattern: /\? .+/,
       status: "needs_input",
       label: "Waiting for input",
     },
@@ -91,7 +132,7 @@ export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
       label: "Done",
     },
     {
-      pattern: /gemini>/i,
+      pattern: /gemini>\s*$/i,
       status: "idle",
       label: "Idle",
     },
@@ -102,9 +143,10 @@ export function detectStatusFromOutput(
   agentType: AgentType,
   output: string,
 ): AgentStatus | null {
+  const clean = stripAnsi(output);
   const patterns = AGENT_PATTERNS[agentType];
   for (const entry of patterns) {
-    if (entry.pattern.test(output)) {
+    if (entry.pattern.test(clean)) {
       return entry.status;
     }
   }

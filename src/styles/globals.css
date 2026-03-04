@@ -174,3 +174,9 @@ body {
 .animate-status-pulse {
   animation: status-pulse 1.4s ease-in-out infinite;
 }
+
+/* ─── Guardian Glow ──────────────────────────────────────────────────────────── */
+
+.guardian-glow {
+  box-shadow: 0 0 1px var(--guardian), 0 0 12px rgba(78, 205, 196, 0.3);
+}

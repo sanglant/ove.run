@@ -4,6 +4,7 @@ import {
   listProjects as apiListProjects,
   addProject as apiAddProject,
   removeProject as apiRemoveProject,
+  updateProject as apiUpdateProject,
 } from "@/lib/tauri";
 
 interface ProjectState {
@@ -13,6 +14,7 @@ interface ProjectState {
   loadProjects: () => Promise<void>;
   addProject: (name: string, path: string) => Promise<Project>;
   removeProject: (id: string) => Promise<void>;
+  updateProject: (project: Project) => Promise<void>;
   setActiveProject: (id: string | null) => void;
 }
 
@@ -58,6 +60,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           : state.activeProjectId;
       return { projects, activeProjectId };
     });
+  },
+
+  updateProject: async (project: Project) => {
+    await apiUpdateProject(project);
+    set((state) => ({
+      projects: state.projects.map((p) => (p.id === project.id ? project : p)),
+    }));
   },
 
   setActiveProject: (id: string | null) => {

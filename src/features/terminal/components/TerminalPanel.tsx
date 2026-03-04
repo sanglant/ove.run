@@ -6,9 +6,12 @@ import "@xterm/xterm/css/xterm.css";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useProjectStore } from "@/stores/projectStore";
+import { useGuardianStore } from "@/stores/guardianStore";
 import { spawnPty, writePty, resizePty, killPty, listAgentTypes } from "@/lib/tauri";
 import { listen } from "@tauri-apps/api/event";
-import { detectStatusFromOutput } from "@/lib/patterns";
+import { detectStatusFromOutput, stripAnsi } from "@/lib/patterns";
+import { triggerGuardianReview, handleGuardianCrash } from "@/lib/guardian";
 import type { AgentSession, AgentDefinition, AgentStatus } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -144,6 +147,13 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
       if (outputBufferRef.current.length > 500) {
         outputBufferRef.current = outputBufferRef.current.slice(-500);
       }
+
+      // Update guardian output buffer (2000 char rolling buffer, ANSI-stripped, no re-render)
+      const guardianState = useGuardianStore.getState();
+      const currentBuffer = guardianState.outputBuffers[session.id] || "";
+      const cleanText = stripAnsi(text);
+      guardianState.updateOutputBuffer(session.id, (currentBuffer + cleanText).slice(-2000));
+
       const detected = detectStatusFromOutput(session.agentType, outputBufferRef.current);
       if (detected && detected !== lastStatusRef.current) {
         lastStatusRef.current = detected;
@@ -159,6 +169,15 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
             timestamp: new Date().toISOString(),
           });
         }
+
+        // Trigger guardian review when agent needs input (non-guardian sessions only)
+        if (detected === "needs_input" && !session.isGuardian) {
+          const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+          const guardianSessionId = useGuardianStore.getState().guardianSessionIds[session.projectId];
+          if (project && guardianSessionId) {
+            triggerGuardianReview(session, project.path);
+          }
+        }
       }
     }).then((unlisten) => {
       if (cancelledOutput) {
@@ -173,6 +192,15 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
     listen<number>(`pty-exit-${session.id}`, (event) => {
       if (cancelledExit) return;
       const code = event.payload ?? 0;
+
+      // Handle guardian exit — only treat non-zero exit as crash
+      if (session.isGuardian) {
+        if (code !== 0) {
+          handleGuardianCrash(session.projectId, session.id);
+        }
+        return;
+      }
+
       term.writeln(`\r\n\x1b[2m[Process exited with code ${code}]\x1b[0m`);
       updateStatus(session.id, code === 0 ? "finished" : "error");
       spawnedRef.current = false;
