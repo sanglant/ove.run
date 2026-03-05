@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { AgentSession, AgentStatus } from "@/types";
+import type { AgentSession, AgentStatus, PersistedSession } from "@/types";
+import { saveSessions, loadSessions } from "@/lib/tauri";
 
 interface SessionState {
   sessions: AgentSession[];
@@ -9,9 +10,11 @@ interface SessionState {
   setActiveSession: (id: string | null) => void;
   updateSessionStatus: (id: string, status: AgentStatus) => void;
   updateSessionYolo: (id: string, yoloMode: boolean) => void;
+  persistSessions: () => void;
+  loadPersistedSessions: () => Promise<void>;
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
 
@@ -20,6 +23,7 @@ export const useSessionStore = create<SessionState>((set) => ({
       sessions: [...state.sessions, session],
       activeSessionId: session.id,
     }));
+    get().persistSessions();
   },
 
   removeSession: (id: string) => {
@@ -33,6 +37,7 @@ export const useSessionStore = create<SessionState>((set) => ({
           : state.activeSessionId;
       return { sessions, activeSessionId };
     });
+    get().persistSessions();
   },
 
   setActiveSession: (id: string | null) => {
@@ -53,5 +58,49 @@ export const useSessionStore = create<SessionState>((set) => ({
         s.id === id ? { ...s, yoloMode } : s,
       ),
     }));
+  },
+
+  persistSessions: () => {
+    const { sessions } = get();
+    const persisted: PersistedSession[] = sessions
+      .filter((s) => s.status !== "error" && s.status !== "finished")
+      .map((s) => ({
+        id: s.id,
+        project_id: s.projectId,
+        agent_type: s.agentType,
+        yolo_mode: s.yoloMode,
+        label: s.label,
+        is_guardian: s.isGuardian,
+        created_at: s.createdAt,
+      }));
+    saveSessions(persisted).catch((err) => {
+      console.error("Failed to persist sessions:", err);
+    });
+  },
+
+  loadPersistedSessions: async () => {
+    try {
+      const persisted = await loadSessions();
+      if (persisted.length === 0) return;
+
+      const resumed: AgentSession[] = persisted.map((p) => ({
+        id: p.id,
+        projectId: p.project_id,
+        agentType: p.agent_type,
+        status: "starting" as const,
+        yoloMode: p.yolo_mode,
+        createdAt: p.created_at,
+        label: p.label,
+        isGuardian: p.is_guardian,
+        isResumed: true,
+      }));
+
+      set((state) => ({
+        sessions: [...state.sessions, ...resumed],
+        activeSessionId: resumed[resumed.length - 1]?.id ?? state.activeSessionId,
+      }));
+    } catch (err) {
+      console.error("Failed to load persisted sessions:", err);
+    }
   },
 }));
