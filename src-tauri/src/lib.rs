@@ -8,6 +8,7 @@ pub mod git;
 pub mod knowledge;
 pub mod notifications;
 pub mod pty;
+pub mod sessions;
 pub mod settings;
 pub mod state;
 pub mod tray;
@@ -21,6 +22,7 @@ use commands::knowledge_commands::{
 };
 use commands::project_commands::{add_project, guardian_review, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
+use commands::session_commands::{load_sessions, save_sessions};
 use commands::settings_commands::{get_settings, update_settings};
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
@@ -114,6 +116,9 @@ pub fn run() {
             update_settings,
             // Agent commands
             list_agent_types,
+            // Session commands
+            save_sessions,
+            load_sessions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
