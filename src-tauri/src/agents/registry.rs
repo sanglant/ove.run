@@ -11,7 +11,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             // Claude shows a prompt character or specific idle indicators
             detect_idle_pattern: r"(?i)(>\s*$|\$\s*$|claude>\s*$)".to_string(),
             // Claude asks for human input / confirmation
-            detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\])".to_string(),
+            detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|allow|deny|approve|reject)".to_string(),
             // Claude signals task completion
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed)".to_string(),
             icon: "claude".to_string(),

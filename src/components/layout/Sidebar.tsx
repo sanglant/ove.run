@@ -42,6 +42,8 @@ const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
 const AGENT_ICON: Record<string, { label: string; color: string }> = {
   claude: { label: "C", color: "var(--claude)" },
   gemini: { label: "G", color: "var(--gemini)" },
+  copilot: { label: "P", color: "var(--copilot)" },
+  codex: { label: "X", color: "var(--codex)" },
 };
 
 export function Sidebar() {

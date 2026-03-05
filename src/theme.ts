@@ -84,6 +84,32 @@ const gemini: MantineColorsTuple = [
   "#208043",
 ];
 
+const copilot: MantineColorsTuple = [
+  "#eef4ff",
+  "#d4e2f9",
+  "#b8d0f3",
+  "#9cbeed",
+  "#79a9e8",
+  "#5f96e0",
+  "#4a83d4",
+  "#3970c0",
+  "#2d5da8",
+  "#214a90",
+];
+
+const codex: MantineColorsTuple = [
+  "#f3eefb",
+  "#e0d4f2",
+  "#cdb9e9",
+  "#ba9ee0",
+  "#a883d7",
+  "#966dce",
+  "#8458c0",
+  "#7244ad",
+  "#60369a",
+  "#4e2987",
+];
+
 const guardian: MantineColorsTuple = [
   "#e6faf7",  // 0 - lightest
   "#ccf5ef",  // 1
@@ -117,6 +143,8 @@ export const agenticTheme = createTheme({
     warning,
     claude,
     gemini,
+    copilot,
+    codex,
     guardian,
   },
   primaryColor: "accent",
@@ -148,6 +176,8 @@ export const cssResolver: CSSVariablesResolver = () => ({
     /* Agent tones */
     "--claude": "#d4a574",
     "--gemini": "#6bcf8e",
+    "--copilot": "#79a9e8",
+    "--codex": "#a883d7",
     "--guardian": "#4ecdc4",
     "--guardian-glow": "#6ee7de",
 
@@ -169,6 +199,10 @@ export const cssResolver: CSSVariablesResolver = () => ({
       "0 0 0 1px var(--claude), 0 0 12px 0 color-mix(in srgb, var(--claude) 35%, transparent)",
     "--glow-gemini":
       "0 0 0 1px var(--gemini), 0 0 12px 0 color-mix(in srgb, var(--gemini) 35%, transparent)",
+    "--glow-copilot":
+      "0 0 0 1px var(--copilot), 0 0 12px 0 color-mix(in srgb, var(--copilot) 35%, transparent)",
+    "--glow-codex":
+      "0 0 0 1px var(--codex), 0 0 12px 0 color-mix(in srgb, var(--codex) 35%, transparent)",
     "--glow-guardian":
       "0 0 0 1px var(--guardian), 0 0 12px 0 color-mix(in srgb, var(--guardian) 35%, transparent)",
   },

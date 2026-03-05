@@ -16,6 +16,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   error: { label: "Error", color: "var(--danger)" },
 };
 
+const AGENT_DISPLAY_NAMES = { claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', codex: 'Codex' } 
+
 export function TopBar() {
   const { sessions, activeSessionId, removeSession, updateSessionYolo } =
     useSessionStore();
@@ -84,17 +86,11 @@ export function TopBar() {
                   fontSize: 10,
                   fontWeight: 700,
                   textTransform: "uppercase",
-                  backgroundColor:
-                    activeSession.agentType === "claude"
-                      ? "color-mix(in srgb, var(--claude) 15%, transparent)"
-                      : "color-mix(in srgb, var(--gemini) 15%, transparent)",
-                  color:
-                    activeSession.agentType === "claude"
-                      ? "var(--claude)"
-                      : "var(--gemini)",
+                  backgroundColor: `color-mix(in srgb, var(--${activeSession.agentType}) 15%, transparent)`,
+                  color: `var(--${activeSession.agentType})`,
                 }}
               >
-                {activeSession.agentType === "claude" ? "Claude" : "Gemini"}
+                {AGENT_DISPLAY_NAMES[activeSession.agentType] || activeSession.agentType}
               </span>
 
               {/* Guardian badge — shown when active session is a guardian */}

@@ -7,6 +7,7 @@ import { GitPanel } from "@/features/git/components/GitPanel";
 import { KnowledgePanel } from "@/features/knowledge/components/KnowledgePanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
+import { AgentFeedbackModal } from "@/features/guardian/components/AgentFeedbackModal";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -106,6 +107,9 @@ export default function App() {
       {activePanel === "settings" && (
         <SettingsModal onClose={() => setActivePanel("terminal")} />
       )}
+
+      {/* Agent feedback modal — always rendered, visibility driven by store queue */}
+      <AgentFeedbackModal />
     </div>
   );
 }

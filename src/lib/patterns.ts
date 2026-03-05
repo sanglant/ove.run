@@ -1,10 +1,4 @@
-import type { AgentStatus, AgentType } from "@/types";
-
-export interface PatternEntry {
-  pattern: RegExp;
-  status: AgentStatus;
-  label?: string;
-}
+import type { AgentStatus, AgentDefinition } from "@/types";
 
 /**
  * Strip ANSI escape codes from terminal output so pattern matching
@@ -17,272 +11,68 @@ export function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, "");
 }
 
-export const AGENT_PATTERNS: Record<AgentType, PatternEntry[]> = {
-  claude: [
-    // needs_input — Claude Code CLI permission / input prompts
-    {
-      pattern: /\(y\/n\)/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /\[Y\/n\]|\[y\/N\]/,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /Allow|Deny|approve|reject/i,
-      status: "needs_input",
-      label: "Waiting for permission",
-    },
-    {
-      pattern: /Do you want to proceed|Do you want to continue/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /Press Enter to continue/i,
-      status: "needs_input",
-      label: "Waiting for enter",
-    },
-    {
-      pattern: /Human:|❯\s*$/,
-      status: "needs_input",
-      label: "Waiting for input",
-    },
-    // working — active processing indicators
-    {
-      pattern: /Thinking\.\.\.|thinking\.\.\./,
-      status: "working",
-      label: "Thinking",
-    },
-    {
-      pattern: /Running\s+/i,
-      status: "working",
-      label: "Running",
-    },
-    {
-      pattern: /Reading|Writing|Editing|Searching/i,
-      status: "working",
-      label: "Working",
-    },
-    {
-      pattern: /\$ |bash-/,
-      status: "working",
-      label: "Executing command",
-    },
-    // error
-    {
-      pattern: /Error:|ERROR:|error:|FATAL/,
-      status: "error",
-      label: "Error",
-    },
-    // finished
-    {
-      pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
-      status: "finished",
-      label: "Task complete",
-    },
-    // idle — prompt ready for input (lowest priority)
-    {
-      pattern: /claude>\s*$/i,
-      status: "idle",
-      label: "Idle",
-    },
-    {
-      pattern: />\s*$/,
-      status: "idle",
-      label: "Idle",
-    },
-  ],
-  gemini: [
-    {
-      pattern: /\(y\/n\)/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /\? .+/,
-      status: "needs_input",
-      label: "Waiting for input",
-    },
-    {
-      pattern: /Press Enter/i,
-      status: "needs_input",
-      label: "Waiting for enter",
-    },
-    {
-      pattern: /Executing code|Calling function|Running tool/i,
-      status: "working",
-      label: "Executing",
-    },
-    {
-      pattern: /Generating\.\.\.|Thinking\.\.\./i,
-      status: "working",
-      label: "Generating",
-    },
-    {
-      pattern: /Error:|ERROR:/,
-      status: "error",
-      label: "Error",
-    },
-    {
-      pattern: /Done\.|Complete\.|Finished\./i,
-      status: "finished",
-      label: "Done",
-    },
-    {
-      pattern: /gemini>\s*$/i,
-      status: "idle",
-      label: "Idle",
-    },
-  ],
-  copilot: [
-    // needs_input — Copilot tool/action approval prompts
-    {
-      pattern: /\(y\/n\)/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /\[Y\/n\]|\[y\/N\]/,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /Allow|Deny|Approve|approve|deny/i,
-      status: "needs_input",
-      label: "Waiting for permission",
-    },
-    {
-      pattern: /Do you want to proceed|Do you want to continue/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /Press Enter/i,
-      status: "needs_input",
-      label: "Waiting for enter",
-    },
-    // working
-    {
-      pattern: /Planning\.\.\.|Thinking\.\.\.|Generating\.\.\./i,
-      status: "working",
-      label: "Planning",
-    },
-    {
-      pattern: /Executing|Running tool|Calling tool/i,
-      status: "working",
-      label: "Executing",
-    },
-    {
-      pattern: /Reading|Writing|Editing|Searching/i,
-      status: "working",
-      label: "Working",
-    },
-    // error
-    {
-      pattern: /Error:|ERROR:|error:|FATAL/,
-      status: "error",
-      label: "Error",
-    },
-    // finished
-    {
-      pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
-      status: "finished",
-      label: "Task complete",
-    },
-    // idle
-    {
-      pattern: /copilot>\s*$/i,
-      status: "idle",
-      label: "Idle",
-    },
-    {
-      pattern: />\s*$/,
-      status: "idle",
-      label: "Idle",
-    },
-  ],
-  codex: [
-    // needs_input — Codex action approval prompts
-    {
-      pattern: /\(y\/n\)/i,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /\[Y\/n\]|\[y\/N\]/,
-      status: "needs_input",
-      label: "Waiting for confirmation",
-    },
-    {
-      pattern: /Apply changes\?|apply changes/i,
-      status: "needs_input",
-      label: "Waiting for approval",
-    },
-    {
-      pattern: /Allow|Deny|approve|deny/i,
-      status: "needs_input",
-      label: "Waiting for permission",
-    },
-    {
-      pattern: /Press Enter/i,
-      status: "needs_input",
-      label: "Waiting for enter",
-    },
-    // working
-    {
-      pattern: /Thinking\.\.\.|Planning\.\.\.|Generating\.\.\./i,
-      status: "working",
-      label: "Thinking",
-    },
-    {
-      pattern: /Running|Executing|Applying/i,
-      status: "working",
-      label: "Executing",
-    },
-    {
-      pattern: /Reading|Writing|Editing|Searching/i,
-      status: "working",
-      label: "Working",
-    },
-    // error
-    {
-      pattern: /Error:|ERROR:|error:|FATAL/,
-      status: "error",
-      label: "Error",
-    },
-    // finished
-    {
-      pattern: /Task complete|TASK COMPLETE|Done\.|Finished\./i,
-      status: "finished",
-      label: "Task complete",
-    },
-    // idle
-    {
-      pattern: /codex>\s*$/i,
-      status: "idle",
-      label: "Idle",
-    },
-    {
-      pattern: />\s*$/,
-      status: "idle",
-      label: "Idle",
-    },
-  ],
-};
+/**
+ * Convert a Rust-style regex pattern to a JavaScript RegExp.
+ * Strips (?i) inline flags and converts them to the JS 'i' flag.
+ */
+function toJsRegExp(pattern: string): RegExp | null {
+  let flags = "";
+  let source = pattern;
 
+  // Rust patterns use (?i) for case-insensitive; JS needs the 'i' flag instead
+  if (source.startsWith("(?i)")) {
+    if (!flags.includes("i")) flags += "i";
+    source = source.slice(4);
+  }
+  // Also handle (?i) anywhere in the pattern
+  source = source.replace(/\(\?i\)/g, () => {
+    if (!flags.includes("i")) flags += "i";
+    return "";
+  });
+
+  try {
+    return new RegExp(source, flags);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect agent status from terminal output using the patterns defined
+ * in the agent definition (from the Rust backend registry).
+ *
+ * Tests the last 500 visible chars against detect_input_pattern,
+ * detect_finished_pattern, and detect_idle_pattern (in that priority order).
+ */
 export function detectStatusFromOutput(
-  agentType: AgentType,
+  agentDef: AgentDefinition | null,
   output: string,
 ): AgentStatus | null {
+  if (!agentDef) return null;
+
   const clean = stripAnsi(output);
-  const patterns = AGENT_PATTERNS[agentType];
-  for (const entry of patterns) {
-    if (entry.pattern.test(clean)) {
-      return entry.status;
-    }
+  // Claude Code (Ink) pads every line with spaces to full terminal width (~130 chars).
+  // Without trimming, 500 chars only covers ~4 lines and the question text is missed.
+  // Trimming trailing spaces per line collapses padding so 500 chars covers 20+ lines.
+  const trimmed = clean.split("\n").map((l) => l.trimEnd()).join("\n");
+  const tail = trimmed.slice(-500);
+
+  // Priority order: needs_input > finished > idle
+  // These use the regex patterns defined per-agent in the Rust registry.
+  if (agentDef.detect_input_pattern) {
+    const re = toJsRegExp(agentDef.detect_input_pattern);
+    if (re?.test(tail)) return "needs_input";
   }
+
+  if (agentDef.detect_finished_pattern) {
+    const re = toJsRegExp(agentDef.detect_finished_pattern);
+    if (re?.test(tail)) return "finished";
+  }
+
+  if (agentDef.detect_idle_pattern) {
+    const re = toJsRegExp(agentDef.detect_idle_pattern);
+    if (re?.test(tail)) return "idle";
+  }
+
   return null;
 }

@@ -111,3 +111,20 @@ export interface NotificationItem {
   read: boolean;
   actions?: NotificationAction[];
 }
+
+export interface ParsedOption {
+  label: string;
+  keys: number[];
+}
+
+export interface FeedbackItem {
+  id: string;
+  sessionId: string;
+  projectId: string;
+  type: "question" | "response";
+  output: string;
+  parsedOptions: ParsedOption[];
+  allowFreeInput: boolean;
+  timestamp: string;
+  guardianEnabled: boolean;
+}

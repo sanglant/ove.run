@@ -78,6 +78,28 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             detect_finished_pattern: "",
             icon: "G",
           },
+          {
+            agent_type: "copilot",
+            display_name: "GitHub Copilot",
+            command: "copilot",
+            default_args: [],
+            yolo_flag: "--yolo",
+            detect_idle_pattern: "",
+            detect_input_pattern: "",
+            detect_finished_pattern: "",
+            icon: "P",
+          },
+          {
+            agent_type: "codex",
+            display_name: "Codex CLI",
+            command: "codex",
+            default_args: [],
+            yolo_flag: "--full-auto",
+            detect_idle_pattern: "",
+            detect_input_pattern: "",
+            detect_finished_pattern: "",
+            icon: "X",
+          },
         ]);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -94,9 +116,10 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
     if (!projectId) return;
     setLoading(true);
 
+    const agentDef = agentDefs.find((d) => d.agent_type === agentType);
     const sessionLabel =
       label.trim() ||
-      `${agentType === "claude" ? "Claude" : "Gemini"} #${Date.now().toString(36).slice(-4)}`;
+      `${agentDef?.display_name ?? agentType} #${Date.now().toString(36).slice(-4)}`;
 
     const session: AgentSession = {
       id: uuidv4(),
@@ -114,8 +137,12 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
     onClose();
   };
 
-  const claudeDef = agentDefs.find((d) => d.agent_type === "claude");
-  const geminiDef = agentDefs.find((d) => d.agent_type === "gemini");
+  const AGENT_META: Record<string, { label: string; color: string }> = {
+    claude: { label: "C", color: "var(--claude)" },
+    gemini: { label: "G", color: "var(--gemini)" },
+    copilot: { label: "P", color: "var(--copilot)" },
+    codex: { label: "X", color: "var(--codex)" },
+  };
 
   return (
     <Modal
@@ -167,99 +194,52 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             Agent Type
           </Text>
           <SimpleGrid cols={2} spacing="xs">
-            {/* Claude card */}
-            <Paper
-              withBorder
-              p="sm"
-              style={{
-                cursor: "pointer",
-                backgroundColor:
-                  agentType === "claude"
-                    ? "color-mix(in srgb, var(--claude) 10%, transparent)"
-                    : "var(--bg-tertiary)",
-                borderColor:
-                  agentType === "claude" ? "var(--claude)" : "var(--border)",
-                transition: "border-color 0.15s, background-color 0.15s",
-              }}
-              onClick={() => setAgentType("claude")}
-            >
-              <Group gap="sm" wrap="nowrap">
-                <Text
+            {agentDefs.map((def) => {
+              const meta = AGENT_META[def.agent_type] ?? { label: "?", color: "var(--text-secondary)" };
+              const isSelected = agentType === def.agent_type;
+              return (
+                <Paper
+                  key={def.agent_type}
+                  withBorder
+                  p="sm"
                   style={{
-                    fontSize: "18px",
-                    fontWeight: 700,
-                    color: "var(--claude)",
-                    lineHeight: 1,
+                    cursor: "pointer",
+                    backgroundColor: isSelected
+                      ? `color-mix(in srgb, ${meta.color} 10%, transparent)`
+                      : "var(--bg-tertiary)",
+                    borderColor: isSelected ? meta.color : "var(--border)",
+                    transition: "border-color 0.15s, background-color 0.15s",
                   }}
+                  onClick={() => setAgentType(def.agent_type as AgentType)}
                 >
-                  C
-                </Text>
-                <div>
-                  <Text
-                    size="sm"
-                    fw={500}
-                    style={{
-                      color:
-                        agentType === "claude"
-                          ? "var(--text-primary)"
-                          : "var(--text-secondary)",
-                    }}
-                  >
-                    Claude
-                  </Text>
-                  <Text size="xs" style={{ color: "var(--text-secondary)" }}>
-                    {claudeDef?.display_name ?? "Claude Code"}
-                  </Text>
-                </div>
-              </Group>
-            </Paper>
-
-            {/* Gemini card */}
-            <Paper
-              withBorder
-              p="sm"
-              style={{
-                cursor: "pointer",
-                backgroundColor:
-                  agentType === "gemini"
-                    ? "color-mix(in srgb, var(--gemini) 10%, transparent)"
-                    : "var(--bg-tertiary)",
-                borderColor:
-                  agentType === "gemini" ? "var(--gemini)" : "var(--border)",
-                transition: "border-color 0.15s, background-color 0.15s",
-              }}
-              onClick={() => setAgentType("gemini")}
-            >
-              <Group gap="sm" wrap="nowrap">
-                <Text
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 700,
-                    color: "var(--gemini)",
-                    lineHeight: 1,
-                  }}
-                >
-                  G
-                </Text>
-                <div>
-                  <Text
-                    size="sm"
-                    fw={500}
-                    style={{
-                      color:
-                        agentType === "gemini"
-                          ? "var(--text-primary)"
-                          : "var(--text-secondary)",
-                    }}
-                  >
-                    Gemini
-                  </Text>
-                  <Text size="xs" style={{ color: "var(--text-secondary)" }}>
-                    {geminiDef?.display_name ?? "Gemini CLI"}
-                  </Text>
-                </div>
-              </Group>
-            </Paper>
+                  <Group gap="sm" wrap="nowrap">
+                    <Text
+                      style={{
+                        fontSize: "18px",
+                        fontWeight: 700,
+                        color: meta.color,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {meta.label}
+                    </Text>
+                    <div>
+                      <Text
+                        size="sm"
+                        fw={500}
+                        style={{
+                          color: isSelected
+                            ? "var(--text-primary)"
+                            : "var(--text-secondary)",
+                        }}
+                      >
+                        {def.display_name}
+                      </Text>
+                    </div>
+                  </Group>
+                </Paper>
+              );
+            })}
           </SimpleGrid>
         </div>
 

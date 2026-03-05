@@ -10,10 +10,29 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useGuardianStore } from "@/stores/guardianStore";
 import { spawnPty, writePty, resizePty, killPty, listAgentTypes } from "@/lib/tauri";
 import { listen } from "@tauri-apps/api/event";
-import { detectStatusFromOutput, stripAnsi } from "@/lib/patterns";
-import { triggerGuardianReview, handleGuardianCrash } from "@/lib/guardian";
+import { detectStatusFromOutput } from "@/lib/patterns";
+import { handleGuardianCrash } from "@/lib/guardian";
+import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
+import { parseFeedbackOptions, cleanTerminalOutput, appendToTerminalBuffer } from "@/lib/feedbackParser";
 import type { AgentSession, AgentDefinition, AgentStatus } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+
+/**
+ * Read the last N lines from xterm's active buffer.
+ * Uses translateToString(true) which trims trailing whitespace per line,
+ * eliminating the Ink space-padding issue natively.
+ */
+function readXtermBuffer(term: Terminal, lineCount = 40): string {
+  const buf = term.buffer.active;
+  const totalLines = buf.length;
+  const start = Math.max(0, totalLines - lineCount);
+  const lines: string[] = [];
+  for (let i = start; i < totalLines; i++) {
+    const line = buf.getLine(i);
+    if (line) lines.push(line.translateToString(true));
+  }
+  return lines.join("\n");
+}
 
 interface TerminalPanelProps {
   session: AgentSession;
@@ -27,6 +46,8 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
   const fitAddonRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
   const agentDefRef = useRef<AgentDefinition | null>(null);
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
 
@@ -34,7 +55,8 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
   const settings = useSettingsStore((s) => s.settings);
   const addNotification = useNotificationStore((s) => s.addNotification);
   const lastStatusRef = useRef<AgentStatus>(session.status);
-  const outputBufferRef = useRef("");
+  // Keep lastStatusRef in sync with external status changes (e.g. modal setting "working")
+  lastStatusRef.current = session.status;
 
   const doSpawn = useCallback(
     async (term: Terminal, fitAddon: FitAddon) => {
@@ -125,9 +147,10 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
       });
     });
 
-    // Handle resize
+    // Handle resize — ignore degenerate sizes from hidden containers
     term.onResize(({ cols, rows }) => {
       if (!spawnedRef.current) return;
+      if (cols < 10 || rows < 3) return;
       resizePty(session.id, cols, rows).catch((err) => {
         console.error("resizePty error:", err);
       });
@@ -138,47 +161,75 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
     listen<number[]>(`pty-output-${session.id}`, (event) => {
       if (cancelledOutput) return;
       const bytes = new Uint8Array(event.payload);
-      term.write(bytes);
 
-      // Detect agent status from output
+      // Update guardian output buffer (rolling buffer, ANSI preserved for modal rendering)
       const text = new TextDecoder().decode(bytes);
-      outputBufferRef.current += text;
-      // Keep only last 500 chars for pattern matching
-      if (outputBufferRef.current.length > 500) {
-        outputBufferRef.current = outputBufferRef.current.slice(-500);
-      }
-
-      // Update guardian output buffer (2000 char rolling buffer, ANSI-stripped, no re-render)
       const guardianState = useGuardianStore.getState();
       const currentBuffer = guardianState.outputBuffers[session.id] || "";
-      const cleanText = stripAnsi(text);
-      guardianState.updateOutputBuffer(session.id, (currentBuffer + cleanText).slice(-2000));
+      // Keep a rolling window of the last ~4000 characters. This was increased from 2000 to
+      // retain enough recent context despite Ink/xterm space-padding and formatting, which can
+      // inflate the visible output length without adding semantic content.
+      guardianState.updateOutputBuffer(session.id, appendToTerminalBuffer(currentBuffer, text).slice(-4000));
 
-      const detected = detectStatusFromOutput(session.agentType, outputBufferRef.current);
-      if (detected && detected !== lastStatusRef.current) {
-        lastStatusRef.current = detected;
-        updateStatus(session.id, detected);
+      // term.write is async — use callback to ensure buffer is updated before reading
+      term.write(bytes, () => {
+        if (cancelledOutput) return;
 
-        // Send notification for important status changes
-        if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
-          addNotification({
-            id: uuidv4(),
-            title: detected === "finished" ? "Agent Finished" : "Input Required",
-            body: `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`,
-            sessionId: session.id,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // Read directly from xterm's processed buffer — handles ANSI stripping
+        // and trailing whitespace trimming natively, avoiding all custom buffer bugs
+        const screenText = readXtermBuffer(term, 40);
+        const detected = detectStatusFromOutput(agentDefRef.current, screenText);
+        if (detected && detected !== lastStatusRef.current) {
+          const prevStatus = lastStatusRef.current;
+          console.log(`[agentic] status change: ${prevStatus} → ${detected} (session=${session.id})`);
+          lastStatusRef.current = detected;
+          updateStatus(session.id, detected);
 
-        // Trigger guardian review when agent needs input (non-guardian sessions only)
-        if (detected === "needs_input" && !session.isGuardian) {
-          const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
-          const guardianSessionId = useGuardianStore.getState().guardianSessionIds[session.projectId];
-          if (project && guardianSessionId) {
-            triggerGuardianReview(session, project.path);
+          // Send notification for important status changes
+          if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
+            addNotification({
+              id: uuidv4(),
+              title: detected === "finished" ? "Agent Finished" : "Input Required",
+              body: `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`,
+              sessionId: session.id,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          // Enqueue feedback for non-guardian sessions
+          if (!session.isGuardian) {
+            const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+            const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
+
+            if (detected === "needs_input") {
+              const parsed = parseFeedbackOptions(feedbackOutput);
+              useAgentFeedbackStore.getState().enqueue({
+                id: uuidv4(),
+                sessionId: session.id,
+                projectId: session.projectId,
+                type: "question",
+                output: feedbackOutput,
+                parsedOptions: parsed.options,
+                allowFreeInput: parsed.allowFreeInput,
+                timestamp: new Date().toISOString(),
+                guardianEnabled: !!project?.guardian_enabled && !!useGuardianStore.getState().guardianSessionIds[session.projectId],
+              });
+            } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
+              useAgentFeedbackStore.getState().enqueue({
+                id: uuidv4(),
+                sessionId: session.id,
+                projectId: session.projectId,
+                type: "response",
+                output: feedbackOutput,
+                parsedOptions: [],
+                allowFreeInput: false,
+                timestamp: new Date().toISOString(),
+                guardianEnabled: false,
+              });
+            }
           }
         }
-      }
+      });
     }).then((unlisten) => {
       if (cancelledOutput) {
         unlisten();
@@ -212,9 +263,12 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
       }
     });
 
-    // ResizeObserver for auto-fit
+    // ResizeObserver for auto-fit — use isActiveRef to avoid stale closure
     const observer = new ResizeObserver(() => {
-      if (!isActive) return;
+      if (!isActiveRef.current) return;
+      // Guard against fitting into a 0-width hidden container
+      const el = containerRef.current;
+      if (!el || el.clientWidth < 100 || el.clientHeight < 50) return;
       try {
         fitAddon.fit();
       } catch {

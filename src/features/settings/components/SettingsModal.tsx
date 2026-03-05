@@ -300,9 +300,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             <Tabs.List>
               <Tabs.Tab value="claude">Claude</Tabs.Tab>
               <Tabs.Tab value="gemini">Gemini</Tabs.Tab>
+              <Tabs.Tab value="copilot">Copilot</Tabs.Tab>
+              <Tabs.Tab value="codex">Codex</Tabs.Tab>
             </Tabs.List>
 
-            {(["claude", "gemini"] as AgentTab[]).map((agent) => (
+            {(["claude", "gemini", "copilot", "codex"] as AgentTab[]).map((agent) => (
               <Tabs.Panel key={agent} value={agent}>
                 <Stack gap="md">
                   {/* Default YOLO */}
