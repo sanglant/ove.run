@@ -7,6 +7,7 @@ import type {
   KnowledgeEntry,
   GitStatus,
   KnowledgeType,
+  PersistedSession,
 } from "@/types";
 
 export { listen, emit };
@@ -132,4 +133,12 @@ export async function deleteKnowledge(
 
 export async function guardianReview(prompt: string, projectPath: string): Promise<string> {
   return invoke("guardian_review", { prompt, projectPath });
+}
+
+export async function saveSessions(sessions: PersistedSession[]): Promise<void> {
+  return invoke("save_sessions", { sessions });
+}
+
+export async function loadSessions(): Promise<PersistedSession[]> {
+  return invoke("load_sessions");
 }

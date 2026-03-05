@@ -27,6 +27,7 @@ export interface AgentSession {
   createdAt: string;
   label: string;
   isGuardian: boolean;
+  isResumed: boolean;
 }
 
 export interface AgentDefinition {
@@ -35,10 +36,21 @@ export interface AgentDefinition {
   command: string;
   default_args: string[];
   yolo_flag: string;
+  resume_args: string[];
   detect_idle_pattern: string;
   detect_input_pattern: string;
   detect_finished_pattern: string;
   icon: string;
+}
+
+export interface PersistedSession {
+  id: string;
+  project_id: string;
+  agent_type: AgentType;
+  yolo_mode: boolean;
+  label: string;
+  is_guardian: boolean;
+  created_at: string;
 }
 
 export interface KnowledgeEntry {
