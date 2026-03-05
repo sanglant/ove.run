@@ -8,6 +8,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             command: "claude".to_string(),
             default_args: vec![],
             yolo_flag: "--dangerously-skip-permissions".to_string(),
+            resume_args: vec!["--continue".to_string()],
             // Claude shows a prompt character or specific idle indicators
             detect_idle_pattern: r"(?i)(>\s*$|\$\s*$|claude>\s*$)".to_string(),
             // Claude asks for human input / confirmation
@@ -22,6 +23,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             command: "gemini".to_string(),
             default_args: vec![],
             yolo_flag: "--yolo".to_string(),
+            resume_args: vec!["--resume".to_string()],
             // Gemini shows a prompt when idle
             detect_idle_pattern: r"(?i)(gemini>\s*$|>\s*$|\$\s*$)".to_string(),
             // Gemini asks for confirmation or input
@@ -36,6 +38,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             command: "copilot".to_string(),
             default_args: vec![],
             yolo_flag: "--yolo".to_string(),
+            resume_args: vec!["--continue".to_string()],
             detect_idle_pattern: r"(?i)(copilot>\s*$|>\s*$|\$\s*$)".to_string(),
             detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|allow)".to_string(),
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
@@ -47,6 +50,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             command: "codex".to_string(),
             default_args: vec![],
             yolo_flag: "--full-auto".to_string(),
+            resume_args: vec!["resume".to_string(), "--last".to_string()],
             detect_idle_pattern: r"(?i)(codex>\s*$|>\s*$|\$\s*$)".to_string(),
             detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|apply changes)".to_string(),
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),

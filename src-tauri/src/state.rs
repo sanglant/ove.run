@@ -50,6 +50,7 @@ pub struct AgentDefinition {
     pub command: String,
     pub default_args: Vec<String>,
     pub yolo_flag: String,
+    pub resume_args: Vec<String>,
     pub detect_idle_pattern: String,
     pub detect_input_pattern: String,
     pub detect_finished_pattern: String,
