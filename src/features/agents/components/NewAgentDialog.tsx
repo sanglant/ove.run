@@ -62,6 +62,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             command: "claude",
             default_args: [],
             yolo_flag: "--dangerously-skip-permissions",
+            resume_args: [],
             detect_idle_pattern: "",
             detect_input_pattern: "",
             detect_finished_pattern: "",
@@ -73,6 +74,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             command: "gemini",
             default_args: [],
             yolo_flag: "--yolo",
+            resume_args: [],
             detect_idle_pattern: "",
             detect_input_pattern: "",
             detect_finished_pattern: "",
@@ -84,6 +86,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             command: "copilot",
             default_args: [],
             yolo_flag: "--yolo",
+            resume_args: [],
             detect_idle_pattern: "",
             detect_input_pattern: "",
             detect_finished_pattern: "",
@@ -95,6 +98,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             command: "codex",
             default_args: [],
             yolo_flag: "--full-auto",
+            resume_args: [],
             detect_idle_pattern: "",
             detect_input_pattern: "",
             detect_finished_pattern: "",
@@ -130,6 +134,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
       createdAt: new Date().toISOString(),
       label: sessionLabel,
       isGuardian: false,
+      isResumed: false,
     };
 
     addSession(session);

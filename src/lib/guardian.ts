@@ -29,6 +29,7 @@ export async function spawnGuardianSession(projectId: string, agentType: AgentTy
     createdAt: new Date().toISOString(),
     label: "Guardian",
     isGuardian: true,
+    isResumed: false,
   };
 
   useSessionStore.getState().addSession(session);
