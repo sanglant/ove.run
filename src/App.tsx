@@ -11,12 +11,14 @@ import { AgentFeedbackModal } from "@/features/guardian/components/AgentFeedback
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
 
 export default function App() {
   const { loadProjects } = useProjectStore();
   const { loadSettings } = useSettingsStore();
   const { activePanel, setActivePanel, sidebarCollapsed } = useUiStore();
+  const { loadPersistedSessions } = useSessionStore();
 
   // Initialize global notification listener
   useNotifications();
@@ -24,7 +26,16 @@ export default function App() {
   useEffect(() => {
     loadProjects();
     loadSettings();
-  }, [loadProjects, loadSettings]);
+    loadPersistedSessions();
+  }, [loadProjects, loadSettings, loadPersistedSessions]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      useSessionStore.getState().persistSessions();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   return (
     <div

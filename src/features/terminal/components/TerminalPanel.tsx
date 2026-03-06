@@ -76,10 +76,11 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
         const baseArgs = cmdParts.slice(1);
         const defaultArgs = agentDef.default_args ?? [];
         const customArgs = settings.agents[session.agentType]?.custom_args ?? [];
+        const resumeArgs = session.isResumed ? (agentDef.resume_args ?? []) : [];
         const envVars = settings.agents[session.agentType]?.env_vars ?? {};
         const args = session.yoloMode
-          ? [...baseArgs, ...defaultArgs, ...customArgs, agentDef.yolo_flag].filter(Boolean)
-          : [...baseArgs, ...defaultArgs, ...customArgs].filter(Boolean);
+          ? [...baseArgs, ...resumeArgs, ...defaultArgs, ...customArgs, agentDef.yolo_flag].filter(Boolean)
+          : [...baseArgs, ...resumeArgs, ...defaultArgs, ...customArgs].filter(Boolean);
 
         await spawnPty(session.id, command, args, projectPath, envVars, cols, rows);
         updateStatus(session.id, "idle");
@@ -90,7 +91,7 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
         spawnedRef.current = false;
       }
     },
-    [session.id, session.yoloMode, session.agentType, projectPath, settings.agents, updateStatus],
+    [session.id, session.yoloMode, session.agentType, session.isResumed, projectPath, settings.agents, updateStatus],
   );
 
   // Initialize terminal on mount
