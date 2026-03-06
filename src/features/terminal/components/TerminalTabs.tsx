@@ -52,6 +52,14 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     setActivePanel("terminal");
   };
 
+  const handleProjectTabClick = (projectId: string) => {
+    setActiveProject(projectId);
+    const firstSession = allSessions.find((s) => s.projectId === projectId);
+    if (firstSession) {
+      setActiveSession(firstSession.id);
+    }
+  };
+
   const handleClose = async (e: React.MouseEvent, session: AgentSession) => {
     e.stopPropagation();
     if (session.isGuardian) {
@@ -104,7 +112,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
             projects={projects}
             onTabClick={handleTabClick}
             onClose={handleClose}
-            onProjectClick={(projectId) => setActiveProject(projectId)}
+            onProjectClick={handleProjectTabClick}
           />
         ) : (
           <FlatTabs
