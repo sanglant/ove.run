@@ -10,7 +10,6 @@ pub struct PersistedSession {
     pub agent_type: AgentType,
     pub yolo_mode: bool,
     pub label: String,
-    pub is_guardian: bool,
     pub created_at: String,
 }
 

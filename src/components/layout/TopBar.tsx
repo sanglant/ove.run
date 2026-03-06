@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { AlertTriangle, Shield } from "lucide-react";
-import { Group, Modal, Alert, Text, Tooltip } from "@mantine/core";
+import { AlertTriangle } from "lucide-react";
+import { Group, Modal, Alert, Text } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
-import { useProjectStore } from "@/stores/projectStore";
-import { useGuardianStore } from "@/stores/guardianStore";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   starting: { label: "Starting", color: "var(--warning)" },
@@ -19,15 +17,12 @@ const AGENT_DISPLAY_NAMES: Record<string, string> = { claude: 'Claude', gemini: 
 export function TopBar() {
   const { sessions, activeSessionId, updateSessionYolo } =
     useSessionStore();
-  const { activeProjectId } = useProjectStore();
-  const guardianSessionIds = useGuardianStore((s) => s.guardianSessionIds);
   const [showYoloWarning, setShowYoloWarning] = useState(false);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const statusMeta = activeSession
     ? (STATUS_LABELS[activeSession.status] ?? { label: activeSession.status, color: "var(--text-secondary)" })
     : null;
-  const projectHasGuardian = activeProjectId ? !!guardianSessionIds[activeProjectId] : false;
 
   const handleYoloToggle = () => {
     if (!activeSession) return;
@@ -74,24 +69,6 @@ export function TopBar() {
                 {AGENT_DISPLAY_NAMES[activeSession.agentType] || activeSession.agentType}
               </span>
 
-              {/* Guardian badge */}
-              {activeSession.isGuardian && (
-                <span
-                  style={{
-                    padding: "2px 6px",
-                    borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    backgroundColor: "color-mix(in srgb, var(--guardian) 20%, transparent)",
-                    color: "var(--guardian)",
-                    border: "1px solid color-mix(in srgb, var(--guardian) 35%, transparent)",
-                  }}
-                >
-                  Guardian
-                </span>
-              )}
-
               {/* Session label */}
               <Text
                 size="sm"
@@ -104,13 +81,6 @@ export function TopBar() {
               >
                 {activeSession.label}
               </Text>
-
-              {/* Shield indicator */}
-              {projectHasGuardian && !activeSession.isGuardian && (
-                <Tooltip label="Guardian active for this project" withArrow>
-                  <Shield size={12} style={{ color: "var(--guardian)", flexShrink: 0 }} />
-                </Tooltip>
-              )}
 
               {/* Status */}
               {statusMeta && (
@@ -128,7 +98,7 @@ export function TopBar() {
 
         {/* Right: YOLO toggle only */}
         <Group gap={4}>
-          {activeSession && !activeSession.isGuardian && activeSession.agentType !== "terminal" && (
+          {activeSession && activeSession.agentType !== "terminal" && (
             <button
               onClick={handleYoloToggle}
               aria-pressed={activeSession.yoloMode}

@@ -70,7 +70,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         agent_type: s.agentType,
         yolo_mode: s.yoloMode,
         label: s.label,
-        is_guardian: s.isGuardian,
         created_at: s.createdAt,
       }));
     saveSessions(persisted).catch((err) => {
@@ -96,7 +95,6 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           yoloMode: p.yolo_mode,
           createdAt: p.created_at,
           label: p.label,
-          isGuardian: p.is_guardian,
           isResumed: true,
         }));
 

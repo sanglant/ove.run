@@ -15,17 +15,14 @@ import {
   Progress,
   ScrollArea,
 } from "@mantine/core";
-import { Shield } from "lucide-react";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { writePty } from "@/lib/tauri";
-import { triggerGuardianReview } from "@/lib/guardian";
-import { useGuardianStore } from "@/stores/guardianStore";
+import { guardianAnswer } from "@/lib/guardian";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
-
-const GUARDIAN_TIMEOUT_MS = 20_000;
 
 const AGENT_META: Record<string, { label: string; color: string; displayName: string }> = {
   claude: { label: "C", color: "var(--claude)", displayName: "Claude" },
@@ -52,8 +49,11 @@ function FeedbackModalContent({
   item: FeedbackItem;
   onDismiss: () => void;
 }) {
+  const settings = useSettingsStore((s) => s.settings);
+  const guardianTimeoutMs = settings.global.guardian_timeout_seconds * 1000;
+
   const [freeText, setFreeText] = useState("");
-  const [timeLeft, setTimeLeft] = useState(GUARDIAN_TIMEOUT_MS);
+  const [timeLeft, setTimeLeft] = useState(guardianTimeoutMs);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggeredRef = useRef(false);
 
@@ -116,28 +116,23 @@ function FeedbackModalContent({
       return;
     }
 
-    setTimeLeft(GUARDIAN_TIMEOUT_MS);
+    setTimeLeft(guardianTimeoutMs);
     const startTime = Date.now();
 
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, GUARDIAN_TIMEOUT_MS - elapsed);
+      const remaining = Math.max(0, guardianTimeoutMs - elapsed);
       setTimeLeft(remaining);
 
       if (remaining <= 0 && !triggeredRef.current) {
         triggeredRef.current = true;
         if (timerRef.current) clearInterval(timerRef.current);
 
-        const sess = useSessionStore
-          .getState()
-          .sessions.find((s) => s.id === item.sessionId);
         const proj = useProjectStore
           .getState()
           .projects.find((p) => p.id === item.projectId);
-        const guardianSessionId =
-          useGuardianStore.getState().guardianSessionIds[item.projectId];
-        if (sess && proj && guardianSessionId) {
-          triggerGuardianReview(sess, proj.path);
+        if (proj) {
+          guardianAnswer(item, proj.path);
         }
         onDismiss();
       }
@@ -152,6 +147,7 @@ function FeedbackModalContent({
     item.guardianEnabled,
     item.sessionId,
     item.projectId,
+    guardianTimeoutMs,
     onDismiss,
   ]);
 
@@ -197,10 +193,6 @@ function FeedbackModalContent({
       >
         {agentMeta.label}
       </span>
-      {/* Guardian badge */}
-      {session?.isGuardian && (
-        <Shield size={12} style={{ color: "var(--guardian)", flexShrink: 0 }} />
-      )}
       <Text fw={600} size="sm" style={{ color: "var(--text-primary)" }}>
         {project?.name ?? "Project"}
       </Text>
@@ -273,7 +265,7 @@ function FeedbackModalContent({
               Guardian auto-answer in {Math.ceil(timeLeft / 1000)}s
             </Text>
             <Progress
-              value={(timeLeft / GUARDIAN_TIMEOUT_MS) * 100}
+              value={(timeLeft / guardianTimeoutMs) * 100}
               size="xs"
               color="blue"
               animated

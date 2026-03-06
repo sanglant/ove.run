@@ -26,7 +26,6 @@ export interface AgentSession {
   yoloMode: boolean;
   createdAt: string;
   label: string;
-  isGuardian: boolean;
   isResumed: boolean;
 }
 
@@ -49,7 +48,6 @@ export interface PersistedSession {
   agent_type: AgentType;
   yolo_mode: boolean;
   label: string;
-  is_guardian: boolean;
   created_at: string;
 }
 
@@ -70,6 +68,7 @@ export interface GlobalSettings {
   notifications_enabled: boolean;
   minimize_to_tray: boolean;
   terminal_scrollback: number;
+  guardian_timeout_seconds: number;
 }
 
 export interface AgentSettings {
@@ -97,23 +96,6 @@ export interface GitStatus {
   behind: number;
 }
 
-export interface NotificationAction {
-  label: string;
-  action: "approve_override" | "view_session" | "view_guardian";
-  sessionId: string;
-}
-
-export interface ReviewRequest {
-  id: string;
-  sourceSessionId: string;
-  projectId: string;
-  sourceOutput: string;
-  gitDiff: string;
-  status: "pending" | "in_review" | "approved" | "rejected" | "timeout" | "error";
-  guardianOutput?: string;
-  guardianReasoning?: string;
-}
-
 export interface NotificationItem {
   id: string;
   title: string;
@@ -121,7 +103,6 @@ export interface NotificationItem {
   sessionId: string;
   timestamp: string;
   read: boolean;
-  actions?: NotificationAction[];
 }
 
 export interface ParsedOption {

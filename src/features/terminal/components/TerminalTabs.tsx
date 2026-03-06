@@ -1,10 +1,9 @@
-import { X, Plus, Shield, Layers, List } from "lucide-react";
+import { X, Plus, Layers, List } from "lucide-react";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
 import { killPty } from "@/lib/tauri";
-import { teardownGuardian } from "@/lib/guardian";
 import type { AgentSession } from "@/types";
 import classes from "./TerminalTabs.module.css";
 
@@ -41,7 +40,7 @@ const AGENT_COLOR: Record<string, string> = {
 
 export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTabsProps) {
   const { activeSessionId, setActiveSession, removeSession } = useSessionStore();
-  const { activeProjectId, projects, setActiveProject, updateProject } = useProjectStore();
+  const { activeProjectId, projects, setActiveProject } = useProjectStore();
   const { setActivePanel, tabViewMode, setTabViewMode } = useUiStore();
 
   const handleTabClick = (session: AgentSession) => {
@@ -60,18 +59,6 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
 
   const handleClose = async (e: React.MouseEvent, session: AgentSession) => {
     e.stopPropagation();
-    if (session.isGuardian) {
-      const confirmed = window.confirm(
-        "This will disable the Guardian for this project. Continue?"
-      );
-      if (!confirmed) return;
-      const project = projects.find((p) => p.id === session.projectId);
-      await teardownGuardian(session.projectId);
-      if (project) {
-        await updateProject({ ...project, guardian_enabled: false }).catch(() => {});
-      }
-      return;
-    }
     try {
       await killPty(session.id);
     } catch {
@@ -120,18 +107,6 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   const handleKillActive = async () => {
     const active = allSessions.find((s) => s.id === activeSessionId);
     if (!active) return;
-    if (active.isGuardian) {
-      const confirmed = window.confirm(
-        "This will disable the Guardian for this project. Continue?"
-      );
-      if (!confirmed) return;
-      const project = projects.find((p) => p.id === active.projectId);
-      await teardownGuardian(active.projectId);
-      if (project) {
-        await updateProject({ ...project, guardian_enabled: false }).catch(() => {});
-      }
-      return;
-    }
     try {
       await killPty(active.id);
     } catch {
@@ -446,19 +421,15 @@ function FlatTabs({
               <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                 {/* Line 1: agent icon + project name */}
                 <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.625rem" }}>
-                  {session.isGuardian ? (
-                    <Shield size={9} style={{ flexShrink: 0, color: "var(--guardian)" }} />
-                  ) : (
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "0.5625rem",
-                        color: agentColor,
-                      }}
-                    >
-                      {AGENT_LABEL[session.agentType] ?? "?"}
-                    </span>
-                  )}
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "0.5625rem",
+                      color: agentColor,
+                    }}
+                  >
+                    {AGENT_LABEL[session.agentType] ?? "?"}
+                  </span>
                   <span
                     style={{
                       color: agentColor,
@@ -576,21 +547,17 @@ function SessionTab({ session, isActive, onTabClick, onClose, compact }: Session
           }}
         />
       )}
-      {session.isGuardian ? (
-        <Shield size={13} style={{ flexShrink: 0, color: "var(--guardian)" }} />
-      ) : (
-        <span
-          style={{
-            fontWeight: "bold",
-            fontSize: "10px",
-            width: "1rem",
-            textAlign: "center",
-            color: AGENT_COLOR[session.agentType] ?? "var(--accent)",
-          }}
-        >
-          {AGENT_LABEL[session.agentType] ?? "?"}
-        </span>
-      )}
+      <span
+        style={{
+          fontWeight: "bold",
+          fontSize: "10px",
+          width: "1rem",
+          textAlign: "center",
+          color: AGENT_COLOR[session.agentType] ?? "var(--accent)",
+        }}
+      >
+        {AGENT_LABEL[session.agentType] ?? "?"}
+      </span>
       <span
         className={statusColor.className}
         style={{

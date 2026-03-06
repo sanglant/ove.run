@@ -257,6 +257,31 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 styles={switchStyles(draft.global.minimize_to_tray)}
               />
             </Group>
+
+            {/* Guardian timeout */}
+            <Group justify="space-between" align="center">
+              <div>
+                <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                  Guardian Timeout
+                </Text>
+                <Text size="xs" style={{ color: "var(--text-secondary)", marginTop: "2px" }}>
+                  Seconds before guardian auto-answers
+                </Text>
+              </div>
+              <NumberInput
+                min={5}
+                max={120}
+                value={draft.global.guardian_timeout_seconds}
+                onChange={(val) =>
+                  handleGlobalChange(
+                    "guardian_timeout_seconds",
+                    typeof val === "number" ? val : parseInt(String(val), 10),
+                  )
+                }
+                style={{ width: "80px" }}
+                styles={inputStyles}
+              />
+            </Group>
           </Stack>
         </section>
 

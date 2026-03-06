@@ -83,6 +83,8 @@ pub struct GlobalSettings {
     pub notifications_enabled: bool,
     pub minimize_to_tray: bool,
     pub terminal_scrollback: u32,
+    #[serde(default = "default_guardian_timeout")]
+    pub guardian_timeout_seconds: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +92,10 @@ pub struct AgentSettings {
     pub default_yolo_mode: bool,
     pub custom_args: Vec<String>,
     pub env_vars: HashMap<String, String>,
+}
+
+fn default_guardian_timeout() -> u32 {
+    20
 }
 
 impl Default for AppSettings {
@@ -102,6 +108,7 @@ impl Default for AppSettings {
                 notifications_enabled: true,
                 minimize_to_tray: false,
                 terminal_scrollback: 10000,
+                guardian_timeout_seconds: 20,
             },
             agents: HashMap::new(),
         }

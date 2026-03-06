@@ -7,13 +7,11 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { useGuardianStore } from "@/stores/guardianStore";
 import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification } from "@/lib/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { detectStatusFromOutput } from "@/lib/patterns";
-import { handleGuardianCrash } from "@/lib/guardian";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
-import { parseFeedbackOptions, cleanTerminalOutput, appendToTerminalBuffer } from "@/lib/feedbackParser";
+import { parseFeedbackOptions, cleanTerminalOutput } from "@/lib/feedbackParser";
 import type { AgentSession, AgentDefinition, AgentStatus } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -163,15 +161,6 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
       if (cancelledOutput) return;
       const bytes = new Uint8Array(event.payload);
 
-      // Update guardian output buffer (rolling buffer, ANSI preserved for modal rendering)
-      const text = new TextDecoder().decode(bytes);
-      const guardianState = useGuardianStore.getState();
-      const currentBuffer = guardianState.outputBuffers[session.id] || "";
-      // Keep a rolling window of the last ~4000 characters. This was increased from 2000 to
-      // retain enough recent context despite Ink/xterm space-padding and formatting, which can
-      // inflate the visible output length without adding semantic content.
-      guardianState.updateOutputBuffer(session.id, appendToTerminalBuffer(currentBuffer, text).slice(-4000));
-
       // term.write is async — use callback to ensure buffer is updated before reading
       term.write(bytes, () => {
         if (cancelledOutput) return;
@@ -203,37 +192,35 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
             }
           }
 
-          // Enqueue feedback for non-guardian sessions
-          if (!session.isGuardian) {
-            const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
-            const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
+          // Enqueue feedback
+          const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+          const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
 
-            if (detected === "needs_input") {
-              const parsed = parseFeedbackOptions(feedbackOutput);
-              useAgentFeedbackStore.getState().enqueue({
-                id: uuidv4(),
-                sessionId: session.id,
-                projectId: session.projectId,
-                type: "question",
-                output: feedbackOutput,
-                parsedOptions: parsed.options,
-                allowFreeInput: parsed.allowFreeInput,
-                timestamp: new Date().toISOString(),
-                guardianEnabled: !!project?.guardian_enabled && !!useGuardianStore.getState().guardianSessionIds[session.projectId],
-              });
-            } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
-              useAgentFeedbackStore.getState().enqueue({
-                id: uuidv4(),
-                sessionId: session.id,
-                projectId: session.projectId,
-                type: "response",
-                output: feedbackOutput,
-                parsedOptions: [],
-                allowFreeInput: false,
-                timestamp: new Date().toISOString(),
-                guardianEnabled: false,
-              });
-            }
+          if (detected === "needs_input") {
+            const parsed = parseFeedbackOptions(feedbackOutput);
+            useAgentFeedbackStore.getState().enqueue({
+              id: uuidv4(),
+              sessionId: session.id,
+              projectId: session.projectId,
+              type: "question",
+              output: feedbackOutput,
+              parsedOptions: parsed.options,
+              allowFreeInput: parsed.allowFreeInput,
+              timestamp: new Date().toISOString(),
+              guardianEnabled: !!project?.guardian_enabled,
+            });
+          } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
+            useAgentFeedbackStore.getState().enqueue({
+              id: uuidv4(),
+              sessionId: session.id,
+              projectId: session.projectId,
+              type: "response",
+              output: feedbackOutput,
+              parsedOptions: [],
+              allowFreeInput: false,
+              timestamp: new Date().toISOString(),
+              guardianEnabled: false,
+            });
           }
         }
       });
@@ -250,14 +237,6 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
     listen<number>(`pty-exit-${session.id}`, (event) => {
       if (cancelledExit) return;
       const code = event.payload ?? 0;
-
-      // Handle guardian exit — only treat non-zero exit as crash
-      if (session.isGuardian) {
-        if (code !== 0) {
-          handleGuardianCrash(session.projectId, session.id);
-        }
-        return;
-      }
 
       term.writeln(`\r\n\x1b[2m[Process exited with code ${code}]\x1b[0m`);
       updateStatus(session.id, code === 0 ? "finished" : "error");
