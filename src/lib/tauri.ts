@@ -142,3 +142,7 @@ export async function saveSessions(sessions: PersistedSession[]): Promise<void> 
 export async function loadSessions(): Promise<PersistedSession[]> {
   return invoke("load_sessions");
 }
+
+export async function sendDesktopNotification(title: string, body: string): Promise<void> {
+  return invoke("send_desktop_notification", { title, body });
+}

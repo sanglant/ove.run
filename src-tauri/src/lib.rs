@@ -22,7 +22,7 @@ use commands::knowledge_commands::{
 };
 use commands::project_commands::{add_project, guardian_review, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
-use commands::session_commands::{load_sessions, save_sessions};
+use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::settings_commands::{get_settings, update_settings};
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
@@ -119,6 +119,7 @@ pub fn run() {
             // Session commands
             save_sessions,
             load_sessions,
+            send_desktop_notification,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -8,7 +8,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useGuardianStore } from "@/stores/guardianStore";
-import { spawnPty, writePty, resizePty, killPty, listAgentTypes } from "@/lib/tauri";
+import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification } from "@/lib/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { detectStatusFromOutput } from "@/lib/patterns";
 import { handleGuardianCrash } from "@/lib/guardian";
@@ -188,13 +188,19 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
 
           // Send notification for important status changes
           if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
+            const notifTitle = detected === "finished" ? "Agent Finished" : "Input Required";
+            const notifBody = `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`;
             addNotification({
               id: uuidv4(),
-              title: detected === "finished" ? "Agent Finished" : "Input Required",
-              body: `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`,
+              title: notifTitle,
+              body: notifBody,
               sessionId: session.id,
               timestamp: new Date().toISOString(),
             });
+            // System notification when app is not focused
+            if (!document.hasFocus()) {
+              sendDesktopNotification(notifTitle, notifBody).catch(() => {});
+            }
           }
 
           // Enqueue feedback for non-guardian sessions

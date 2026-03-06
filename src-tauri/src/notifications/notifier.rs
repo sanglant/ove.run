@@ -11,7 +11,7 @@ pub struct NotificationEvent {
 
 /// Show a desktop notification using notify-send on Linux,
 /// falling back to the Tauri plugin on other platforms.
-fn show_desktop_notification(#[allow(unused_variables)] app_handle: &AppHandle, title: &str, body: &str) {
+pub fn show_desktop_notification(#[allow(unused_variables)] app_handle: &AppHandle, title: &str, body: &str) {
     #[cfg(target_os = "linux")]
     {
         let title = title.to_string();

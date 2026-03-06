@@ -15,6 +15,7 @@ import {
   Progress,
   ScrollArea,
 } from "@mantine/core";
+import { Shield } from "lucide-react";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -25,6 +26,14 @@ import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
 
 const GUARDIAN_TIMEOUT_MS = 20_000;
+
+const AGENT_META: Record<string, { label: string; color: string; displayName: string }> = {
+  claude: { label: "C", color: "var(--claude)", displayName: "Claude" },
+  gemini: { label: "G", color: "var(--gemini)", displayName: "Gemini" },
+  copilot: { label: "P", color: "var(--copilot)", displayName: "Copilot" },
+  codex: { label: "X", color: "var(--codex)", displayName: "Codex" },
+  terminal: { label: ">_", color: "var(--text-secondary)", displayName: "Terminal" },
+};
 
 export function AgentFeedbackModal() {
   const queue = useAgentFeedbackStore((s) => s.queue);
@@ -54,20 +63,17 @@ function FeedbackModalContent({
 
   const session = sessions.find((s) => s.id === item.sessionId);
   const project = projects.find((p) => p.id === item.projectId);
-  const title = `${project?.name ?? "Project"} — ${session?.label ?? "Session"}`;
+  const agentMeta = AGENT_META[session?.agentType ?? ""] ?? AGENT_META.claude;
 
   const updateStatus = useSessionStore((s) => s.updateSessionStatus);
 
   const handleSendKeys = useCallback(
     async (keys: number[]) => {
       try {
-        // Split key sequence into individual keypresses and send with delays.
-        // Ink's SelectInput needs time to process each arrow key before the next.
         const keypresses: number[][] = [];
         let i = 0;
         while (i < keys.length) {
           if (keys[i] === 0x1b && keys[i + 1] === 0x5b && i + 2 < keys.length) {
-            // ESC [ X — 3-byte escape sequence (arrow key etc.)
             keypresses.push(keys.slice(i, i + 3));
             i += 3;
           } else {
@@ -78,7 +84,6 @@ function FeedbackModalContent({
 
         for (let k = 0; k < keypresses.length; k++) {
           await writePty(item.sessionId, keypresses[k]);
-          // Small delay between keypresses so Ink processes each one
           if (k < keypresses.length - 1) {
             await new Promise((r) => setTimeout(r, 50));
           }
@@ -86,8 +91,6 @@ function FeedbackModalContent({
       } catch (err) {
         console.error("Failed to write to PTY:", err);
       }
-      // Immediately transition to "working" so the yellow dot clears
-      // and detection can pick up the next state from fresh output
       updateStatus(item.sessionId, "working");
       onDismiss();
     },
@@ -125,7 +128,6 @@ function FeedbackModalContent({
         triggeredRef.current = true;
         if (timerRef.current) clearInterval(timerRef.current);
 
-        // Trigger guardian review
         const sess = useSessionStore
           .getState()
           .sessions.find((s) => s.id === item.sessionId);
@@ -163,8 +165,6 @@ function FeedbackModalContent({
     return ansiUp.ansi_to_html(item.output).replace(/\n/g, "<br>");
   }, [item.output]);
 
-  // Auto-scroll to bottom so the actual question/result is visible.
-  // Debounced so rapid output bursts only trigger one scroll operation.
   useEffect(() => {
     const vp = scrollViewportRef.current;
     if (!vp) return;
@@ -181,30 +181,74 @@ function FeedbackModalContent({
     };
   }, [outputHtml]);
 
+  const modalTitle = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {/* Agent type badge */}
+      <span
+        style={{
+          padding: "2px 6px",
+          borderRadius: 4,
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          backgroundColor: `color-mix(in srgb, ${agentMeta.color} 15%, transparent)`,
+          color: agentMeta.color,
+        }}
+      >
+        {agentMeta.label}
+      </span>
+      {/* Guardian badge */}
+      {session?.isGuardian && (
+        <Shield size={12} style={{ color: "var(--guardian)", flexShrink: 0 }} />
+      )}
+      <Text fw={600} size="sm" style={{ color: "var(--text-primary)" }}>
+        {project?.name ?? "Project"}
+      </Text>
+      <Text size="sm" style={{ color: "var(--text-secondary)" }}>
+        —
+      </Text>
+      <Text size="sm" style={{ color: "var(--text-secondary)" }}>
+        {session?.label ?? "Session"}
+      </Text>
+    </div>
+  );
+
   return (
     <Modal
       opened
       onClose={onDismiss}
-      title={
-        <Text fw={600} size="sm">
-          {title}
-        </Text>
-      }
+      title={modalTitle}
       size="lg"
       centered
-      overlayProps={{ backgroundOpacity: 0.4, blur: 2 }}
+      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+      transitionProps={{ transition: "slide-up" }}
       styles={{
-        body: { padding: "0.75rem 1rem" },
         header: {
-          background: "var(--bg-secondary, #111114)",
-          borderBottom: "1px solid var(--border-color, #2e2e3e)",
+          backgroundColor: "var(--bg-elevated)",
+          borderBottom: "1px solid var(--border)",
+          padding: "16px 20px",
         },
-        content: { background: "var(--bg-secondary, #111114)" },
+        title: {
+          color: "var(--text-primary)",
+          fontSize: "14px",
+          fontWeight: 600,
+        },
+        body: {
+          padding: 0,
+          backgroundColor: "var(--bg-elevated)",
+        },
+        content: {
+          backgroundColor: "var(--bg-elevated)",
+          border: "1px solid var(--border-bright)",
+        },
+        close: {
+          color: "var(--text-secondary)",
+        },
       }}
     >
-      <Stack gap="sm">
+      <Stack gap="md" style={{ padding: "20px" }}>
         {/* Output display */}
-        <ScrollArea h={200} type="auto" viewportRef={scrollViewportRef}>
+        <ScrollArea h={220} type="auto" viewportRef={scrollViewportRef}>
           <div
             dangerouslySetInnerHTML={{ __html: outputHtml }}
             style={{
@@ -212,8 +256,12 @@ function FeedbackModalContent({
               fontSize: "12px",
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
-              color: "var(--text-secondary, #8888a0)",
+              color: "var(--text-secondary)",
               lineHeight: 1.4,
+              padding: "12px",
+              backgroundColor: "var(--bg-primary)",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
             }}
           />
         </ScrollArea>
@@ -221,7 +269,7 @@ function FeedbackModalContent({
         {/* Guardian timer */}
         {isQuestion && item.guardianEnabled && (
           <div>
-            <Text size="xs" c="dimmed" mb={4}>
+            <Text size="xs" style={{ color: "var(--text-secondary)" }} mb={4}>
               Guardian auto-answer in {Math.ceil(timeLeft / 1000)}s
             </Text>
             <Progress
@@ -242,6 +290,17 @@ function FeedbackModalContent({
                 size="xs"
                 variant="light"
                 onClick={() => handleSendKeys(opt.keys)}
+                styles={{
+                  root: {
+                    backgroundColor: "var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border)",
+                    "&:hover": {
+                      backgroundColor: "color-mix(in srgb, var(--accent) 15%, transparent)",
+                      borderColor: "var(--accent)",
+                    },
+                  },
+                }}
               >
                 {opt.label}
               </Button>
@@ -264,7 +323,10 @@ function FeedbackModalContent({
               styles={{
                 input: {
                   fontFamily: "JetBrains Mono, Cascadia Code, monospace",
-                  background: "var(--bg-primary, #090909)",
+                  backgroundColor: "var(--bg-tertiary)",
+                  borderColor: "var(--border)",
+                  color: "var(--text-primary)",
+                  "&:focus": { borderColor: "var(--accent)" },
                 },
               }}
             />
@@ -272,22 +334,62 @@ function FeedbackModalContent({
               size="xs"
               onClick={handleFreeTextSubmit}
               disabled={!freeText.trim()}
+              styles={{
+                root: {
+                  backgroundColor: "var(--accent)",
+                  color: "var(--bg-primary)",
+                  "&:hover": { backgroundColor: "var(--accent-hover)" },
+                  "&:disabled": { opacity: 0.5 },
+                },
+              }}
             >
               Send
             </Button>
           </Group>
         )}
+      </Stack>
 
-        {/* Footer buttons */}
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: "1px solid var(--border)",
+          padding: "16px 20px",
+        }}
+      >
         <Group gap="xs" justify="flex-end">
-          <Button size="xs" variant="subtle" onClick={handleFocusTerminal}>
+          <Button
+            size="xs"
+            variant="subtle"
+            onClick={handleFocusTerminal}
+            styles={{
+              root: {
+                color: "var(--accent)",
+                "&:hover": {
+                  backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)",
+                },
+              },
+            }}
+          >
             Focus Terminal
           </Button>
-          <Button size="xs" variant="subtle" color="gray" onClick={onDismiss}>
+          <Button
+            size="xs"
+            variant="subtle"
+            onClick={onDismiss}
+            styles={{
+              root: {
+                color: "var(--text-secondary)",
+                "&:hover": {
+                  color: "var(--text-primary)",
+                  backgroundColor: "transparent",
+                },
+              },
+            }}
+          >
             Dismiss
           </Button>
         </Group>
-      </Stack>
+      </div>
     </Modal>
   );
 }
