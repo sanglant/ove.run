@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FolderGit2,
   BookOpen,
@@ -58,6 +58,32 @@ export function Sidebar() {
   );
   const [showNewProject, setShowNewProject] = useState(false);
   const [newAgentProjectId, setNewAgentProjectId] = useState<string | null>(null);
+
+  // Auto-expand projects that have sessions
+  const prevSessionCountRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const projectSessionCounts: Record<string, number> = {};
+    for (const s of sessions) {
+      projectSessionCounts[s.projectId] = (projectSessionCounts[s.projectId] ?? 0) + 1;
+    }
+
+    const toExpand: string[] = [];
+    for (const [projectId, count] of Object.entries(projectSessionCounts)) {
+      const prev = prevSessionCountRef.current[projectId] ?? 0;
+      if (count > prev) {
+        toExpand.push(projectId);
+      }
+    }
+    prevSessionCountRef.current = projectSessionCounts;
+
+    if (toExpand.length > 0) {
+      setExpandedProjects((prev) => {
+        const next = new Set(prev);
+        for (const id of toExpand) next.add(id);
+        return next;
+      });
+    }
+  }, [sessions]);
 
   const toggleProjectExpand = (id: string) => {
     setExpandedProjects((prev) => {

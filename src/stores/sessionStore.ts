@@ -83,17 +83,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const persisted = await loadSessions();
       if (persisted.length === 0) return;
 
-      const resumed: AgentSession[] = persisted.map((p) => ({
-        id: p.id,
-        projectId: p.project_id,
-        agentType: p.agent_type,
-        status: "starting" as const,
-        yoloMode: p.yolo_mode,
-        createdAt: p.created_at,
-        label: p.label,
-        isGuardian: p.is_guardian,
-        isResumed: true,
-      }));
+      const { sessions: existing } = get();
+      const existingIds = new Set(existing.map((s) => s.id));
+
+      const resumed: AgentSession[] = persisted
+        .filter((p) => !existingIds.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          projectId: p.project_id,
+          agentType: p.agent_type,
+          status: "starting" as const,
+          yoloMode: p.yolo_mode,
+          createdAt: p.created_at,
+          label: p.label,
+          isGuardian: p.is_guardian,
+          isResumed: true,
+        }));
+
+      if (resumed.length === 0) return;
 
       set((state) => ({
         sessions: [...state.sessions, ...resumed],
