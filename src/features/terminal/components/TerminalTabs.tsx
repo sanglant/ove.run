@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { X, Plus, Shield, Layers, List } from "lucide-react";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -44,7 +43,6 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   const { activeSessionId, setActiveSession, removeSession } = useSessionStore();
   const { activeProjectId, projects, setActiveProject, updateProject } = useProjectStore();
   const { setActivePanel, tabViewMode, setTabViewMode } = useUiStore();
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleTabClick = (session: AgentSession) => {
     setActiveProject(session.projectId);
@@ -82,89 +80,122 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     removeSession(session.id);
   };
 
+  const viewToggle = (
+    <Tooltip label={tabViewMode === "grouped" ? "Flat view" : "Grouped view"} withArrow>
+      <ActionIcon
+        variant="subtle"
+        onClick={() => setTabViewMode(tabViewMode === "grouped" ? "flat" : "grouped")}
+        aria-label="Toggle tab view mode"
+        style={{
+          width: "1.75rem",
+          height: "1.75rem",
+          borderRadius: 0,
+          flexShrink: 0,
+          color: "var(--text-secondary)",
+        }}
+      >
+        {tabViewMode === "grouped" ? <List size={12} /> : <Layers size={12} />}
+      </ActionIcon>
+    </Tooltip>
+  );
+
+  const newButton = (
+    <ActionIcon
+      variant="subtle"
+      onClick={onNewSession}
+      aria-label="New session"
+      style={{
+        width: "1.75rem",
+        height: "1.75rem",
+        flexShrink: 0,
+        borderRadius: 0,
+        borderLeft: "1px solid var(--border)",
+        color: "var(--text-secondary)",
+      }}
+    >
+      <Plus size={12} />
+    </ActionIcon>
+  );
+
+  const handleKillActive = async () => {
+    const active = allSessions.find((s) => s.id === activeSessionId);
+    if (!active) return;
+    if (active.isGuardian) {
+      const confirmed = window.confirm(
+        "This will disable the Guardian for this project. Continue?"
+      );
+      if (!confirmed) return;
+      const project = projects.find((p) => p.id === active.projectId);
+      await teardownGuardian(active.projectId);
+      if (project) {
+        await updateProject({ ...project, guardian_enabled: false }).catch(() => {});
+      }
+      return;
+    }
+    try {
+      await killPty(active.id);
+    } catch {
+      // ignore
+    }
+    removeSession(active.id);
+  };
+
+  const killButton = activeSessionId ? (
+    <Tooltip label="Kill active session" withArrow>
+      <ActionIcon
+        variant="subtle"
+        onClick={handleKillActive}
+        aria-label="Kill active session"
+        style={{
+          width: "1.75rem",
+          height: "1.75rem",
+          flexShrink: 0,
+          borderRadius: 0,
+          borderLeft: "1px solid var(--border)",
+          color: "var(--text-secondary)",
+        }}
+      >
+        <X size={12} />
+      </ActionIcon>
+    </Tooltip>
+  ) : null;
+
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "stretch",
+        flexDirection: "column",
         backgroundColor: "var(--bg-primary)",
         borderBottom: "1px solid var(--border)",
         flexShrink: 0,
       }}
     >
-      <div
-        ref={scrollRef}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          overflowX: "auto",
-          overflowY: "hidden",
-          scrollbarWidth: "none",
-        }}
-      >
-        {tabViewMode === "grouped" ? (
-          <GroupedTabs
-            sessions={sessions}
-            allSessions={allSessions}
-            activeSessionId={activeSessionId}
-            activeProjectId={activeProjectId}
-            projects={projects}
-            onTabClick={handleTabClick}
-            onClose={handleClose}
-            onProjectClick={handleProjectTabClick}
-          />
-        ) : (
-          <FlatTabs
-            allSessions={allSessions}
-            activeSessionId={activeSessionId}
-            projects={projects}
-            onTabClick={handleTabClick}
-            onClose={handleClose}
-          />
-        )}
-      </div>
-
-      {/* View mode toggle + New session button */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flexShrink: 0,
-          borderLeft: "1px solid var(--border)",
-        }}
-      >
-        <Tooltip label={tabViewMode === "grouped" ? "Switch to flat view" : "Switch to grouped view"} withArrow>
-          <ActionIcon
-            variant="subtle"
-            onClick={() => setTabViewMode(tabViewMode === "grouped" ? "flat" : "grouped")}
-            aria-label="Toggle tab view mode"
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: 0,
-              color: "var(--text-secondary)",
-            }}
-          >
-            {tabViewMode === "grouped" ? <List size={14} /> : <Layers size={14} />}
-          </ActionIcon>
-        </Tooltip>
-        <ActionIcon
-          variant="subtle"
-          onClick={onNewSession}
-          aria-label="New terminal session"
-          style={{
-            width: "2.25rem",
-            height: "2.25rem",
-            flexShrink: 0,
-            borderRadius: 0,
-            borderLeft: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <Plus size={14} />
-        </ActionIcon>
-      </div>
+      {tabViewMode === "grouped" ? (
+        <GroupedTabs
+          sessions={sessions}
+          allSessions={allSessions}
+          activeSessionId={activeSessionId}
+          activeProjectId={activeProjectId}
+          projects={projects}
+          onTabClick={handleTabClick}
+          onClose={handleClose}
+          onProjectClick={handleProjectTabClick}
+          viewToggle={viewToggle}
+          newButton={newButton}
+          killButton={killButton}
+        />
+      ) : (
+        <FlatTabs
+          allSessions={allSessions}
+          activeSessionId={activeSessionId}
+          projects={projects}
+          onTabClick={handleTabClick}
+          onClose={handleClose}
+          viewToggle={viewToggle}
+          newButton={newButton}
+          killButton={killButton}
+        />
+      )}
     </div>
   );
 }
@@ -180,6 +211,9 @@ interface GroupedTabsProps {
   onTabClick: (session: AgentSession) => void;
   onClose: (e: React.MouseEvent, session: AgentSession) => void;
   onProjectClick: (projectId: string) => void;
+  viewToggle: React.ReactNode;
+  newButton: React.ReactNode;
+  killButton: React.ReactNode;
 }
 
 function GroupedTabs({
@@ -190,47 +224,188 @@ function GroupedTabs({
   onTabClick,
   onClose,
   onProjectClick,
+  viewToggle,
+  newButton,
+  killButton,
 }: GroupedTabsProps) {
-  // Get projects that have sessions
   const projectsWithSessions = projects.filter((p) =>
     allSessions.some((s) => s.projectId === p.id)
   );
 
-  const activeProject = activeProjectId;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      {/* Level 1: Project tabs */}
+    <>
+      {/* Level 1: Project tabs + view toggle */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           height: "1.75rem",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flex: 1,
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+          }}
+          role="tablist"
+          aria-label="Projects"
+        >
+          {projectsWithSessions.map((project) => {
+            const isActive = project.id === activeProjectId;
+            return (
+              <button
+                key={project.id}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => onProjectClick(project.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  paddingLeft: "0.75rem",
+                  paddingRight: "0.75rem",
+                  height: "1.75rem",
+                  fontSize: "0.6875rem",
+                  fontWeight: 500,
+                  flexShrink: 0,
+                  border: "none",
+                  borderRight: "1px solid var(--border)",
+                  cursor: "pointer",
+                  position: "relative",
+                  backgroundColor: isActive ? "var(--bg-secondary)" : "var(--bg-primary)",
+                  color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                  transition: "background-color 150ms, color 150ms",
+                }}
+              >
+                {isActive && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: "2px",
+                      backgroundColor: "var(--accent)",
+                    }}
+                  />
+                )}
+                {project.name}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ flexShrink: 0, borderLeft: "1px solid var(--border)" }}>
+          {viewToggle}
+        </div>
+      </div>
+
+      {/* Level 2: Session tabs + new button */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: "2rem",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flex: 1,
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+          }}
+          role="tablist"
+          aria-label="Sessions"
+        >
+          {allSessions
+            .filter((s) => s.projectId === activeProjectId)
+            .map((session) => (
+              <SessionTab
+                key={session.id}
+                session={session}
+                isActive={session.id === activeSessionId}
+                onTabClick={onTabClick}
+                onClose={onClose}
+                compact
+              />
+            ))}
+        </div>
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+          {newButton}
+          {killButton}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── Flat View ─────────────────────────────────────────── */
+
+interface FlatTabsProps {
+  allSessions: AgentSession[];
+  activeSessionId: string | null;
+  projects: { id: string; name: string }[];
+  onTabClick: (session: AgentSession) => void;
+  onClose: (e: React.MouseEvent, session: AgentSession) => void;
+  viewToggle: React.ReactNode;
+  newButton: React.ReactNode;
+  killButton: React.ReactNode;
+}
+
+function FlatTabs({
+  allSessions,
+  activeSessionId,
+  projects,
+  onTabClick,
+  onClose,
+  viewToggle,
+  newButton,
+  killButton,
+}: FlatTabsProps) {
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flex: 1,
           overflowX: "auto",
           overflowY: "hidden",
           scrollbarWidth: "none",
-          borderBottom: "1px solid var(--border)",
         }}
         role="tablist"
-        aria-label="Projects"
+        aria-label="All sessions"
       >
-        {projectsWithSessions.map((project) => {
-          const isActive = project.id === activeProject;
+        {allSessions.map((session) => {
+          const isActive = session.id === activeSessionId;
+          const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
+          const projectName = projectMap.get(session.projectId) ?? "Unknown";
+          const agentColor = AGENT_COLOR[session.agentType] ?? "var(--accent)";
+
           return (
             <button
-              key={project.id}
+              key={session.id}
               role="tab"
               aria-selected={isActive}
-              onClick={() => onProjectClick(project.id)}
+              onClick={() => onTabClick(session)}
+              className={classes.row}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "0.375rem",
-                paddingLeft: "0.75rem",
-                paddingRight: "0.75rem",
-                height: "1.75rem",
+                paddingLeft: "0.625rem",
+                paddingRight: "0.625rem",
+                height: "2.75rem",
                 fontSize: "0.6875rem",
-                fontWeight: 500,
                 flexShrink: 0,
                 border: "none",
                 borderRight: "1px solid var(--border)",
@@ -250,200 +425,103 @@ function GroupedTabs({
                     right: 0,
                     height: "2px",
                     backgroundColor: "var(--accent)",
+                    boxShadow: "0 0 6px 0 var(--accent)",
                   }}
                 />
               )}
-              {project.name}
+
+              {/* Status dot */}
+              <span
+                className={statusColor.className}
+                style={{
+                  width: "0.375rem",
+                  height: "0.375rem",
+                  borderRadius: "9999px",
+                  flexShrink: 0,
+                  backgroundColor: statusColor.bg,
+                }}
+              />
+
+              {/* Two-line label */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                {/* Line 1: agent icon + project name */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.625rem" }}>
+                  {session.isGuardian ? (
+                    <Shield size={9} style={{ flexShrink: 0, color: "var(--guardian)" }} />
+                  ) : (
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.5625rem",
+                        color: agentColor,
+                      }}
+                    >
+                      {AGENT_LABEL[session.agentType] ?? "?"}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      color: agentColor,
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "80px",
+                    }}
+                  >
+                    {projectName}
+                  </span>
+                </div>
+                {/* Line 2: session name */}
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100px",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {session.label}
+                </span>
+              </div>
+
+              {/* Close button */}
+              <button
+                aria-label={`Close session ${session.label}`}
+                onClick={(e) => onClose(e, session)}
+                className={classes.revealOnHover}
+                style={{
+                  marginLeft: "0.125rem",
+                  borderRadius: "0.25rem",
+                  padding: "0.125rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  color: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={10} />
+              </button>
             </button>
           );
         })}
       </div>
-
-      {/* Level 2: Session tabs for active project */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          height: "2rem",
-          overflowX: "auto",
-          overflowY: "hidden",
-          scrollbarWidth: "none",
+          flexShrink: 0,
+          borderLeft: "1px solid var(--border)",
         }}
-        role="tablist"
-        aria-label="Sessions"
       >
-        {allSessions
-          .filter((s) => s.projectId === activeProject)
-          .map((session) => (
-            <SessionTab
-              key={session.id}
-              session={session}
-              isActive={session.id === activeSessionId}
-              onTabClick={onTabClick}
-              onClose={onClose}
-              compact
-            />
-          ))}
+        {viewToggle}
+        {newButton}
+        {killButton}
       </div>
-    </div>
-  );
-}
-
-/* ─── Flat View ─────────────────────────────────────────── */
-
-interface FlatTabsProps {
-  allSessions: AgentSession[];
-  activeSessionId: string | null;
-  projects: { id: string; name: string }[];
-  onTabClick: (session: AgentSession) => void;
-  onClose: (e: React.MouseEvent, session: AgentSession) => void;
-}
-
-function FlatTabs({
-  allSessions,
-  activeSessionId,
-  projects,
-  onTabClick,
-  onClose,
-}: FlatTabsProps) {
-  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        overflowX: "auto",
-        overflowY: "hidden",
-        scrollbarWidth: "none",
-      }}
-      role="tablist"
-      aria-label="All sessions"
-    >
-      {allSessions.map((session) => {
-        const isActive = session.id === activeSessionId;
-        const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
-        const projectName = projectMap.get(session.projectId) ?? "Unknown";
-        const agentColor = AGENT_COLOR[session.agentType] ?? "var(--accent)";
-
-        return (
-          <button
-            key={session.id}
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => onTabClick(session)}
-            className={classes.row}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.375rem",
-              paddingLeft: "0.625rem",
-              paddingRight: "0.625rem",
-              height: "2.75rem",
-              fontSize: "0.6875rem",
-              flexShrink: 0,
-              border: "none",
-              borderRight: "1px solid var(--border)",
-              cursor: "pointer",
-              position: "relative",
-              backgroundColor: isActive ? "var(--bg-secondary)" : "var(--bg-primary)",
-              color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-              transition: "background-color 150ms, color 150ms",
-            }}
-          >
-            {isActive && (
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: "2px",
-                  backgroundColor: "var(--accent)",
-                  boxShadow: "0 0 6px 0 var(--accent)",
-                }}
-              />
-            )}
-
-            {/* Status dot */}
-            <span
-              className={statusColor.className}
-              style={{
-                width: "0.375rem",
-                height: "0.375rem",
-                borderRadius: "9999px",
-                flexShrink: 0,
-                backgroundColor: statusColor.bg,
-              }}
-            />
-
-            {/* Two-line label */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-              {/* Line 1: agent icon + project name */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.625rem" }}>
-                {session.isGuardian ? (
-                  <Shield size={9} style={{ flexShrink: 0, color: "var(--guardian)" }} />
-                ) : (
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "0.5625rem",
-                      color: agentColor,
-                    }}
-                  >
-                    {AGENT_LABEL[session.agentType] ?? "?"}
-                  </span>
-                )}
-                <span
-                  style={{
-                    color: agentColor,
-                    fontWeight: 500,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: "80px",
-                  }}
-                >
-                  {projectName}
-                </span>
-              </div>
-              {/* Line 2: session name */}
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  maxWidth: "100px",
-                  lineHeight: 1.2,
-                }}
-              >
-                {session.label}
-              </span>
-            </div>
-
-            {/* Close button */}
-            <button
-              aria-label={`Close session ${session.label}`}
-              onClick={(e) => onClose(e, session)}
-              className={classes.revealOnHover}
-              style={{
-                marginLeft: "0.125rem",
-                borderRadius: "0.25rem",
-                padding: "0.125rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "none",
-                backgroundColor: "transparent",
-                color: "inherit",
-                cursor: "pointer",
-              }}
-            >
-              <X size={10} />
-            </button>
-          </button>
-        );
-      })}
     </div>
   );
 }

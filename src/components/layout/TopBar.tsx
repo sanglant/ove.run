@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { X, Plus, AlertTriangle, Shield } from "lucide-react";
-import { ActionIcon, Group, Modal, Alert, Text, Tooltip } from "@mantine/core";
+import { AlertTriangle, Shield } from "lucide-react";
+import { Group, Modal, Alert, Text, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useGuardianStore } from "@/stores/guardianStore";
-import { killPty } from "@/lib/tauri";
-import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   starting: { label: "Starting", color: "var(--warning)" },
@@ -19,11 +17,10 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 const AGENT_DISPLAY_NAMES: Record<string, string> = { claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', codex: 'Codex', terminal: 'Terminal' };
 
 export function TopBar() {
-  const { sessions, activeSessionId, removeSession, updateSessionYolo } =
+  const { sessions, activeSessionId, updateSessionYolo } =
     useSessionStore();
   const { activeProjectId } = useProjectStore();
   const guardianSessionIds = useGuardianStore((s) => s.guardianSessionIds);
-  const [showNewDialog, setShowNewDialog] = useState(false);
   const [showYoloWarning, setShowYoloWarning] = useState(false);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -32,25 +29,9 @@ export function TopBar() {
     : null;
   const projectHasGuardian = activeProjectId ? !!guardianSessionIds[activeProjectId] : false;
 
-  const handleKill = async () => {
-    if (!activeSession) return;
-    try {
-      await killPty(activeSession.id);
-    } catch {
-      // ignore
-    }
-    removeSession(activeSession.id);
-  };
-
   const handleYoloToggle = () => {
     if (!activeSession) return;
-    if (!activeSession.yoloMode) {
-      // Enabling YOLO — show warning
-      setShowYoloWarning(true);
-    } else {
-      // Disabling — warn about respawn
-      setShowYoloWarning(true);
-    }
+    setShowYoloWarning(true);
   };
 
   const handleYoloConfirm = () => {
@@ -93,7 +74,7 @@ export function TopBar() {
                 {AGENT_DISPLAY_NAMES[activeSession.agentType] || activeSession.agentType}
               </span>
 
-              {/* Guardian badge — shown when active session is a guardian */}
+              {/* Guardian badge */}
               {activeSession.isGuardian && (
                 <span
                   style={{
@@ -124,7 +105,7 @@ export function TopBar() {
                 {activeSession.label}
               </Text>
 
-              {/* Shield indicator — shown when project has active guardian but session is not the guardian */}
+              {/* Shield indicator */}
               {projectHasGuardian && !activeSession.isGuardian && (
                 <Tooltip label="Guardian active for this project" withArrow>
                   <Shield size={12} style={{ color: "var(--guardian)", flexShrink: 0 }} />
@@ -145,93 +126,48 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: YOLO toggle only */}
         <Group gap={4}>
-          {activeSession && (
-            <>
-              {/* YOLO toggle — hidden for guardian sessions */}
-              {!activeSession.isGuardian && (
-                <button
-                  onClick={handleYoloToggle}
-                  aria-pressed={activeSession.yoloMode}
-                  title={
-                    activeSession.yoloMode
-                      ? "YOLO mode active — click to disable (will respawn)"
-                      : "Enable YOLO mode (will respawn)"
-                  }
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    cursor: "pointer",
-                    transition: "color 150ms, background-color 150ms",
-                    backgroundColor: activeSession.yoloMode
-                      ? "color-mix(in srgb, var(--danger) 20%, transparent)"
-                      : "transparent",
-                    color: activeSession.yoloMode
-                      ? "var(--danger)"
-                      : "var(--text-secondary)",
-                    border: activeSession.yoloMode
-                      ? "1px solid color-mix(in srgb, var(--danger) 40%, transparent)"
-                      : "1px solid transparent",
-                    boxShadow: activeSession.yoloMode
-                      ? "0 0 8px 0 color-mix(in srgb, var(--danger) 25%, transparent)"
-                      : "none",
-                  }}
-                >
-                  {activeSession.yoloMode && (
-                    <AlertTriangle size={10} style={{ flexShrink: 0 }} />
-                  )}
-                  YOLO
-                </button>
+          {activeSession && !activeSession.isGuardian && activeSession.agentType !== "terminal" && (
+            <button
+              onClick={handleYoloToggle}
+              aria-pressed={activeSession.yoloMode}
+              title={
+                activeSession.yoloMode
+                  ? "YOLO mode active — click to disable (will respawn)"
+                  : "Enable YOLO mode (will respawn)"
+              }
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 8px",
+                borderRadius: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                cursor: "pointer",
+                transition: "color 150ms, background-color 150ms",
+                backgroundColor: activeSession.yoloMode
+                  ? "color-mix(in srgb, var(--danger) 20%, transparent)"
+                  : "transparent",
+                color: activeSession.yoloMode
+                  ? "var(--danger)"
+                  : "var(--text-secondary)",
+                border: activeSession.yoloMode
+                  ? "1px solid color-mix(in srgb, var(--danger) 40%, transparent)"
+                  : "1px solid transparent",
+                boxShadow: activeSession.yoloMode
+                  ? "0 0 8px 0 color-mix(in srgb, var(--danger) 25%, transparent)"
+                  : "none",
+              }}
+            >
+              {activeSession.yoloMode && (
+                <AlertTriangle size={10} style={{ flexShrink: 0 }} />
               )}
-
-              {/* Kill session */}
-              <Tooltip label="Kill session" withArrow>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={handleKill}
-                  aria-label="Kill session"
-                  size={28}
-                  style={{ color: "var(--text-secondary)" }}
-                  styles={{
-                    root: {
-                      "--ai-hover-color": "var(--danger)",
-                      "--ai-hover-bg": "color-mix(in srgb, var(--danger) 10%, transparent)",
-                    },
-                  }}
-                >
-                  <X size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </>
-          )}
-
-          {/* New session */}
-          {activeProjectId && (
-            <Tooltip label="New session" withArrow>
-              <ActionIcon
-                variant="subtle"
-                onClick={() => setShowNewDialog(true)}
-                aria-label="New agent session"
-                size={28}
-                style={{ color: "var(--text-secondary)" }}
-                styles={{
-                  root: {
-                    "--ai-hover-color": "var(--accent)",
-                    "--ai-hover-bg": "color-mix(in srgb, var(--accent) 10%, transparent)",
-                  },
-                }}
-              >
-                <Plus size={14} />
-              </ActionIcon>
-            </Tooltip>
+              YOLO
+            </button>
           )}
         </Group>
       </header>
@@ -309,13 +245,6 @@ export function TopBar() {
           </>
         )}
       </Modal>
-
-      {showNewDialog && (
-        <NewAgentDialog
-          projectId={activeProjectId ?? ""}
-          onClose={() => setShowNewDialog(false)}
-        />
-      )}
     </>
   );
 }
