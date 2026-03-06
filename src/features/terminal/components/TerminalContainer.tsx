@@ -26,6 +26,7 @@ export function TerminalContainer() {
     >
       <TerminalTabs
         sessions={projectSessions}
+        allSessions={sessions}
         onNewSession={() => setShowNewDialog(true)}
       />
 

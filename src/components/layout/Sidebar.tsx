@@ -44,6 +44,7 @@ const AGENT_ICON: Record<string, { label: string; color: string }> = {
   gemini: { label: "G", color: "var(--gemini)" },
   copilot: { label: "P", color: "var(--copilot)" },
   codex: { label: "X", color: "var(--codex)" },
+  terminal: { label: ">_", color: "var(--text-secondary)" },
 };
 
 export function Sidebar() {

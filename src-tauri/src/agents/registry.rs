@@ -56,5 +56,17 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
             icon: "codex".to_string(),
         },
+        AgentDefinition {
+            agent_type: AgentType::Terminal,
+            display_name: "Terminal".to_string(),
+            command: "bash".to_string(),
+            default_args: vec![],
+            yolo_flag: String::new(),
+            resume_args: vec![],
+            detect_idle_pattern: String::new(),
+            detect_input_pattern: String::new(),
+            detect_finished_pattern: String::new(),
+            icon: "terminal".to_string(),
+        },
     ]
 }

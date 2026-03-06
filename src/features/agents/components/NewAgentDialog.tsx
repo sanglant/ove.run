@@ -147,6 +147,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
     gemini: { label: "G", color: "var(--gemini)" },
     copilot: { label: "P", color: "var(--copilot)" },
     codex: { label: "X", color: "var(--codex)" },
+    terminal: { label: ">_", color: "var(--text-secondary)" },
   };
 
   return (
@@ -272,7 +273,8 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
           }}
         />
 
-        {/* YOLO mode toggle */}
+        {/* YOLO mode toggle — hidden for plain terminal */}
+        {agentType !== "terminal" && (
         <Stack gap="xs">
           <Group justify="space-between">
             <Text
@@ -317,6 +319,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
             </Alert>
           )}
         </Stack>
+        )}
       </Stack>
 
       {/* Footer */}

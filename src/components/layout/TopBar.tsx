@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   error: { label: "Error", color: "var(--danger)" },
 };
 
-const AGENT_DISPLAY_NAMES = { claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', codex: 'Codex' } 
+const AGENT_DISPLAY_NAMES: Record<string, string> = { claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', codex: 'Codex', terminal: 'Terminal' };
 
 export function TopBar() {
   const { sessions, activeSessionId, removeSession, updateSessionYolo } =

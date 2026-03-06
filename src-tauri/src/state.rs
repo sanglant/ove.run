@@ -30,6 +30,7 @@ pub enum AgentType {
     Gemini,
     Copilot,
     Codex,
+    Terminal,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-export type AgentType = "claude" | "gemini" | "copilot" | "codex";
+export type AgentType = "claude" | "gemini" | "copilot" | "codex" | "terminal";
 export type AgentStatus =
   | "starting"
   | "idle"
