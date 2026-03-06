@@ -70,6 +70,16 @@ pub struct KnowledgeEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectNote {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub file_path: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub global: GlobalSettings,
     pub agents: HashMap<String, AgentSettings>,

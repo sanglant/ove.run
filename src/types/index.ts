@@ -61,6 +61,15 @@ export interface KnowledgeEntry {
   updated_at: string;
 }
 
+export interface ProjectNote {
+  id: string;
+  project_id: string;
+  title: string;
+  file_path: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GlobalSettings {
   theme: string;
   font_family: string;

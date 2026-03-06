@@ -1,0 +1,244 @@
+.root {
+  padding: 20px 24px;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* ── Editable preview ─────────────────────────────────────────────────────── */
+
+.editableRoot {
+  /* Subtle cue that the whole area is interactive */
+}
+
+.editableBlock {
+  border-radius: 4px;
+  cursor: text;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  transition: background-color 100ms;
+  outline: none;
+}
+
+.editableBlock:hover {
+  background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.editableBlock:focus-visible {
+  box-shadow: none;
+  outline: 1px dashed var(--border-bright);
+}
+
+.editingBlock {
+  position: relative;
+  margin: -2px -4px;
+}
+
+.blockTextarea {
+  width: 100%;
+  min-height: 2em;
+  resize: none;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-tertiary));
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: var(--mantine-font-family-monospace, "Geist Mono", monospace);
+  font-size: 12px;
+  line-height: 1.6;
+  outline: none;
+  box-shadow: var(--glow-accent);
+  caret-color: var(--accent-glow);
+  tab-size: 2;
+  display: block;
+}
+
+.editHint {
+  display: block;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 3px;
+  margin-left: 2px;
+  user-select: none;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────── */
+
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.h1:first-child,
+.h2:first-child,
+.h3:first-child {
+  margin-top: 0;
+}
+
+.h1 {
+  font-size: 1.6em;
+  border-bottom: 1px solid var(--border-bright);
+  padding-bottom: 0.25em;
+}
+
+.h2 {
+  font-size: 1.3em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.2em;
+}
+
+.h3 { font-size: 1.1em; }
+.h4 { font-size: 1em; }
+.h5 { font-size: 0.9em; color: var(--text-secondary); }
+.h6 { font-size: 0.85em; color: var(--text-secondary); }
+
+/* ── Paragraph ────────────────────────────────────────────────────────────── */
+
+.p {
+  margin-bottom: 0.8em;
+  color: var(--text-primary);
+}
+
+.p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Inline code ──────────────────────────────────────────────────────────── */
+
+.inlineCode {
+  font-family: var(--mantine-font-family-monospace, "Geist Mono", monospace);
+  font-size: 0.88em;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-bright);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  color: var(--accent-glow);
+}
+
+/* ── Code block ───────────────────────────────────────────────────────────── */
+
+.codeBlock {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin-bottom: 0.8em;
+}
+
+.codeBlock code {
+  font-family: var(--mantine-font-family-monospace, "Geist Mono", monospace);
+  font-size: 0.85em;
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre;
+}
+
+/* ── Blockquote ───────────────────────────────────────────────────────────── */
+
+.blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0 0 0.8em;
+  padding: 4px 12px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 0 4px 4px 0;
+}
+
+.blockquote p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Lists ────────────────────────────────────────────────────────────────── */
+
+.ul,
+.ol {
+  padding-left: 1.4em;
+  margin-bottom: 0.8em;
+}
+
+.ul li,
+.ol li {
+  margin-bottom: 0.25em;
+  color: var(--text-primary);
+}
+
+/* ── Task list (checkboxes) ───────────────────────────────────────────────── */
+
+.taskList {
+  list-style: none;
+  padding-left: 0.4em;
+}
+
+.taskItem {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 0.3em;
+}
+
+.checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--border-bright);
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  cursor: pointer;
+  position: relative;
+  top: 1px;
+  transition: background-color 120ms, border-color 120ms;
+}
+
+.checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0px;
+  width: 5px;
+  height: 8px;
+  border: 2px solid var(--bg-primary);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.checkbox:focus-visible {
+  box-shadow: var(--glow-accent);
+}
+
+.checkboxLabelDone {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+/* ── Horizontal rule ──────────────────────────────────────────────────────── */
+
+.hr {
+  border: none;
+  border-top: 1px solid var(--border-bright);
+  margin: 1.2em 0;
+}

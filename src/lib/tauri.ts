@@ -5,6 +5,7 @@ import type {
   AppSettings,
   AgentDefinition,
   KnowledgeEntry,
+  ProjectNote,
   GitStatus,
   KnowledgeType,
   PersistedSession,
@@ -145,4 +146,39 @@ export async function loadSessions(): Promise<PersistedSession[]> {
 
 export async function sendDesktopNotification(title: string, body: string): Promise<void> {
   return invoke("send_desktop_notification", { title, body });
+}
+
+export async function listNotes(projectId: string): Promise<ProjectNote[]> {
+  return invoke("list_notes", { projectId });
+}
+
+export async function createNote(
+  projectId: string,
+  title: string,
+  content: string,
+): Promise<ProjectNote> {
+  return invoke("create_note", { projectId, title, content });
+}
+
+export async function readNoteContent(
+  projectId: string,
+  noteId: string,
+): Promise<string> {
+  return invoke("read_note_content", { projectId, noteId });
+}
+
+export async function updateNote(
+  projectId: string,
+  noteId: string,
+  title: string,
+  content: string,
+): Promise<void> {
+  return invoke("update_note", { projectId, noteId, title, content });
+}
+
+export async function deleteNote(
+  projectId: string,
+  noteId: string,
+): Promise<void> {
+  return invoke("delete_note", { projectId, noteId });
 }

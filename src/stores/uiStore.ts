@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type ActivePanel = "terminal" | "git" | "knowledge" | "settings" | "notifications";
+type ActivePanel = "terminal" | "git" | "knowledge" | "notes" | "settings" | "notifications";
 export type TabViewMode = "grouped" | "flat";
 
 interface UiState {

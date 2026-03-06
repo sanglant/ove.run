@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, BookOpen, FileText, StickyNote, Cpu } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/lib/tauri";
 import { KnowledgeEditor } from "./KnowledgeEditor";
 import type { KnowledgeEntry, KnowledgeType } from "@/types";
-import { TextInput, Select, Button, Group } from "@mantine/core";
+import { TextInput, Select, Button, Group, Modal, Text } from "@mantine/core";
 import classes from "./KnowledgePanel.module.css";
 
 const TYPE_ICONS: Record<KnowledgeType, React.ReactNode> = {
@@ -47,12 +47,20 @@ export function KnowledgePanel() {
   const [selectedEntry, setSelectedEntry] = useState<KnowledgeEntry | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingContent, setLoadingContent] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newForm, setNewForm] = useState<NewEntryForm>({
     name: "",
     type: "notes",
   });
   const [creating, setCreating] = useState(false);
+  const [pendingDeleteEntry, setPendingDeleteEntry] = useState<KnowledgeEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Tracks the most-recently-requested entry id so stale async responses are
+  // silently discarded. A ref (not state) because updating it must never
+  // trigger a re-render of its own.
+  const selectionTokenRef = useRef<string | null>(null);
 
   const loadEntries = async () => {
     if (!activeProjectId) return;
@@ -78,16 +86,28 @@ export function KnowledgePanel() {
   }, [activeProjectId]);
 
   const handleSelectEntry = async (entry: KnowledgeEntry) => {
+    // Stamp this invocation so any earlier in-flight load can detect it is stale.
+    const token = entry.id;
+    selectionTokenRef.current = token;
+
     setSelectedEntry(entry);
+    setEditorContent("");
+    setLoadingContent(true);
+
+    let content = "";
+    let failed = false;
     try {
-      const content = await readKnowledgeContent(
-        activeProjectId ?? "",
-        entry.id,
-      );
-      setEditorContent(content);
+      content = await readKnowledgeContent(activeProjectId ?? "", entry.id);
     } catch {
-      setEditorContent("");
+      failed = true;
     }
+
+    // If another entry was selected while we were awaiting, throw away this
+    // result entirely — do NOT touch any state that belongs to the new selection.
+    if (selectionTokenRef.current !== token) return;
+
+    setLoadingContent(false);
+    setEditorContent(failed ? "" : content);
   };
 
   const handleSave = async (content: string) => {
@@ -103,18 +123,21 @@ export function KnowledgePanel() {
     );
   };
 
-  const handleDelete = async (entry: KnowledgeEntry) => {
-    if (!activeProjectId) return;
-    if (!confirm(`Delete "${entry.name}"?`)) return;
+  const handleDelete = async () => {
+    if (!activeProjectId || !pendingDeleteEntry) return;
+    setDeleting(true);
     try {
-      await deleteKnowledge(activeProjectId, entry.id);
-      setEntries((prev) => prev.filter((e) => e.id !== entry.id));
-      if (selectedEntry?.id === entry.id) {
+      await deleteKnowledge(activeProjectId, pendingDeleteEntry.id);
+      setEntries((prev) => prev.filter((e) => e.id !== pendingDeleteEntry.id));
+      if (selectedEntry?.id === pendingDeleteEntry.id) {
         setSelectedEntry(null);
         setEditorContent("");
       }
+      setPendingDeleteEntry(null);
     } catch (err) {
       console.error("Failed to delete knowledge entry:", err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -408,9 +431,17 @@ export function KnowledgePanel() {
                           {entry.name}
                         </span>
                         <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                          }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(entry);
+                            setPendingDeleteEntry(entry);
                           }}
                           aria-label={`Delete ${entry.name}`}
                           className={classes.revealOnHover}
@@ -438,8 +469,9 @@ export function KnowledgePanel() {
 
       {/* Right: Editor */}
       <div style={{ flex: 1, overflow: "hidden" }}>
-        {selectedEntry ? (
+        {selectedEntry && !loadingContent ? (
           <KnowledgeEditor
+            key={selectedEntry.id}
             entry={selectedEntry}
             content={editorContent}
             onSave={handleSave}
@@ -448,6 +480,19 @@ export function KnowledgePanel() {
               setEditorContent("");
             }}
           />
+        ) : selectedEntry && loadingContent ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "var(--text-secondary)",
+              fontSize: "12px",
+            }}
+          >
+            Loading…
+          </div>
         ) : (
           <div
             style={{
@@ -465,6 +510,77 @@ export function KnowledgePanel() {
           </div>
         )}
       </div>
+
+      <Modal
+        opened={!!pendingDeleteEntry}
+        onClose={() => !deleting && setPendingDeleteEntry(null)}
+        title="Delete knowledge entry"
+        centered
+        size="sm"
+        overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+        styles={{
+          header: {
+            backgroundColor: "var(--bg-elevated)",
+            borderBottom: "1px solid var(--border)",
+          },
+          title: {
+            color: "var(--text-primary)",
+            fontSize: "14px",
+            fontWeight: 600,
+          },
+          body: {
+            padding: 20,
+            backgroundColor: "var(--bg-elevated)",
+          },
+          content: {
+            backgroundColor: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+          },
+          close: {
+            color: "var(--text-secondary)",
+          },
+        }}
+      >
+        <Text size="sm" c="var(--text-secondary)" mb="md">
+          Delete "{pendingDeleteEntry?.name}"? This cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap={8}>
+          <Button
+            variant="default"
+            onClick={() => setPendingDeleteEntry(null)}
+            disabled={deleting}
+            styles={{
+              root: {
+                backgroundColor: "transparent",
+                borderColor: "var(--border)",
+                color: "var(--text-secondary)",
+                "&:hover:not(:disabled)": {
+                  backgroundColor: "transparent",
+                  color: "var(--text-primary)",
+                },
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={handleDelete}
+            loading={deleting}
+            styles={{
+              root: {
+                backgroundColor: "var(--danger)",
+                color: "#fff",
+                "&:hover:not(:disabled)": {
+                  opacity: 0.9,
+                },
+              },
+            }}
+          >
+            Delete entry
+          </Button>
+        </Group>
+      </Modal>
     </div>
   );
 }

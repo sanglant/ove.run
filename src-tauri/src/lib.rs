@@ -6,6 +6,7 @@ pub mod agents;
 pub mod commands;
 pub mod git;
 pub mod knowledge;
+pub mod notes;
 pub mod notifications;
 pub mod pty;
 pub mod sessions;
@@ -19,6 +20,9 @@ use commands::git_commands::{
 };
 use commands::knowledge_commands::{
     create_knowledge, delete_knowledge, list_knowledge, read_knowledge_content, update_knowledge,
+};
+use commands::notes_commands::{
+    create_note, delete_note, list_notes, read_note_content, update_note,
 };
 use commands::project_commands::{add_project, guardian_review, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
@@ -111,6 +115,12 @@ pub fn run() {
             read_knowledge_content,
             update_knowledge,
             delete_knowledge,
+            // Notes commands
+            list_notes,
+            create_note,
+            read_note_content,
+            update_note,
+            delete_note,
             // Settings commands
             get_settings,
             update_settings,

@@ -1,0 +1,164 @@
+.root {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebarTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 150ms;
+  border-radius: 3px;
+}
+
+.iconBtn:hover {
+  color: var(--accent);
+}
+
+/* ── New note form ────────────────────────────────────────────────────────── */
+
+.newForm {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Notes list ───────────────────────────────────────────────────────────── */
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.listEmpty {
+  padding: 32px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.noteRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background-color 150ms;
+  border-bottom: 1px solid var(--border);
+}
+
+.noteRow:last-child {
+  border-bottom: none;
+}
+
+.noteRow:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.noteRow:hover .deleteBtn {
+  opacity: 1;
+}
+
+.noteRowActive {
+  background-color: var(--bg-tertiary);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.noteRowInner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.noteTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noteRowActive .noteTitle {
+  color: var(--text-primary);
+}
+
+.noteDate {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.deleteBtn {
+  opacity: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: opacity 150ms;
+}
+
+/* ── Editor area ──────────────────────────────────────────────────────────── */
+
+.editorArea {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Empty / loading states ───────────────────────────────────────────────── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.empty p {
+  margin: 0;
+}

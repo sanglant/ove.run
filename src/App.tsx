@@ -5,6 +5,7 @@ import { StatusBar } from "@/components/layout/StatusBar";
 import { TerminalContainer } from "@/features/terminal/components/TerminalContainer";
 import { GitPanel } from "@/features/git/components/GitPanel";
 import { KnowledgePanel } from "@/features/knowledge/components/KnowledgePanel";
+import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackModal } from "@/features/guardian/components/AgentFeedbackModal";
@@ -99,6 +100,13 @@ export default function App() {
           {activePanel === "knowledge" && (
             <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
               <KnowledgePanel />
+            </div>
+          )}
+
+          {/* Notes panel */}
+          {activePanel === "notes" && (
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+              <NotesPanel />
             </div>
           )}
 

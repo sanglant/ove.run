@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   FolderGit2,
   BookOpen,
+  StickyNote,
   Settings,
   Bell,
   Plus,
@@ -134,6 +135,11 @@ export function Sidebar() {
       id: "knowledge" as const,
       icon: <BookOpen size={16} />,
       label: "Knowledge",
+    },
+    {
+      id: "notes" as const,
+      icon: <StickyNote size={16} />,
+      label: "Notes",
     },
     {
       id: "settings" as const,
