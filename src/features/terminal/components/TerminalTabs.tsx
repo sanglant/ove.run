@@ -1,11 +1,14 @@
-import { X, Plus, Layers, List } from "lucide-react";
+import { useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
+import { X, Plus, Layers, List, Grid2x2 } from "lucide-react";
 import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
 import { killPty } from "@/lib/tauri";
-import type { AgentSession } from "@/types";
+import type { AgentSession, TerminalLayoutMode } from "@/types";
 import classes from "./TerminalTabs.module.css";
+
+const SESSION_DRAG_MIME = "application/x-agentic-session";
 
 interface TerminalTabsProps {
   sessions: AgentSession[];
@@ -38,10 +41,37 @@ const AGENT_COLOR: Record<string, string> = {
   terminal: "var(--text-secondary)",
 };
 
+const LAYOUT_OPTIONS: Array<{ mode: TerminalLayoutMode; label: string; icon: ReactNode }> = [
+  {
+    mode: "single",
+    label: "Single pane",
+    icon: <span className={classes.layoutIconLabel}>1</span>,
+  },
+  {
+    mode: "grid",
+    label: "Grid mode",
+    icon: <Grid2x2 size={12} className={classes.layoutIcon} />,
+  },
+];
+
 export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTabsProps) {
-  const { activeSessionId, setActiveSession, removeSession } = useSessionStore();
+  const {
+    activeSessionId,
+    projectLayouts,
+    setActiveSession,
+    setLayoutMode,
+    reorderSessions,
+    removeSession,
+  } = useSessionStore();
   const { activeProjectId, projects, setActiveProject } = useProjectStore();
   const { setActivePanel, tabViewMode, setTabViewMode } = useUiStore();
+  const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
+  const [dropSessionId, setDropSessionId] = useState<string | null>(null);
+
+  const currentLayoutMode =
+    activeProjectId && projectLayouts[activeProjectId]
+      ? projectLayouts[activeProjectId].mode
+      : "single";
 
   const handleTabClick = (session: AgentSession) => {
     setActiveProject(session.projectId);
@@ -51,14 +81,14 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
 
   const handleProjectTabClick = (projectId: string) => {
     setActiveProject(projectId);
-    const firstSession = allSessions.find((s) => s.projectId === projectId);
+    const firstSession = allSessions.find((session) => session.projectId === projectId);
     if (firstSession) {
       setActiveSession(firstSession.id);
     }
   };
 
-  const handleClose = async (e: React.MouseEvent, session: AgentSession) => {
-    e.stopPropagation();
+  const handleClose = async (event: MouseEvent, session: AgentSession) => {
+    event.stopPropagation();
     try {
       await killPty(session.id);
     } catch {
@@ -67,23 +97,118 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     removeSession(session.id);
   };
 
+  const handleKillActive = async () => {
+    const activeSession = allSessions.find((session) => session.id === activeSessionId);
+    if (!activeSession) return;
+
+    try {
+      await killPty(activeSession.id);
+    } catch {
+      // ignore
+    }
+
+    removeSession(activeSession.id);
+  };
+
+  const handleLayoutChange = (mode: TerminalLayoutMode) => {
+    if (!activeProjectId) return;
+    setLayoutMode(activeProjectId, mode);
+  };
+
+  const handleTabDragStart = (event: DragEvent<HTMLElement>, sessionId: string) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(SESSION_DRAG_MIME, sessionId);
+    event.dataTransfer.setData("text/plain", sessionId);
+    setDraggedSessionId(sessionId);
+    setDropSessionId(null);
+  };
+
+  const clearDragState = () => {
+    setDraggedSessionId(null);
+    setDropSessionId(null);
+  };
+
+  const getDraggedSession = (): AgentSession | undefined =>
+    allSessions.find((session) => session.id === draggedSessionId);
+
+  const canReorderInScope = (targetSession: AgentSession, scopeProjectId?: string): boolean => {
+    const draggedSession = getDraggedSession();
+    if (!draggedSession || draggedSession.id === targetSession.id) {
+      return false;
+    }
+
+    if (!scopeProjectId) {
+      return true;
+    }
+
+    return draggedSession.projectId === scopeProjectId && targetSession.projectId === scopeProjectId;
+  };
+
+  const handleTabDragOver = (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => {
+    if (!canReorderInScope(targetSession, scopeProjectId)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropSessionId(targetSession.id);
+  };
+
+  const handleTabDrop = (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => {
+    event.preventDefault();
+
+    const droppedSessionId =
+      event.dataTransfer.getData(SESSION_DRAG_MIME) ||
+      event.dataTransfer.getData("text/plain") ||
+      draggedSessionId;
+
+    if (!droppedSessionId || droppedSessionId === targetSession.id) {
+      clearDragState();
+      return;
+    }
+
+    reorderSessions(droppedSessionId, targetSession.id, scopeProjectId);
+    clearDragState();
+  };
+
   const viewToggle = (
     <Tooltip label={tabViewMode === "grouped" ? "Flat view" : "Grouped view"} withArrow>
       <ActionIcon
         variant="subtle"
         onClick={() => setTabViewMode(tabViewMode === "grouped" ? "flat" : "grouped")}
         aria-label="Toggle tab view mode"
-        style={{
-          width: "1.75rem",
-          height: "1.75rem",
-          borderRadius: 0,
-          flexShrink: 0,
-          color: "var(--text-secondary)",
-        }}
+        className={classes.actionIcon}
       >
         {tabViewMode === "grouped" ? <List size={12} /> : <Layers size={12} />}
       </ActionIcon>
     </Tooltip>
+  );
+
+  const layoutToggle = (
+    <div className={classes.layoutToggle} role="group" aria-label="Terminal layout">
+      {LAYOUT_OPTIONS.map((option) => (
+        <Tooltip key={option.mode} label={option.label} withArrow>
+          <ActionIcon
+            variant="subtle"
+            onClick={() => handleLayoutChange(option.mode)}
+            aria-label={option.label}
+            disabled={!activeProjectId}
+            className={classes.actionIcon}
+            data-active={currentLayoutMode === option.mode || undefined}
+          >
+            {option.icon}
+          </ActionIcon>
+        </Tooltip>
+      ))}
+    </div>
   );
 
   const newButton = (
@@ -91,29 +216,12 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
       variant="subtle"
       onClick={onNewSession}
       aria-label="New session"
-      style={{
-        width: "1.75rem",
-        height: "1.75rem",
-        flexShrink: 0,
-        borderRadius: 0,
-        borderLeft: "1px solid var(--border)",
-        color: "var(--text-secondary)",
-      }}
+      className={classes.actionIcon}
+      data-separated
     >
       <Plus size={12} />
     </ActionIcon>
   );
-
-  const handleKillActive = async () => {
-    const active = allSessions.find((s) => s.id === activeSessionId);
-    if (!active) return;
-    try {
-      await killPty(active.id);
-    } catch {
-      // ignore
-    }
-    removeSession(active.id);
-  };
 
   const killButton = activeSessionId ? (
     <Tooltip label="Kill active session" withArrow>
@@ -121,30 +229,25 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
         variant="subtle"
         onClick={handleKillActive}
         aria-label="Kill active session"
-        style={{
-          width: "1.75rem",
-          height: "1.75rem",
-          flexShrink: 0,
-          borderRadius: 0,
-          borderLeft: "1px solid var(--border)",
-          color: "var(--text-secondary)",
-        }}
+        className={classes.actionIcon}
+        data-separated
       >
         <X size={12} />
       </ActionIcon>
     </Tooltip>
   ) : null;
 
+  const actionCluster = (
+    <div className={classes.actionCluster}>
+      {viewToggle}
+      {layoutToggle}
+      {newButton}
+      {killButton}
+    </div>
+  );
+
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "var(--bg-primary)",
-        borderBottom: "1px solid var(--border)",
-        flexShrink: 0,
-      }}
-    >
+    <div className={classes.root}>
       {tabViewMode === "grouped" ? (
         <GroupedTabs
           sessions={sessions}
@@ -152,30 +255,36 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
           activeSessionId={activeSessionId}
           activeProjectId={activeProjectId}
           projects={projects}
+          draggedSessionId={draggedSessionId}
+          dropSessionId={dropSessionId}
+          actionCluster={actionCluster}
           onTabClick={handleTabClick}
           onClose={handleClose}
           onProjectClick={handleProjectTabClick}
-          viewToggle={viewToggle}
-          newButton={newButton}
-          killButton={killButton}
+          onTabDragStart={handleTabDragStart}
+          onTabDragOver={handleTabDragOver}
+          onTabDrop={handleTabDrop}
+          onTabDragEnd={clearDragState}
         />
       ) : (
         <FlatTabs
           allSessions={allSessions}
           activeSessionId={activeSessionId}
           projects={projects}
+          draggedSessionId={draggedSessionId}
+          dropSessionId={dropSessionId}
+          actionCluster={actionCluster}
           onTabClick={handleTabClick}
           onClose={handleClose}
-          viewToggle={viewToggle}
-          newButton={newButton}
-          killButton={killButton}
+          onTabDragStart={handleTabDragStart}
+          onTabDragOver={handleTabDragOver}
+          onTabDrop={handleTabDrop}
+          onTabDragEnd={clearDragState}
         />
       )}
     </div>
   );
 }
-
-/* ─── Grouped View ──────────────────────────────────────── */
 
 interface GroupedTabsProps {
   sessions: AgentSession[];
@@ -183,53 +292,51 @@ interface GroupedTabsProps {
   activeSessionId: string | null;
   activeProjectId: string | null;
   projects: { id: string; name: string }[];
+  draggedSessionId: string | null;
+  dropSessionId: string | null;
+  actionCluster: ReactNode;
   onTabClick: (session: AgentSession) => void;
-  onClose: (e: React.MouseEvent, session: AgentSession) => void;
+  onClose: (event: MouseEvent, session: AgentSession) => void;
   onProjectClick: (projectId: string) => void;
-  viewToggle: React.ReactNode;
-  newButton: React.ReactNode;
-  killButton: React.ReactNode;
+  onTabDragStart: (event: DragEvent<HTMLElement>, sessionId: string) => void;
+  onTabDragOver: (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => void;
+  onTabDrop: (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => void;
+  onTabDragEnd: () => void;
 }
 
 function GroupedTabs({
+  sessions,
   allSessions,
   activeSessionId,
   activeProjectId,
   projects,
+  draggedSessionId,
+  dropSessionId,
+  actionCluster,
   onTabClick,
   onClose,
   onProjectClick,
-  viewToggle,
-  newButton,
-  killButton,
+  onTabDragStart,
+  onTabDragOver,
+  onTabDrop,
+  onTabDragEnd,
 }: GroupedTabsProps) {
-  const projectsWithSessions = projects.filter((p) =>
-    allSessions.some((s) => s.projectId === p.id)
+  const projectsWithSessions = projects.filter((project) =>
+    allSessions.some((session) => session.projectId === project.id),
   );
 
   return (
     <>
-      {/* Level 1: Project tabs + view toggle */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          height: "1.75rem",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            flex: 1,
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollbarWidth: "none",
-          }}
-          role="tablist"
-          aria-label="Projects"
-        >
+      <div className={classes.projectRow}>
+        <div className={classes.scrollArea} role="tablist" aria-label="Projects">
           {projectsWithSessions.map((project) => {
             const isActive = project.id === activeProjectId;
             return (
@@ -238,128 +345,83 @@ function GroupedTabs({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onProjectClick(project.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.375rem",
-                  paddingLeft: "0.75rem",
-                  paddingRight: "0.75rem",
-                  height: "1.75rem",
-                  fontSize: "0.6875rem",
-                  fontWeight: 500,
-                  flexShrink: 0,
-                  border: "none",
-                  borderRight: "1px solid var(--border)",
-                  cursor: "pointer",
-                  position: "relative",
-                  backgroundColor: isActive ? "var(--bg-secondary)" : "var(--bg-primary)",
-                  color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                  transition: "background-color 150ms, color 150ms",
-                }}
+                className={classes.projectTab}
+                data-active={isActive || undefined}
               >
-                {isActive && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: "2px",
-                      backgroundColor: "var(--accent)",
-                    }}
-                  />
-                )}
-                {project.name}
+                <span className={classes.projectTabLabel}>{project.name}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ flexShrink: 0, borderLeft: "1px solid var(--border)" }}>
-          {viewToggle}
-        </div>
+        {actionCluster}
       </div>
 
-      {/* Level 2: Session tabs + new button */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          height: "2rem",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            flex: 1,
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollbarWidth: "none",
-          }}
-          role="tablist"
-          aria-label="Sessions"
-        >
-          {allSessions
-            .filter((s) => s.projectId === activeProjectId)
-            .map((session) => (
-              <SessionTab
-                key={session.id}
-                session={session}
-                isActive={session.id === activeSessionId}
-                onTabClick={onTabClick}
-                onClose={onClose}
-                compact
-              />
-            ))}
-        </div>
-        <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-          {newButton}
-          {killButton}
+      <div className={classes.sessionRow}>
+        <div className={classes.scrollArea} role="tablist" aria-label="Sessions">
+          {sessions.map((session) => (
+            <SessionTab
+              key={session.id}
+              session={session}
+              isActive={session.id === activeSessionId}
+              isDragged={session.id === draggedSessionId}
+              isDropTarget={session.id === dropSessionId}
+              compact
+              onTabClick={onTabClick}
+              onClose={onClose}
+              onDragStart={onTabDragStart}
+              onDragOver={(event) => onTabDragOver(event, session, activeProjectId ?? undefined)}
+              onDrop={(event) => onTabDrop(event, session, activeProjectId ?? undefined)}
+              onDragEnd={onTabDragEnd}
+            />
+          ))}
         </div>
       </div>
     </>
   );
 }
 
-/* ─── Flat View ─────────────────────────────────────────── */
-
 interface FlatTabsProps {
   allSessions: AgentSession[];
   activeSessionId: string | null;
   projects: { id: string; name: string }[];
+  draggedSessionId: string | null;
+  dropSessionId: string | null;
+  actionCluster: ReactNode;
   onTabClick: (session: AgentSession) => void;
-  onClose: (e: React.MouseEvent, session: AgentSession) => void;
-  viewToggle: React.ReactNode;
-  newButton: React.ReactNode;
-  killButton: React.ReactNode;
+  onClose: (event: MouseEvent, session: AgentSession) => void;
+  onTabDragStart: (event: DragEvent<HTMLElement>, sessionId: string) => void;
+  onTabDragOver: (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => void;
+  onTabDrop: (
+    event: DragEvent<HTMLElement>,
+    targetSession: AgentSession,
+    scopeProjectId?: string,
+  ) => void;
+  onTabDragEnd: () => void;
 }
 
 function FlatTabs({
   allSessions,
   activeSessionId,
   projects,
+  draggedSessionId,
+  dropSessionId,
+  actionCluster,
   onTabClick,
   onClose,
-  viewToggle,
-  newButton,
-  killButton,
+  onTabDragStart,
+  onTabDragOver,
+  onTabDrop,
+  onTabDragEnd,
 }: FlatTabsProps) {
-  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
+  const projectMap = new Map(projects.map((project) => [project.id, project.name]));
 
   return (
-    <div style={{ display: "flex", alignItems: "center" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flex: 1,
-          overflowX: "auto",
-          overflowY: "hidden",
-          scrollbarWidth: "none",
-        }}
-        role="tablist"
-        aria-label="All sessions"
-      >
+    <div className={classes.flatRow}>
+      <div className={classes.scrollArea} role="tablist" aria-label="All sessions">
         {allSessions.map((session) => {
           const isActive = session.id === activeSessionId;
           const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
@@ -372,40 +434,16 @@ function FlatTabs({
               role="tab"
               aria-selected={isActive}
               onClick={() => onTabClick(session)}
-              className={classes.row}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                paddingLeft: "0.625rem",
-                paddingRight: "0.625rem",
-                height: "2.75rem",
-                fontSize: "0.6875rem",
-                flexShrink: 0,
-                border: "none",
-                borderRight: "1px solid var(--border)",
-                cursor: "pointer",
-                position: "relative",
-                backgroundColor: isActive ? "var(--bg-secondary)" : "var(--bg-primary)",
-                color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                transition: "background-color 150ms, color 150ms",
-              }}
+              className={classes.tabButton}
+              data-active={isActive || undefined}
+              data-dragging={session.id === draggedSessionId || undefined}
+              data-drop-target={session.id === dropSessionId || undefined}
+              draggable
+              onDragStart={(event) => onTabDragStart(event, session.id)}
+              onDragOver={(event) => onTabDragOver(event, session)}
+              onDrop={(event) => onTabDrop(event, session)}
+              onDragEnd={onTabDragEnd}
             >
-              {isActive && (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: "2px",
-                    backgroundColor: "var(--accent)",
-                    boxShadow: "0 0 6px 0 var(--accent)",
-                  }}
-                />
-              )}
-
-              {/* Status dot */}
               <span
                 className={statusColor.className}
                 style={{
@@ -417,10 +455,8 @@ function FlatTabs({
                 }}
               />
 
-              {/* Two-line label */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                {/* Line 1: agent icon + project name */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.625rem" }}>
+              <div className={classes.twoLineLabel}>
+                <div className={classes.flatMetaLine}>
                   <span
                     style={{
                       fontWeight: 700,
@@ -430,50 +466,17 @@ function FlatTabs({
                   >
                     {AGENT_LABEL[session.agentType] ?? "?"}
                   </span>
-                  <span
-                    style={{
-                      color: agentColor,
-                      fontWeight: 500,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: "80px",
-                    }}
-                  >
+                  <span className={classes.projectNameLabel} style={{ color: agentColor }}>
                     {projectName}
                   </span>
                 </div>
-                {/* Line 2: session name */}
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: "100px",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {session.label}
-                </span>
+                <span className={classes.sessionNameLabel}>{session.label}</span>
               </div>
 
-              {/* Close button */}
               <button
                 aria-label={`Close session ${session.label}`}
-                onClick={(e) => onClose(e, session)}
-                className={classes.revealOnHover}
-                style={{
-                  marginLeft: "0.125rem",
-                  borderRadius: "0.25rem",
-                  padding: "0.125rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "none",
-                  backgroundColor: "transparent",
-                  color: "inherit",
-                  cursor: "pointer",
-                }}
+                onClick={(event) => onClose(event, session)}
+                className={`${classes.revealOnHover} ${classes.closeButton}`}
               >
                 <X size={10} />
               </button>
@@ -481,33 +484,39 @@ function FlatTabs({
           );
         })}
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          flexShrink: 0,
-          borderLeft: "1px solid var(--border)",
-        }}
-      >
-        {viewToggle}
-        {newButton}
-        {killButton}
-      </div>
+
+      {actionCluster}
     </div>
   );
 }
 
-/* ─── Shared Session Tab (for grouped view) ─────────────── */
-
 interface SessionTabProps {
   session: AgentSession;
   isActive: boolean;
-  onTabClick: (session: AgentSession) => void;
-  onClose: (e: React.MouseEvent, session: AgentSession) => void;
+  isDragged: boolean;
+  isDropTarget: boolean;
   compact?: boolean;
+  onTabClick: (session: AgentSession) => void;
+  onClose: (event: MouseEvent, session: AgentSession) => void;
+  onDragStart: (event: DragEvent<HTMLElement>, sessionId: string) => void;
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
 }
 
-function SessionTab({ session, isActive, onTabClick, onClose, compact }: SessionTabProps) {
+function SessionTab({
+  session,
+  isActive,
+  isDragged,
+  isDropTarget,
+  compact,
+  onTabClick,
+  onClose,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: SessionTabProps) {
   const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
 
   return (
@@ -515,38 +524,17 @@ function SessionTab({ session, isActive, onTabClick, onClose, compact }: Session
       role="tab"
       aria-selected={isActive}
       onClick={() => onTabClick(session)}
-      className={classes.row}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.375rem",
-        paddingLeft: "0.75rem",
-        paddingRight: "0.75rem",
-        height: compact ? "2rem" : "2.25rem",
-        fontSize: "0.75rem",
-        flexShrink: 0,
-        border: "none",
-        borderRight: "1px solid var(--border)",
-        cursor: "pointer",
-        position: "relative",
-        backgroundColor: isActive ? "var(--bg-secondary)" : "var(--bg-primary)",
-        color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-        transition: "background-color 150ms, color 150ms",
-      }}
+      className={classes.tabButton}
+      data-active={isActive || undefined}
+      data-dragging={isDragged || undefined}
+      data-drop-target={isDropTarget || undefined}
+      data-compact={compact || undefined}
+      draggable
+      onDragStart={(event) => onDragStart(event, session.id)}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
-      {isActive && (
-        <span
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "2px",
-            backgroundColor: "var(--accent)",
-            boxShadow: "0 0 6px 0 var(--accent)",
-          }}
-        />
-      )}
       <span
         style={{
           fontWeight: "bold",
@@ -568,32 +556,11 @@ function SessionTab({ session, isActive, onTabClick, onClose, compact }: Session
           backgroundColor: statusColor.bg,
         }}
       />
-      <span
-        style={{
-          maxWidth: "120px",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {session.label}
-      </span>
+      <span className={classes.sessionNameLabel}>{session.label}</span>
       <button
         aria-label={`Close session ${session.label}`}
-        onClick={(e) => onClose(e, session)}
-        className={classes.revealOnHover}
-        style={{
-          marginLeft: "0.25rem",
-          borderRadius: "0.25rem",
-          padding: "0.125rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          backgroundColor: "transparent",
-          color: "inherit",
-          cursor: "pointer",
-        }}
+        onClick={(event) => onClose(event, session)}
+        className={`${classes.revealOnHover} ${classes.closeButton}`}
       >
         <X size={10} />
       </button>

@@ -34,18 +34,19 @@ function readXtermBuffer(term: Terminal, lineCount = 40): string {
 
 interface TerminalPanelProps {
   session: AgentSession;
-  isActive: boolean;
+  isVisible: boolean;
+  isFocused: boolean;
   projectPath: string;
 }
 
-export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelProps) {
+export function TerminalPanel({ session, isVisible, isFocused, projectPath }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const spawnedRef = useRef(false);
   const agentDefRef = useRef<AgentDefinition | null>(null);
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
+  const isVisibleRef = useRef(isVisible);
+  isVisibleRef.current = isVisible;
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
 
@@ -249,9 +250,9 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
       }
     });
 
-    // ResizeObserver for auto-fit — use isActiveRef to avoid stale closure
+    // ResizeObserver for auto-fit — use isVisibleRef to avoid stale closure
     const observer = new ResizeObserver(() => {
-      if (!isActiveRef.current) return;
+      if (!isVisibleRef.current) return;
       // Guard against fitting into a 0-width hidden container
       const el = containerRef.current;
       if (!el || el.clientWidth < 100 || el.clientHeight < 50) return;
@@ -294,9 +295,9 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id]);
 
-  // Fit terminal when it becomes active
+  // Fit terminal when it becomes visible or focused
   useEffect(() => {
-    if (isActive && fitAddonRef.current) {
+    if (isVisible && fitAddonRef.current) {
       setTimeout(() => {
         try {
           fitAddonRef.current?.fit();
@@ -305,7 +306,16 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
         }
       }, 50);
     }
-  }, [isActive]);
+  }, [isVisible, isFocused]);
+
+  useEffect(() => {
+    if (!isFocused || !termRef.current) return;
+    try {
+      termRef.current.focus();
+    } catch {
+      // ignore
+    }
+  }, [isFocused]);
 
   // Re-spawn when yoloMode changes (and session is already started or errored)
   const prevYoloRef = useRef(session.yoloMode);
@@ -331,7 +341,7 @@ export function TerminalPanel({ session, isActive, projectPath }: TerminalPanelP
     <div
       ref={containerRef}
       style={{
-        display: isActive ? "flex" : "none",
+        display: isVisible ? "flex" : "none",
         width: "100%",
         height: "100%",
         flex: 1,

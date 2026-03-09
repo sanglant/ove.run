@@ -9,6 +9,19 @@ interface KnowledgeEditorProps {
   onCancel: () => void;
 }
 
+function formatKnowledgeType(type: KnowledgeEntry["content_type"]): string {
+  switch (type) {
+    case "system_prompt":
+      return "System prompt";
+    case "context_file":
+      return "Context file";
+    case "notes":
+      return "Knowledge note";
+    default:
+      return type;
+  }
+}
+
 export function KnowledgeEditor({
   entry,
   content: initialContent,
@@ -19,8 +32,6 @@ export function KnowledgeEditor({
   const [saving, setSaving] = useState(false);
   const previousInitialContentRef = useRef(initialContent);
 
-  // Sync on external content updates only when the user has not diverged from the
-  // previous saved value, so async save completions do not clobber newer typing.
   useEffect(() => {
     if (content === previousInitialContentRef.current) {
       setContent(initialContent);
@@ -44,12 +55,14 @@ export function KnowledgeEditor({
       content={content}
       onContentChange={setContent}
       title={entry.name}
-      subtitle={entry.content_type.replace(/_/g, " ")}
+      eyebrow="Knowledge base"
+      subtitle={formatKnowledgeType(entry.content_type)}
+      updatedAt={entry.updated_at}
       dirty={dirty}
       saving={saving}
       onSave={handleSave}
       onCancel={onCancel}
-      placeholder="Enter content here…"
+      placeholder="Build the markdown document here…"
     />
   );
 }

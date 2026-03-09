@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
+import { Modal, TextInput, Text } from "@mantine/core";
+import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
 import { useProjectStore } from "@/stores/projectStore";
 import {
   listNotes,
@@ -9,28 +11,27 @@ import {
   deleteNote,
 } from "@/lib/tauri";
 import type { ProjectNote } from "@/types";
-import { Button, Group, Modal, Text, TextInput } from "@mantine/core";
-import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
 import classes from "./NotesPanel.module.css";
 
-const inputStyles = {
-  input: {
-    backgroundColor: "var(--bg-secondary)",
-    borderColor: "var(--border)",
-    color: "var(--text-primary)",
-    fontSize: "12px",
-  },
-};
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
+function formatRelativeDate(iso: string): string {
+  const date = new Date(iso);
   const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / 86_400_000);
-  if (diffDays === 0) return "Today";
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+
+  if (diffDays <= 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatAbsoluteDate(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function NotesPanel() {
@@ -40,8 +41,6 @@ export function NotesPanel() {
   const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
-
-  // Editor state — owned here so workspace can be fully controlled
   const [editorContent, setEditorContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
   const [editorTitle, setEditorTitle] = useState("");
@@ -49,23 +48,18 @@ export function NotesPanel() {
   const [saving, setSaving] = useState(false);
   const [pendingDeleteNote, setPendingDeleteNote] = useState<ProjectNote | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // Tracks the most-recently-requested note id so stale async responses are
-  // silently discarded. A ref (not state) because updating it must never
-  // trigger a re-render of its own.
-  const selectionTokenRef = useRef<string | null>(null);
-
-  // New note form
   const [showNewForm, setShowNewForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
 
+  const selectionTokenRef = useRef<string | null>(null);
+
   const loadNotes = useCallback(async () => {
     if (!activeProjectId) return;
+
     setLoadingList(true);
     try {
       const data = await listNotes(activeProjectId);
-      // Sort by updated_at descending
       data.sort(
         (a, b) =>
           new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
@@ -79,18 +73,23 @@ export function NotesPanel() {
   }, [activeProjectId]);
 
   useEffect(() => {
+    selectionTokenRef.current = null;
+
     if (!activeProjectId) {
       setNotes([]);
       setSelectedNote(null);
       setEditorContent("");
       setSavedContent("");
+      setEditorTitle("");
+      setSavedTitle("");
+      setLoadingContent(false);
       return;
     }
-    loadNotes();
+
+    void loadNotes();
   }, [activeProjectId, loadNotes]);
 
   const handleSelectNote = async (note: ProjectNote) => {
-    // Stamp this invocation so any earlier in-flight load can detect it is stale.
     const token = note.id;
     selectionTokenRef.current = token;
 
@@ -109,8 +108,6 @@ export function NotesPanel() {
       failed = true;
     }
 
-    // If another note was selected while we were awaiting, throw away this
-    // result entirely — do NOT touch any state that belongs to the new selection.
     if (selectionTokenRef.current !== token) return;
 
     setLoadingContent(false);
@@ -118,33 +115,31 @@ export function NotesPanel() {
     setSavedContent(failed ? "" : content);
   };
 
-  const dirty =
-    editorContent !== savedContent || editorTitle !== savedTitle;
+  const dirty = editorContent !== savedContent || editorTitle !== savedTitle;
 
   const handleSave = async () => {
     if (!selectedNote || !activeProjectId) return;
+
     setSaving(true);
     try {
+      const finalTitle = editorTitle.trim() || selectedNote.title;
+      const nextUpdatedAt = new Date().toISOString();
+
       await updateNote(
         activeProjectId,
         selectedNote.id,
-        editorTitle.trim() || selectedNote.title,
+        finalTitle,
         editorContent,
       );
+
       setSavedContent(editorContent);
-      const finalTitle = editorTitle.trim() || selectedNote.title;
       setSavedTitle(finalTitle);
-      // Refresh list & bubble updated_at
       setNotes((prev) =>
         prev
-          .map((n) =>
-            n.id === selectedNote.id
-              ? {
-                  ...n,
-                  title: finalTitle,
-                  updated_at: new Date().toISOString(),
-                }
-              : n,
+          .map((note) =>
+            note.id === selectedNote.id
+              ? { ...note, title: finalTitle, updated_at: nextUpdatedAt }
+              : note,
           )
           .sort(
             (a, b) =>
@@ -153,7 +148,9 @@ export function NotesPanel() {
           ),
       );
       setSelectedNote((prev) =>
-        prev ? { ...prev, title: finalTitle } : prev,
+        prev
+          ? { ...prev, title: finalTitle, updated_at: nextUpdatedAt }
+          : prev,
       );
     } catch (err) {
       console.error("Failed to save note:", err);
@@ -164,13 +161,14 @@ export function NotesPanel() {
 
   const handleCreate = async () => {
     if (!activeProjectId || !newTitle.trim()) return;
+
     setCreating(true);
     try {
       const note = await createNote(activeProjectId, newTitle.trim(), "");
       setNotes((prev) => [note, ...prev]);
       setShowNewForm(false);
       setNewTitle("");
-      handleSelectNote(note);
+      void handleSelectNote(note);
     } catch (err) {
       console.error("Failed to create note:", err);
     } finally {
@@ -180,17 +178,22 @@ export function NotesPanel() {
 
   const handleDelete = async () => {
     if (!activeProjectId || !pendingDeleteNote) return;
+
     setDeleting(true);
     try {
       await deleteNote(activeProjectId, pendingDeleteNote.id);
-      setNotes((prev) => prev.filter((n) => n.id !== pendingDeleteNote.id));
+      setNotes((prev) => prev.filter((note) => note.id !== pendingDeleteNote.id));
+
       if (selectedNote?.id === pendingDeleteNote.id) {
+        selectionTokenRef.current = null;
         setSelectedNote(null);
         setEditorContent("");
         setSavedContent("");
         setEditorTitle("");
         setSavedTitle("");
+        setLoadingContent(false);
       }
+
       setPendingDeleteNote(null);
     } catch (err) {
       console.error("Failed to delete note:", err);
@@ -200,112 +203,106 @@ export function NotesPanel() {
   };
 
   const handleCancel = () => {
+    selectionTokenRef.current = null;
     setSelectedNote(null);
     setEditorContent("");
     setSavedContent("");
     setEditorTitle("");
     setSavedTitle("");
+    setLoadingContent(false);
   };
 
   if (!activeProjectId) {
     return (
-      <div className={classes.empty}>
-        <StickyNote size={32} strokeWidth={1} style={{ opacity: 0.35 }} />
-        <p>Select a project to view notes</p>
+      <div className={classes.emptyState}>
+        <StickyNote size={34} strokeWidth={1} className={classes.emptyIcon} />
+        <p>Select a project to open your notes workspace.</p>
       </div>
     );
   }
 
   return (
     <div className={classes.root}>
-      {/* ── Left: notes list ── */}
-      <aside className={classes.sidebar} aria-label="Notes list">
-        {/* Header */}
+      <aside className={classes.sidebar} aria-label="Notes navigation">
         <div className={classes.sidebarHeader}>
-          <Group gap={8} wrap="nowrap">
-            <FileText size={14} color="var(--accent)" />
-            <span className={classes.sidebarTitle}>Notes</span>
-          </Group>
+          <div>
+            <p className={classes.sidebarEyebrow}>Markdown workspace</p>
+            <div className={classes.sidebarTitleRow}>
+              <FileText size={15} className={classes.sidebarTitleIcon} />
+              <h2 className={classes.sidebarTitle}>Notes</h2>
+              <span className={classes.countBadge}>{notes.length}</span>
+            </div>
+            <p className={classes.sidebarDescription}>
+              Browse documents, then open one into the full writing view.
+            </p>
+          </div>
+
           <button
+            type="button"
+            className={classes.iconButton}
             onClick={() => setShowNewForm(true)}
-            aria-label="New note"
-            className={classes.iconBtn}
+            aria-label="Create note"
+            title="Create note"
           >
-            <Plus size={14} />
+            <Plus size={15} />
           </button>
         </div>
 
-        {/* New note form */}
         {showNewForm && (
-          <div className={classes.newForm}>
+          <form
+            className={classes.newForm}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+          >
+            <div className={classes.newFormHeader}>
+              <span className={classes.newFormEyebrow}>New note</span>
+              <p className={classes.newFormText}>Start with a title. The body opens immediately.</p>
+            </div>
             <TextInput
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Note title…"
+              placeholder="Project brief, meeting log, draft…"
               autoFocus
-              styles={inputStyles}
+              classNames={{ input: classes.fieldInput }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
                 if (e.key === "Escape") {
                   setShowNewForm(false);
                   setNewTitle("");
                 }
               }}
             />
-            <Group gap={6} grow>
-              <Button
-                onClick={handleCreate}
+            <div className={classes.formActions}>
+              <button
+                type="submit"
+                className={classes.primaryButton}
                 disabled={creating || !newTitle.trim()}
-                size="xs"
-                styles={{
-                  root: {
-                    backgroundColor: "var(--accent)",
-                    color: "var(--bg-primary)",
-                    "&:hover:not(:disabled)": {
-                      backgroundColor: "var(--accent-hover)",
-                    },
-                    "&:disabled": { opacity: 0.4 },
-                  },
-                }}
               >
-                {creating ? "Creating…" : "Create"}
-              </Button>
-              <Button
-                variant="default"
-                size="xs"
+                {creating ? "Creating…" : "Create note"}
+              </button>
+              <button
+                type="button"
+                className={classes.secondaryButton}
                 onClick={() => {
                   setShowNewForm(false);
                   setNewTitle("");
                 }}
-                styles={{
-                  root: {
-                    backgroundColor: "transparent",
-                    borderColor: "var(--border)",
-                    color: "var(--text-secondary)",
-                    "&:hover": {
-                      backgroundColor: "transparent",
-                      color: "var(--text-primary)",
-                    },
-                  },
-                }}
               >
                 Cancel
-              </Button>
-            </Group>
-          </div>
+              </button>
+            </div>
+          </form>
         )}
 
-        {/* Notes list */}
         <div className={classes.list} role="list">
           {loadingList ? (
-            <div className={classes.listEmpty}>Loading…</div>
+            <div className={classes.listMessage}>Loading notes…</div>
           ) : notes.length === 0 ? (
             <div className={classes.listEmpty}>
-              <StickyNote
-                size={22}
-                style={{ margin: "0 auto 8px", display: "block", opacity: 0.3 }}
-              />
-              No notes yet
+              <StickyNote size={24} strokeWidth={1} className={classes.emptyListIcon} />
+              <p>No notes yet.</p>
+              <span>Create the first document to start your workspace.</span>
             </div>
           ) : (
             notes.map((note) => {
@@ -313,19 +310,29 @@ export function NotesPanel() {
               return (
                 <div
                   key={note.id}
-                  className={`${classes.noteRow} ${isSelected ? classes.noteRowActive : ""}`}
-                  onClick={() => handleSelectNote(note)}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={isSelected}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSelectNote(note);
-                  }}
+                  className={`${classes.listItem} ${isSelected ? classes.listItemActive : ""}`}
                 >
-                  <div className={classes.noteRowInner}>
-                    <span className={classes.noteTitle}>{note.title}</span>
-                    <span className={classes.noteDate}>
-                      {formatDate(note.updated_at)}
+                  <div className={classes.cardAccent} aria-hidden="true" />
+                  <div
+                    className={classes.noteCard}
+                    onClick={() => void handleSelectNote(note)}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        void handleSelectNote(note);
+                      }
+                    }}
+                  >
+                    <div className={classes.cardMetaRow}>
+                      <span className={classes.cardChip}>Markdown note</span>
+                      <span className={classes.cardDate}>{formatRelativeDate(note.updated_at)}</span>
+                    </div>
+                    <span className={classes.cardTitle}>{note.title}</span>
+                    <span className={classes.cardDescription}>
+                      Last touched {formatAbsoluteDate(note.updated_at)}
                     </span>
                   </div>
                   <button
@@ -342,9 +349,9 @@ export function NotesPanel() {
                       setPendingDeleteNote(note);
                     }}
                     aria-label={`Delete ${note.title}`}
-                    className={classes.deleteBtn}
+                    className={classes.deleteButton}
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={12} />
                   </button>
                 </div>
               );
@@ -353,7 +360,6 @@ export function NotesPanel() {
         </div>
       </aside>
 
-      {/* ── Right: editor ── */}
       <main className={classes.editorArea}>
         {selectedNote && !loadingContent ? (
           <MarkdownEditorWorkspace
@@ -363,6 +369,9 @@ export function NotesPanel() {
             title={editorTitle}
             onTitleChange={setEditorTitle}
             titleEditable
+            eyebrow="Project note"
+            subtitle="Markdown-first drafting space"
+            updatedAt={selectedNote.updated_at}
             dirty={dirty}
             saving={saving}
             onSave={handleSave}
@@ -370,13 +379,13 @@ export function NotesPanel() {
             placeholder="Start writing your note…"
           />
         ) : selectedNote && loadingContent ? (
-          <div className={classes.empty}>
-            <p>Loading…</p>
+          <div className={classes.emptyState}>
+            <p>Loading note…</p>
           </div>
         ) : (
-          <div className={classes.empty}>
-            <StickyNote size={40} strokeWidth={1} style={{ opacity: 0.25 }} />
-            <p>Select a note or create a new one</p>
+          <div className={classes.emptyState}>
+            <StickyNote size={42} strokeWidth={1} className={classes.emptyIcon} />
+            <p>Select a note to enter the editor workspace.</p>
           </div>
         )}
       </main>
@@ -414,42 +423,24 @@ export function NotesPanel() {
         <Text size="sm" c="var(--text-secondary)" mb="md">
           Delete "{pendingDeleteNote?.title}"? This cannot be undone.
         </Text>
-        <Group justify="flex-end" gap={8}>
-          <Button
-            variant="default"
+        <div className={classes.modalActions}>
+          <button
+            type="button"
+            className={classes.secondaryButton}
             onClick={() => setPendingDeleteNote(null)}
             disabled={deleting}
-            styles={{
-              root: {
-                backgroundColor: "transparent",
-                borderColor: "var(--border)",
-                color: "var(--text-secondary)",
-                "&:hover:not(:disabled)": {
-                  backgroundColor: "transparent",
-                  color: "var(--text-primary)",
-                },
-              },
-            }}
           >
             Cancel
-          </Button>
-          <Button
-            color="red"
-            onClick={handleDelete}
-            loading={deleting}
-            styles={{
-              root: {
-                backgroundColor: "var(--danger)",
-                color: "#fff",
-                "&:hover:not(:disabled)": {
-                  opacity: 0.9,
-                },
-              },
-            }}
+          </button>
+          <button
+            type="button"
+            className={classes.dangerButton}
+            onClick={() => void handleDelete()}
+            disabled={deleting}
           >
-            Delete note
-          </Button>
-        </Group>
+            {deleting ? "Deleting…" : "Delete note"}
+          </button>
+        </div>
       </Modal>
     </div>
   );

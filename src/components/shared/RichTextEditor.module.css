@@ -1,0 +1,365 @@
+.root {
+  height: 100%;
+  overflow-y: auto;
+  padding: 40px clamp(20px, 4vw, 56px) 60px;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+/* ── ProseMirror content ────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) {
+  outline: none;
+  min-height: 100%;
+  caret-color: var(--accent-glow);
+}
+
+.root :global(.ProseMirror) > * {
+  max-width: 72ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Headings ───────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) h1,
+.root :global(.ProseMirror) h2,
+.root :global(.ProseMirror) h3,
+.root :global(.ProseMirror) h4,
+.root :global(.ProseMirror) h5,
+.root :global(.ProseMirror) h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin-top: 2em;
+  margin-bottom: 0.4em;
+}
+
+.root :global(.ProseMirror) h1:first-child,
+.root :global(.ProseMirror) h2:first-child,
+.root :global(.ProseMirror) h3:first-child {
+  margin-top: 0;
+}
+
+.root :global(.ProseMirror) h1 {
+  font-size: 2.2em;
+}
+
+.root :global(.ProseMirror) h2 {
+  font-size: 1.5em;
+}
+
+.root :global(.ProseMirror) h3 {
+  font-size: 1.2em;
+}
+
+.root :global(.ProseMirror) h4 {
+  font-size: 1.06em;
+}
+
+.root :global(.ProseMirror) h5,
+.root :global(.ProseMirror) h6 {
+  color: var(--text-secondary);
+  font-size: 0.95em;
+}
+
+/* ── Paragraph ──────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) p {
+  margin-bottom: 0.8em;
+  color: var(--text-primary);
+}
+
+.root :global(.ProseMirror) p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Inline code ────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) code {
+  font-family: var(--mantine-font-family-monospace, "Geist Mono", monospace);
+  font-size: 0.88em;
+  background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-bright) 86%, transparent);
+  border-radius: 4px;
+  padding: 0.14em 0.4em;
+  color: var(--accent-glow);
+}
+
+/* ── Code block ─────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) pre {
+  margin-bottom: 1.2em;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  overflow-x: auto;
+}
+
+.root :global(.ProseMirror) pre code {
+  font-family: var(--mantine-font-family-monospace, "Geist Mono", monospace);
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.7;
+  white-space: pre;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* ── Blockquote ─────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) blockquote {
+  margin: 0 0 1.2em;
+  padding: 4px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
+  background: none;
+}
+
+.root :global(.ProseMirror) blockquote p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* ── Lists ──────────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) ul,
+.root :global(.ProseMirror) ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.root :global(.ProseMirror) ul li,
+.root :global(.ProseMirror) ol li {
+  margin-bottom: 0.35em;
+  color: var(--text-primary);
+}
+
+/* ── Task list ──────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li label {
+  display: flex;
+  align-items: center;
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid color-mix(in srgb, var(--border-bright) 90%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  cursor: pointer;
+  position: relative;
+  top: 5px;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li label input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li label input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: 2px solid var(--bg-primary);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.root :global(.ProseMirror) ul[data-type="taskList"] li label input[type="checkbox"]:focus-visible {
+  box-shadow: var(--glow-accent);
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) a {
+  color: var(--accent-glow);
+  text-decoration: none;
+  cursor: text;
+  transition: text-decoration-color 120ms ease;
+}
+
+.root :global(.ProseMirror) a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Horizontal rule ────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--border-bright) 70%, transparent);
+  margin: 2.5em auto;
+}
+
+/* ── Placeholder ────────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) :global(.is-editor-empty):first-child::before {
+  color: var(--text-tertiary);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  font-style: italic;
+}
+
+/* ── Inline styles ──────────────────────────────────────────────────────────── */
+
+.root :global(.ProseMirror) del,
+.root :global(.ProseMirror) s {
+  color: inherit;
+}
+
+.root :global(.ProseMirror) strong {
+  color: inherit;
+}
+
+.root :global(.ProseMirror) em {
+  color: inherit;
+}
+
+/* ── Bubble menu (selection toolbar) ────────────────────────────────────────── */
+
+.bubbleMenu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24), 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.bubbleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.bubbleBtn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, transparent);
+}
+
+.bubbleBtnActive {
+  color: var(--accent-glow);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.bubbleDivider {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--border);
+}
+
+/* ── Slash command menu ─────────────────────────────────────────────────────── */
+
+.slashMenu {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.12);
+  max-height: 320px;
+  overflow-y: auto;
+  min-width: 240px;
+  padding: 6px;
+}
+
+.slashEmpty {
+  padding: 8px 12px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.slashItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background-color 100ms ease;
+}
+
+.slashItem:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.slashItemActive {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.slashItemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, transparent);
+  color: var(--text-secondary);
+}
+
+.slashItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.slashItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.slashItemDescription {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}

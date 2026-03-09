@@ -1,146 +1,77 @@
-/**
- * MarkdownEditorWorkspace — shared editor used by both Knowledge and Notes panels.
- *
- * Fully controlled: parent owns content + title state.
- *
- * Raw mode:      editable textarea.
- * Preview mode:  MarkdownPreview with click-to-edit blocks (editable preview).
- *
- * Both modes expose a formatting toolbar: H1–H3, Bold, Italic, Underline,
- * Strikethrough, inline Code, Blockquote, Checkbox, Link.
- *
- * The toolbar works in both modes by tracking which textarea is currently
- * focused (raw textarea or a preview block's inline textarea) via `activeEditorRef`.
- */
-import { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Save, X, Eye, Code,
-  Heading1, Heading2, Heading3,
-  Bold, Italic, Underline, Strikethrough,
-  Quote, Link, ListTodo,
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+import {
+  Save,
+  X,
+  PenLine,
+  Columns2,
+  Code2,
 } from "lucide-react";
-import { ActionIcon, Button, Group, Text, Tooltip } from "@mantine/core";
-import { MarkdownPreview, type ActiveEditor } from "./MarkdownPreview";
+import { useUiStore, type EditorLayoutMode } from "@/stores/uiStore";
+import { RichTextEditor } from "./RichTextEditor";
 import styles from "./MarkdownEditorWorkspace.module.css";
 
-export type ViewMode = "raw" | "markdown";
-
 interface MarkdownEditorWorkspaceProps {
-  /** Controlled content value */
   content: string;
   onContentChange: (value: string) => void;
-
-  /** Optional editable title (for Notes) */
   title?: string;
   onTitleChange?: (value: string) => void;
   titleEditable?: boolean;
-
-  /** Metadata shown under the title */
   subtitle?: string;
-
-  /** Save state driven by parent */
+  eyebrow?: string;
+  updatedAt?: string;
   dirty?: boolean;
   saving?: boolean;
   onSave?: () => void;
-
-  /** Close/deselect callback */
   onCancel?: () => void;
-
   placeholder?: string;
 }
 
-// ── Formatting helpers ────────────────────────────────────────────────────────
+function formatUpdatedAt(updatedAt?: string): string | null {
+  if (!updatedAt) return null;
 
-type FormatType =
-  | "h1" | "h2" | "h3"
-  | "bold" | "italic" | "underline" | "strike" | "code"
-  | "blockquote" | "checkbox" | "link";
+  const date = new Date(updatedAt);
+  if (Number.isNaN(date.getTime())) return null;
 
-/**
- * Applies a markdown formatting operation to a textarea.
- * Uses requestAnimationFrame to restore focus + selection after React
- * re-renders the controlled textarea with the new value.
- */
-function applyFormatting(
-  el: HTMLTextAreaElement,
-  type: FormatType,
-  onChange: (v: string) => void,
-) {
-  const { value } = el;
-  const ss = el.selectionStart ?? 0;
-  const se = el.selectionEnd ?? 0;
-
-  // ── Line-prefix operations ─────────────────────────────────────────────────
-  if (
-    type === "h1" || type === "h2" || type === "h3" ||
-    type === "blockquote" || type === "checkbox"
-  ) {
-    const lineStart = value.lastIndexOf("\n", ss - 1) + 1;
-    const rawLineEnd = value.indexOf("\n", se);
-    const lineEnd = rawLineEnd === -1 ? value.length : rawLineEnd;
-
-    const selectedLines = value.slice(lineStart, lineEnd).split("\n");
-    const prefix =
-      type === "h1"         ? "# "     :
-      type === "h2"         ? "## "    :
-      type === "h3"         ? "### "   :
-      type === "blockquote" ? "> "     :
-      /* checkbox */          "- [ ] ";
-
-    const processed = selectedLines.map((line) => {
-      if (type === "checkbox" && /^[-*+] \[[ xX]\] /.test(line)) {
-        return line.replace(/^[-*+] \[[ xX]\] /, "");
-      }
-      // Toggle off if already prefixed with exactly this prefix
-      if (line.startsWith(prefix)) return line.slice(prefix.length);
-      // Replace a different heading prefix
-      if (type.startsWith("h")) {
-        const existing = line.match(/^#{1,6} /);
-        if (existing) return prefix + line.slice(existing[0].length);
-      }
-      return prefix + line;
-    });
-
-    const newBlock    = processed.join("\n");
-    const newValue    = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
-    const delta       = newBlock.length - (lineEnd - lineStart);
-
-    onChange(newValue);
-    requestAnimationFrame(() => {
-      if (!el.isConnected) return;
-      el.focus();
-      el.setSelectionRange(ss + delta, se + delta);
-    });
-    return;
-  }
-
-  // ── Inline wrap operations ─────────────────────────────────────────────────
-  const WRAP: Record<string, [string, string, string]> = {
-    bold:      ["**",   "**",    "bold text"],
-    italic:    ["*",    "*",     "italic text"],
-    underline: ["<u>",  "</u>",  "underlined text"],
-    strike:    ["~~",   "~~",    "strikethrough"],
-    code:      ["`",    "`",     "code"],
-    link:      ["[",    "](url)", "link text"],
-  };
-
-  const [open, close, placeholder] = WRAP[type] ?? ["", "", ""];
-  if (!open) return;
-
-  const selected = value.slice(ss, se) || placeholder;
-  const newValue = value.slice(0, ss) + open + selected + close + value.slice(se);
-  const newSS    = ss + open.length;
-  const newSE    = newSS + selected.length;
-
-  onChange(newValue);
-  requestAnimationFrame(() => {
-    if (!el.isConnected) return;
-    el.focus();
-    el.setSelectionRange(newSS, newSE);
-  });
+  return `Updated ${date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const layoutOptions: Array<{
+  mode: EditorLayoutMode;
+  icon: ReactNode;
+  label: string;
+  hint: string;
+}> = [
+  {
+    mode: "write",
+    icon: <PenLine size={13} />,
+    label: "Write",
+    hint: "Rich text editor with formatting menus",
+  },
+  {
+    mode: "split",
+    icon: <Columns2 size={13} />,
+    label: "Split",
+    hint: "Rich text and raw markdown side by side",
+  },
+  {
+    mode: "raw",
+    icon: <Code2 size={13} />,
+    label: "Raw",
+    hint: "Edit raw markdown source directly",
+  },
+];
 
 export function MarkdownEditorWorkspace({
   content,
@@ -149,37 +80,18 @@ export function MarkdownEditorWorkspace({
   onTitleChange,
   titleEditable = false,
   subtitle,
+  eyebrow,
+  updatedAt,
   dirty = false,
   saving = false,
   onSave,
   onCancel,
   placeholder = "Start writing…",
 }: MarkdownEditorWorkspaceProps) {
-  const [viewMode, setViewMode]       = useState<ViewMode>("raw");
+  const { editorLayoutMode, setEditorLayoutMode } = useUiStore();
   const [editingTitle, setEditingTitle] = useState(false);
 
-  const titleInputRef  = useRef<HTMLInputElement>(null);
-  const rawTextareaRef = useRef<HTMLTextAreaElement>(null);
-  // Points to whichever textarea is "active" for formatting toolbar actions
-  const activeEditorRef = useRef<ActiveEditor | null>(null);
-
-  // Keep activeEditorRef in sync when switching to raw mode
-  useEffect(() => {
-    if (viewMode === "raw") {
-      activeEditorRef.current = rawTextareaRef.current
-        ? { el: rawTextareaRef.current, onChange: onContentChange }
-        : null;
-    } else {
-      activeEditorRef.current = null;
-    }
-  }, [viewMode, onContentChange]);
-
-  // Re-sync raw textarea ref into activeEditorRef when onContentChange identity changes
-  const syncRawEditor = useCallback(() => {
-    if (viewMode === "raw" && rawTextareaRef.current) {
-      activeEditorRef.current = { el: rawTextareaRef.current, onChange: onContentChange };
-    }
-  }, [viewMode, onContentChange]);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -188,56 +100,93 @@ export function MarkdownEditorWorkspace({
     }
   }, [editingTitle]);
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === "Escape") setEditingTitle(false);
+  const handleTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === "Escape") {
+      setEditingTitle(false);
+    }
   };
 
-  const handleFormat = (type: FormatType) => {
-    // Resolve the active editor: prefer explicit registration, fall back to raw textarea
-    const editor =
-      activeEditorRef.current ??
-      (viewMode === "raw" && rawTextareaRef.current
-        ? { el: rawTextareaRef.current, onChange: onContentChange }
-        : null);
-    if (!editor) return;
-    applyFormatting(editor.el, type, editor.onChange);
-  };
+  const metrics = useMemo(() => {
+    const trimmed = content.trim();
+    const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
+    const lineCount = content ? content.split("\n").length : 0;
+    const characterCount = content.length;
+    const readingMinutes =
+      wordCount > 0 ? Math.max(1, Math.ceil(wordCount / 220)) : 0;
 
-  const handlePreviewActiveEditorChange = (editor: ActiveEditor | null) => {
-    activeEditorRef.current = editor;
-  };
+    return { wordCount, lineCount, characterCount, readingMinutes };
+  }, [content]);
 
-  // ── Toolbar buttons config ─────────────────────────────────────────────────
-  const toolbarGroups: Array<Array<{
-    type: FormatType;
-    icon: React.ReactNode;
-    label: string;
-  }>> = [
-    [
-      { type: "h1",   icon: <Heading1 size={13} />,    label: "Heading 1 (# )" },
-      { type: "h2",   icon: <Heading2 size={13} />,    label: "Heading 2 (## )" },
-      { type: "h3",   icon: <Heading3 size={13} />,    label: "Heading 3 (### )" },
-    ],
-    [
-      { type: "bold",      icon: <Bold size={13} />,        label: "Bold (**text**)" },
-      { type: "italic",    icon: <Italic size={13} />,      label: "Italic (*text*)" },
-      { type: "underline", icon: <Underline size={13} />,   label: "Underline (<u>text</u>)" },
-      { type: "strike",    icon: <Strikethrough size={13} />, label: "Strikethrough (~~text~~)" },
-    ],
-    [
-      { type: "code",      icon: <Code size={13} />,      label: "Inline code (`code`)" },
-      { type: "blockquote",icon: <Quote size={13} />,     label: "Blockquote (> )" },
-      { type: "checkbox",  icon: <ListTodo size={13} />,  label: "Task / Checkbox (- [ ] )" },
-      { type: "link",      icon: <Link size={13} />,      label: "Link ([text](url))" },
-    ],
-  ];
+  const updatedLabel = formatUpdatedAt(updatedAt);
+  const showWritePane =
+    editorLayoutMode === "write" || editorLayoutMode === "split";
+  const showRawPane =
+    editorLayoutMode === "raw" || editorLayoutMode === "split";
 
   return (
-    <div className={styles.root}>
-      {/* ── Header ── */}
-      <div className={styles.header}>
-        {/* Left: title + subtitle */}
-        <div className={styles.titleArea}>
+    <section className={styles.root} aria-label="Markdown editor workspace">
+      <div className={styles.headerActions}>
+        {dirty && <span className={styles.unsaved}>Unsaved changes</span>}
+
+        <div
+          className={styles.modeToggle}
+          role="group"
+          aria-label="Editor layout mode"
+        >
+          {layoutOptions.map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              className={`${styles.modeButton} ${
+                editorLayoutMode === option.mode ? styles.modeButtonActive : ""
+              }`}
+              aria-pressed={editorLayoutMode === option.mode}
+              onClick={() => setEditorLayoutMode(option.mode)}
+              title={option.hint}
+            >
+              {option.icon}
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {onCancel && (
+          <button
+            type="button"
+            className={styles.chromeButton}
+            onClick={onCancel}
+            aria-label="Close editor"
+            title="Close"
+          >
+            <X size={14} />
+          </button>
+        )}
+
+        {onSave && (
+          <button
+            type="button"
+            className={styles.saveButton}
+            onClick={onSave}
+            disabled={saving || !dirty}
+            aria-label="Save document"
+          >
+            <Save size={13} />
+            <span>{saving ? "Saving…" : "Save"}</span>
+          </button>
+        )}
+      </div>
+
+      <header className={styles.header}>
+        <div className={styles.identityBlock}>
+          {(eyebrow || subtitle) && (
+            <div className={styles.metaRow}>
+              {eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}
+              {subtitle && (
+                <span className={styles.subtitle}>{subtitle}</span>
+              )}
+            </div>
+          )}
+
           {titleEditable && editingTitle ? (
             <input
               ref={titleInputRef}
@@ -246,148 +195,100 @@ export function MarkdownEditorWorkspace({
               onChange={(e) => onTitleChange?.(e.target.value)}
               onBlur={() => setEditingTitle(false)}
               onKeyDown={handleTitleKeyDown}
-              aria-label="Edit note title"
+              aria-label="Edit document title"
             />
           ) : (
             <span
               className={`${styles.titleText} ${titleEditable ? styles.titleEditable : ""}`}
               onClick={() => titleEditable && setEditingTitle(true)}
-              title={titleEditable ? "Click to rename" : undefined}
               role={titleEditable ? "button" : undefined}
               tabIndex={titleEditable ? 0 : undefined}
+              title={titleEditable ? "Click to rename" : undefined}
               onKeyDown={(e) => {
-                if (titleEditable && (e.key === "Enter" || e.key === " "))
+                if (titleEditable && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
                   setEditingTitle(true);
+                }
               }}
             >
               {title || "Untitled"}
             </span>
           )}
-          {subtitle && (
-            <Text size="xs" c="var(--text-secondary)" className={styles.subtitle}>
-              {subtitle}
-            </Text>
-          )}
+
+          <div className={styles.summaryRow}>
+            {updatedLabel && (
+              <span className={styles.summaryText}>{updatedLabel}</span>
+            )}
+            <span className={styles.summaryText}>
+              {metrics.wordCount} {metrics.wordCount === 1 ? "word" : "words"}
+            </span>
+            <span className={styles.summaryText}>
+              {metrics.lineCount} {metrics.lineCount === 1 ? "line" : "lines"}
+            </span>
+            <span className={styles.summaryText}>
+              {metrics.characterCount}{" "}
+              {metrics.characterCount === 1 ? "character" : "characters"}
+            </span>
+            <span className={styles.summaryText}>
+              {metrics.readingMinutes === 0
+                ? "Draft"
+                : `${metrics.readingMinutes} min read`}
+            </span>
+          </div>
         </div>
+      </header>
 
-        {/* Right: controls */}
-        <Group gap={6} wrap="nowrap" align="center">
-          {dirty && (
-            <Text size="xs" c="var(--warning)" className={styles.unsaved}>
-              Unsaved
-            </Text>
-          )}
-
-          {/* Raw / Markdown toggle */}
-          <div className={styles.modeToggle} role="group" aria-label="View mode">
-            <button
-              className={`${styles.modeBtn} ${viewMode === "raw" ? styles.modeBtnActive : ""}`}
-              onClick={() => setViewMode("raw")}
-              aria-pressed={viewMode === "raw"}
-              title="Raw editor"
-            >
-              <Code size={12} />
-              <span>Raw</span>
-            </button>
-            <button
-              className={`${styles.modeBtn} ${viewMode === "markdown" ? styles.modeBtnActive : ""}`}
-              onClick={() => setViewMode("markdown")}
-              aria-pressed={viewMode === "markdown"}
-              title="Editable preview"
-            >
-              <Eye size={12} />
-              <span>Preview</span>
-            </button>
+      <div
+        className={`${styles.body} ${
+          editorLayoutMode === "split" ? styles.bodySplit : styles.bodySingle
+        }`}
+      >
+        {showWritePane && (
+          <div className={styles.panel}>
+            {editorLayoutMode === "split" && (
+              <div className={styles.panelHeader}>
+                <span className={styles.panelLabel}>Write</span>
+                <span className={styles.panelDescription}>
+                  Select text to format
+                </span>
+              </div>
+            )}
+            <div className={styles.panelSurface}>
+              <RichTextEditor
+                content={content}
+                onContentChange={onContentChange}
+                className={styles.editorViewport}
+                placeholder={placeholder}
+                onSave={onSave}
+              />
+            </div>
           </div>
+        )}
 
-          {onCancel && (
-            <ActionIcon
-              variant="subtle"
-              onClick={onCancel}
-              aria-label="Close editor"
-              styles={{
-                root: {
-                  color: "var(--text-secondary)",
-                  "&:hover": { color: "var(--text-primary)" },
-                },
-              }}
-            >
-              <X size={14} />
-            </ActionIcon>
-          )}
-
-          {onSave && (
-            <Button
-              size="xs"
-              leftSection={<Save size={12} />}
-              onClick={onSave}
-              disabled={saving || !dirty}
-              aria-label="Save"
-              styles={{
-                root: {
-                  backgroundColor: "var(--accent)",
-                  color: "var(--bg-primary)",
-                  "&:hover:not(:disabled)": { backgroundColor: "var(--accent-hover)" },
-                  "&:disabled": { opacity: 0.4, cursor: "not-allowed" },
-                },
-              }}
-            >
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          )}
-        </Group>
-      </div>
-
-      {/* ── Toolbar ── */}
-      <div className={styles.toolbar} role="toolbar" aria-label="Formatting">
-        {toolbarGroups.map((group, gi) => (
-          <div key={gi} className={styles.toolbarGroup}>
-            {group.map(({ type, icon, label }) => (
-              <Tooltip key={type} label={label} position="bottom" withArrow openDelay={600}>
-                <button
-                  className={styles.toolbarBtn}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleFormat(type)}
-                  aria-label={label}
-                  type="button"
-                >
-                  {icon}
-                </button>
-              </Tooltip>
-            ))}
+        {showRawPane && (
+          <div className={styles.panel}>
+            {editorLayoutMode === "split" && (
+              <div className={styles.panelHeader}>
+                <span className={styles.panelLabel}>Raw</span>
+                <span className={styles.panelDescription}>
+                  Markdown source
+                </span>
+              </div>
+            )}
+            <div className={styles.panelSurface}>
+              <textarea
+                className={styles.textarea}
+                value={content}
+                onChange={(e) => onContentChange(e.target.value)}
+                placeholder={placeholder}
+                spellCheck={false}
+                aria-label="Raw markdown editor"
+                aria-multiline="true"
+              />
+            </div>
           </div>
-        ))}
-
-        {viewMode === "markdown" && (
-          <span className={styles.toolbarHint} aria-live="polite">
-            Click a block to edit
-          </span>
         )}
       </div>
-
-      {/* ── Body ── */}
-      <div className={styles.body}>
-        {viewMode === "raw" ? (
-          <textarea
-            ref={rawTextareaRef}
-            className={styles.textarea}
-            value={content}
-            onChange={(e) => onContentChange(e.target.value)}
-            onFocus={syncRawEditor}
-            placeholder={placeholder}
-            spellCheck={false}
-            aria-label="Content editor"
-            aria-multiline="true"
-          />
-        ) : (
-          <MarkdownPreview
-            content={content}
-            className={styles.previewScroll}
-            onContentChange={onContentChange}
-            onActiveEditorChange={handlePreviewActiveEditorChange}
-          />
-        )}
-      </div>
-    </div>
+    </section>
   );
 }

@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { Plus, Trash2, BookOpen, FileText, StickyNote, Cpu } from "lucide-react";
+import { Modal, Select, Text, TextInput } from "@mantine/core";
+import { KnowledgeEditor } from "./KnowledgeEditor";
 import { useProjectStore } from "@/stores/projectStore";
 import {
   listKnowledge,
@@ -8,38 +10,58 @@ import {
   updateKnowledge,
   deleteKnowledge,
 } from "@/lib/tauri";
-import { KnowledgeEditor } from "./KnowledgeEditor";
 import type { KnowledgeEntry, KnowledgeType } from "@/types";
-import { TextInput, Select, Button, Group, Modal, Text } from "@mantine/core";
 import classes from "./KnowledgePanel.module.css";
 
-const TYPE_ICONS: Record<KnowledgeType, React.ReactNode> = {
-  system_prompt: <Cpu size={12} />,
-  context_file: <FileText size={12} />,
-  notes: <StickyNote size={12} />,
+const TYPE_ICONS: Record<KnowledgeType, ReactNode> = {
+  system_prompt: <Cpu size={13} />,
+  context_file: <FileText size={13} />,
+  notes: <StickyNote size={13} />,
 };
 
 const TYPE_LABELS: Record<KnowledgeType, string> = {
-  system_prompt: "System Prompts",
-  context_file: "Context Files",
+  system_prompt: "System prompts",
+  context_file: "Context files",
   notes: "Notes",
 };
 
-const KNOWLEDGE_TYPES: KnowledgeType[] = ["system_prompt", "context_file", "notes"];
+const TYPE_DESCRIPTIONS: Record<KnowledgeType, string> = {
+  system_prompt: "Reusable instructions and framing",
+  context_file: "Reference material for the workspace",
+  notes: "Loose markdown documents and snippets",
+};
+
+const KNOWLEDGE_TYPES: KnowledgeType[] = [
+  "system_prompt",
+  "context_file",
+  "notes",
+];
 
 interface NewEntryForm {
   name: string;
   type: KnowledgeType;
 }
 
-const inputStyles = {
-  input: {
-    backgroundColor: "var(--bg-secondary)",
-    borderColor: "var(--border)",
-    color: "var(--text-primary)",
-    fontSize: "12px",
-  },
-};
+function formatRelativeDate(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
+
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatAbsoluteDate(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export function KnowledgePanel() {
   const { activeProjectId } = useProjectStore();
@@ -57,16 +79,18 @@ export function KnowledgePanel() {
   const [pendingDeleteEntry, setPendingDeleteEntry] = useState<KnowledgeEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Tracks the most-recently-requested entry id so stale async responses are
-  // silently discarded. A ref (not state) because updating it must never
-  // trigger a re-render of its own.
   const selectionTokenRef = useRef<string | null>(null);
 
   const loadEntries = async () => {
     if (!activeProjectId) return;
+
     setLoading(true);
     try {
       const data = await listKnowledge(activeProjectId);
+      data.sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
       setEntries(data);
     } catch (err) {
       console.error("Failed to load knowledge:", err);
@@ -76,17 +100,20 @@ export function KnowledgePanel() {
   };
 
   useEffect(() => {
+    selectionTokenRef.current = null;
+
     if (!activeProjectId) {
       setEntries([]);
       setSelectedEntry(null);
+      setEditorContent("");
+      setLoadingContent(false);
       return;
     }
-    loadEntries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    void loadEntries();
   }, [activeProjectId]);
 
   const handleSelectEntry = async (entry: KnowledgeEntry) => {
-    // Stamp this invocation so any earlier in-flight load can detect it is stale.
     const token = entry.id;
     selectionTokenRef.current = token;
 
@@ -102,8 +129,6 @@ export function KnowledgePanel() {
       failed = true;
     }
 
-    // If another entry was selected while we were awaiting, throw away this
-    // result entirely — do NOT touch any state that belongs to the new selection.
     if (selectionTokenRef.current !== token) return;
 
     setLoadingContent(false);
@@ -112,27 +137,46 @@ export function KnowledgePanel() {
 
   const handleSave = async (content: string) => {
     if (!selectedEntry || !activeProjectId) return;
-    await updateKnowledge(activeProjectId, selectedEntry.id, content);
-    setEditorContent(content);
-    setEntries((prev) =>
-      prev.map((e) =>
-        e.id === selectedEntry.id
-          ? { ...e, updated_at: new Date().toISOString() }
-          : e,
-      ),
-    );
+
+    try {
+      const nextUpdatedAt = new Date().toISOString();
+      await updateKnowledge(activeProjectId, selectedEntry.id, content);
+      setEditorContent(content);
+      setEntries((prev) =>
+        prev
+          .map((entry) =>
+            entry.id === selectedEntry.id
+              ? { ...entry, updated_at: nextUpdatedAt }
+              : entry,
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+          ),
+      );
+      setSelectedEntry((prev) =>
+        prev ? { ...prev, updated_at: nextUpdatedAt } : prev,
+      );
+    } catch (err) {
+      console.error("Failed to save knowledge entry:", err);
+    }
   };
 
   const handleDelete = async () => {
     if (!activeProjectId || !pendingDeleteEntry) return;
+
     setDeleting(true);
     try {
       await deleteKnowledge(activeProjectId, pendingDeleteEntry.id);
-      setEntries((prev) => prev.filter((e) => e.id !== pendingDeleteEntry.id));
+      setEntries((prev) => prev.filter((entry) => entry.id !== pendingDeleteEntry.id));
+
       if (selectedEntry?.id === pendingDeleteEntry.id) {
+        selectionTokenRef.current = null;
         setSelectedEntry(null);
         setEditorContent("");
+        setLoadingContent(false);
       }
+
       setPendingDeleteEntry(null);
     } catch (err) {
       console.error("Failed to delete knowledge entry:", err);
@@ -143,6 +187,7 @@ export function KnowledgePanel() {
 
   const handleCreate = async () => {
     if (!activeProjectId || !newForm.name.trim()) return;
+
     setCreating(true);
     try {
       const entry = await createKnowledge(
@@ -151,10 +196,10 @@ export function KnowledgePanel() {
         newForm.type,
         "",
       );
-      setEntries((prev) => [...prev, entry]);
+      setEntries((prev) => [entry, ...prev]);
       setShowNewForm(false);
       setNewForm({ name: "", type: "notes" });
-      handleSelectEntry(entry);
+      void handleSelectEntry(entry);
     } catch (err) {
       console.error("Failed to create knowledge entry:", err);
     } finally {
@@ -162,313 +207,211 @@ export function KnowledgePanel() {
     }
   };
 
+  const groupedEntries = useMemo(
+    () =>
+      KNOWLEDGE_TYPES.reduce(
+        (acc, type) => {
+          acc[type] = entries.filter((entry) => entry.content_type === type);
+          return acc;
+        },
+        {} as Record<KnowledgeType, KnowledgeEntry[]>,
+      ),
+    [entries],
+  );
+
   if (!activeProjectId) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "var(--text-secondary)",
-          fontSize: "14px",
-        }}
-      >
-        Select a project to view knowledge base
+      <div className={classes.emptyState}>
+        <BookOpen size={34} strokeWidth={1} className={classes.emptyIcon} />
+        <p>Select a project to open the knowledge workspace.</p>
       </div>
     );
   }
 
-  const grouped = KNOWLEDGE_TYPES.reduce(
-    (acc, type) => {
-      acc[type] = entries.filter((e) => e.content_type === type);
-      return acc;
-    },
-    {} as Record<KnowledgeType, KnowledgeEntry[]>,
-  );
-
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      {/* Left: Entry list */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "240px",
-          flexShrink: 0,
-          borderRight: "1px solid var(--border)",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "8px 12px",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <Group gap={8} wrap="nowrap">
-            <BookOpen size={14} color="var(--accent)" />
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "var(--text-primary)",
-              }}
-            >
-              Knowledge
-            </span>
-          </Group>
+    <div className={classes.root}>
+      <aside className={classes.sidebar} aria-label="Knowledge navigation">
+        <div className={classes.sidebarHeader}>
+          <div>
+            <p className={classes.sidebarEyebrow}>Reference workspace</p>
+            <div className={classes.sidebarTitleRow}>
+              <BookOpen size={15} className={classes.sidebarTitleIcon} />
+              <h2 className={classes.sidebarTitle}>Knowledge</h2>
+              <span className={classes.countBadge}>{entries.length}</span>
+            </div>
+            <p className={classes.sidebarDescription}>
+              Open prompts, context files, and notes in the same markdown editor shell.
+            </p>
+          </div>
+
           <button
+            type="button"
+            className={classes.iconButton}
             onClick={() => setShowNewForm(true)}
-            aria-label="New knowledge entry"
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--text-secondary)",
-              padding: 0,
-              display: "flex",
-              alignItems: "center",
-              transition: "color 150ms",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--accent)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "var(--text-secondary)")
-            }
+            aria-label="Create knowledge entry"
+            title="Create knowledge entry"
           >
-            <Plus size={14} />
+            <Plus size={15} />
           </button>
         </div>
 
-        {/* New entry form */}
         {showNewForm && (
-          <div
-            style={{
-              padding: "12px",
-              borderBottom: "1px solid var(--border)",
-              backgroundColor: "var(--bg-tertiary)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
+          <form
+            className={classes.newForm}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
             }}
           >
+            <div className={classes.newFormHeader}>
+              <span className={classes.newFormEyebrow}>New entry</span>
+              <p className={classes.newFormText}>
+                Choose a document type, then jump straight into the markdown workspace.
+              </p>
+            </div>
             <TextInput
               value={newForm.name}
-              onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Entry name..."
+              onChange={(e) =>
+                setNewForm((form) => ({ ...form, name: e.target.value }))
+              }
+              placeholder="System primer, reference note, checklist…"
               autoFocus
-              styles={inputStyles}
+              classNames={{ input: classes.fieldInput }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-                if (e.key === "Escape") setShowNewForm(false);
+                if (e.key === "Escape") {
+                  setShowNewForm(false);
+                  setNewForm({ name: "", type: "notes" });
+                }
               }}
             />
             <Select
-              data={KNOWLEDGE_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
+              data={KNOWLEDGE_TYPES.map((type) => ({
+                value: type,
+                label: TYPE_LABELS[type],
+              }))}
               value={newForm.type}
-              onChange={(v) =>
-                setNewForm((f) => ({ ...f, type: (v ?? "notes") as KnowledgeType }))
+              onChange={(value) =>
+                setNewForm((form) => ({
+                  ...form,
+                  type: (value ?? "notes") as KnowledgeType,
+                }))
               }
-              styles={{
-                input: {
-                  backgroundColor: "var(--bg-secondary)",
-                  borderColor: "var(--border)",
-                  color: "var(--text-primary)",
-                  fontSize: "12px",
-                },
-                dropdown: {
-                  backgroundColor: "var(--bg-elevated)",
-                  borderColor: "var(--border)",
-                },
-                option: {
-                  fontSize: "12px",
-                  "&[data-selected]": { backgroundColor: "var(--accent)" },
-                },
+              classNames={{
+                input: classes.fieldInput,
+                dropdown: classes.selectDropdown,
+                option: classes.selectOption,
               }}
             />
-            <Group gap={6} grow>
-              <Button
-                onClick={handleCreate}
+            <div className={classes.formActions}>
+              <button
+                type="submit"
+                className={classes.primaryButton}
                 disabled={creating || !newForm.name.trim()}
-                size="xs"
-                styles={{
-                  root: {
-                    backgroundColor: "var(--accent)",
-                    color: "var(--bg-primary)",
-                    "&:hover": { backgroundColor: "var(--accent-hover)" },
-                    "&:disabled": { opacity: 0.4 },
-                  },
-                }}
               >
-                {creating ? "Creating..." : "Create"}
-              </Button>
-              <Button
-                variant="default"
-                size="xs"
-                onClick={() => setShowNewForm(false)}
-                styles={{
-                  root: {
-                    backgroundColor: "transparent",
-                    borderColor: "var(--border)",
-                    color: "var(--text-secondary)",
-                    "&:hover": {
-                      backgroundColor: "transparent",
-                      color: "var(--text-primary)",
-                    },
-                  },
+                {creating ? "Creating…" : "Create entry"}
+              </button>
+              <button
+                type="button"
+                className={classes.secondaryButton}
+                onClick={() => {
+                  setShowNewForm(false);
+                  setNewForm({ name: "", type: "notes" });
                 }}
               >
                 Cancel
-              </Button>
-            </Group>
-          </div>
+              </button>
+            </div>
+          </form>
         )}
 
-        {/* Grouped entries */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className={classes.list}>
           {loading ? (
-            <div
-              style={{
-                padding: "32px 12px",
-                textAlign: "center",
-                fontSize: "12px",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Loading...
-            </div>
+            <div className={classes.listMessage}>Loading knowledge…</div>
           ) : entries.length === 0 ? (
-            <div
-              style={{
-                padding: "32px 12px",
-                textAlign: "center",
-                fontSize: "12px",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <BookOpen
-                size={24}
-                style={{ margin: "0 auto 8px", display: "block", opacity: 0.4 }}
-              />
-              No knowledge entries
+            <div className={classes.listEmpty}>
+              <BookOpen size={24} strokeWidth={1} className={classes.emptyIcon} />
+              <p>No knowledge entries yet.</p>
+              <span>Store reusable prompts, context, and research here.</span>
             </div>
           ) : (
             KNOWLEDGE_TYPES.map((type) => {
-              const typeEntries = grouped[type];
+              const typeEntries = groupedEntries[type];
               if (typeEntries.length === 0) return null;
+
               return (
-                <div key={type}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "6px 12px",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {TYPE_ICONS[type]}
-                    {TYPE_LABELS[type]}
-                  </div>
-                  {typeEntries.map((entry) => {
-                    const isSelected = selectedEntry?.id === entry.id;
-                    return (
-                      <div
-                        key={entry.id}
-                        className={classes.row}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          padding: "8px 12px",
-                          cursor: "pointer",
-                          backgroundColor: isSelected
-                            ? "var(--bg-tertiary)"
-                            : "transparent",
-                          color: isSelected
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                          transition: "background-color 150ms, color 150ms",
-                        }}
-                        onClick={() => handleSelectEntry(entry)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSelectEntry(entry);
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor =
-                              "var(--bg-tertiary)";
-                            e.currentTarget.style.color = "var(--text-primary)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor = "transparent";
-                            e.currentTarget.style.color = "var(--text-secondary)";
-                          }
-                        }}
-                      >
-                        <span
-                          style={{
-                            flex: 1,
-                            fontSize: "12px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {entry.name}
-                        </span>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          onKeyDown={(e) => {
-                            e.stopPropagation();
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPendingDeleteEntry(entry);
-                          }}
-                          aria-label={`Delete ${entry.name}`}
-                          className={classes.revealOnHover}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "var(--danger)",
-                            padding: 0,
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                        >
-                          <Trash2 size={11} />
-                        </button>
+                <section key={type} className={classes.group} aria-label={TYPE_LABELS[type]}>
+                  <div className={classes.groupHeader}>
+                    <div className={classes.groupTitleRow}>
+                      <span className={classes.groupIcon}>{TYPE_ICONS[type]}</span>
+                      <div>
+                        <h3 className={classes.groupTitle}>{TYPE_LABELS[type]}</h3>
+                        <p className={classes.groupDescription}>{TYPE_DESCRIPTIONS[type]}</p>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <span className={classes.groupCount}>{typeEntries.length}</span>
+                  </div>
+
+                  <div className={classes.groupList} role="list">
+                    {typeEntries.map((entry) => {
+                      const isSelected = selectedEntry?.id === entry.id;
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`${classes.listItem} ${isSelected ? classes.listItemActive : ""}`}
+                        >
+                          <div className={classes.cardAccent} aria-hidden="true" />
+                          <div
+                            className={classes.entryCard}
+                            onClick={() => void handleSelectEntry(entry)}
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={isSelected}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                void handleSelectEntry(entry);
+                              }
+                            }}
+                          >
+                            <div className={classes.cardMetaRow}>
+                              <span className={classes.cardChip}>{TYPE_LABELS[type]}</span>
+                              <span className={classes.cardDate}>{formatRelativeDate(entry.updated_at)}</span>
+                            </div>
+                            <span className={classes.cardTitle}>{entry.name}</span>
+                            <span className={classes.cardDescription}>
+                              Last updated {formatAbsoluteDate(entry.updated_at)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onKeyDown={(e) => {
+                              e.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDeleteEntry(entry);
+                            }}
+                            aria-label={`Delete ${entry.name}`}
+                            className={classes.deleteButton}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* Right: Editor */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
+      <main className={classes.editorArea}>
         {selectedEntry && !loadingContent ? (
           <KnowledgeEditor
             key={selectedEntry.id}
@@ -476,40 +419,23 @@ export function KnowledgePanel() {
             content={editorContent}
             onSave={handleSave}
             onCancel={() => {
+              selectionTokenRef.current = null;
               setSelectedEntry(null);
               setEditorContent("");
+              setLoadingContent(false);
             }}
           />
         ) : selectedEntry && loadingContent ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              color: "var(--text-secondary)",
-              fontSize: "12px",
-            }}
-          >
-            Loading…
+          <div className={classes.emptyState}>
+            <p>Loading entry…</p>
           </div>
         ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "12px",
-              color: "var(--text-secondary)",
-            }}
-          >
-            <BookOpen size={40} strokeWidth={1} />
-            <p style={{ fontSize: "14px", margin: 0 }}>Select an entry to edit</p>
+          <div className={classes.emptyState}>
+            <BookOpen size={42} strokeWidth={1} className={classes.emptyIcon} />
+            <p>Select an entry to open the markdown workspace.</p>
           </div>
         )}
-      </div>
+      </main>
 
       <Modal
         opened={!!pendingDeleteEntry}
@@ -544,42 +470,24 @@ export function KnowledgePanel() {
         <Text size="sm" c="var(--text-secondary)" mb="md">
           Delete "{pendingDeleteEntry?.name}"? This cannot be undone.
         </Text>
-        <Group justify="flex-end" gap={8}>
-          <Button
-            variant="default"
+        <div className={classes.modalActions}>
+          <button
+            type="button"
+            className={classes.secondaryButton}
             onClick={() => setPendingDeleteEntry(null)}
             disabled={deleting}
-            styles={{
-              root: {
-                backgroundColor: "transparent",
-                borderColor: "var(--border)",
-                color: "var(--text-secondary)",
-                "&:hover:not(:disabled)": {
-                  backgroundColor: "transparent",
-                  color: "var(--text-primary)",
-                },
-              },
-            }}
           >
             Cancel
-          </Button>
-          <Button
-            color="red"
-            onClick={handleDelete}
-            loading={deleting}
-            styles={{
-              root: {
-                backgroundColor: "var(--danger)",
-                color: "#fff",
-                "&:hover:not(:disabled)": {
-                  opacity: 0.9,
-                },
-              },
-            }}
+          </button>
+          <button
+            type="button"
+            className={classes.dangerButton}
+            onClick={() => void handleDelete()}
+            disabled={deleting}
           >
-            Delete entry
-          </Button>
-        </Group>
+            {deleting ? "Deleting…" : "Delete entry"}
+          </button>
+        </div>
       </Modal>
     </div>
   );

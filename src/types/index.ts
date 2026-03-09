@@ -7,6 +7,9 @@ export type AgentStatus =
   | "finished"
   | "error";
 export type KnowledgeType = "system_prompt" | "context_file" | "notes";
+export type TerminalLayoutMode = "single" | "grid";
+export type TerminalSplitFlow = "row" | "column";
+export type TerminalPaneDropZone = "center" | "top" | "right" | "bottom" | "left";
 
 export interface Project {
   id: string;
@@ -27,6 +30,29 @@ export interface AgentSession {
   createdAt: string;
   label: string;
   isResumed: boolean;
+}
+
+export interface TerminalPaneLayoutNode {
+  type: "pane";
+  id: string;
+  sessionId: string | null;
+}
+
+export interface TerminalSplitLayoutNode {
+  type: "split";
+  id: string;
+  flow: TerminalSplitFlow;
+  ratio: number;
+  first: TerminalLayoutNode;
+  second: TerminalLayoutNode;
+}
+
+export type TerminalLayoutNode = TerminalPaneLayoutNode | TerminalSplitLayoutNode;
+
+export interface TerminalProjectLayout {
+  mode: TerminalLayoutMode;
+  root: TerminalLayoutNode;
+  activePaneId: string;
 }
 
 export interface AgentDefinition {

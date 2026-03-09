@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type DragEvent } from "react";
 import {
   FolderGit2,
   BookOpen,
@@ -112,6 +112,12 @@ export function Sidebar() {
     e.stopPropagation();
     setActiveProject(projectId);
     setNewAgentProjectId(projectId);
+  };
+
+  const handleSessionDragStart = (event: DragEvent<HTMLButtonElement>, sessionId: string) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-agentic-session", sessionId);
+    event.dataTransfer.setData("text/plain", sessionId);
   };
 
   const handleGuardianToggle = async (e: React.MouseEvent, project: Project) => {
@@ -366,6 +372,10 @@ export function Sidebar() {
                         <li key={session.id} style={{ marginBottom: 2 }}>
                           <UnstyledButton
                             onClick={() => handleSessionClick(session.id, project.id)}
+                            draggable
+                            onDragStart={(event: DragEvent<HTMLButtonElement>) =>
+                              handleSessionDragStart(event, session.id)
+                            }
                             style={{
                               width: "100%",
                               display: "flex",
@@ -375,6 +385,7 @@ export function Sidebar() {
                               borderRadius: 4,
                               fontSize: 12,
                               textAlign: "left",
+                              cursor: "grab",
                               transition: "background-color 150ms, color 150ms",
                               backgroundColor: isActive
                                 ? "color-mix(in srgb, var(--accent) 15%, transparent)"

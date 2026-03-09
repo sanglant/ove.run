@@ -1,0 +1,322 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.workspace {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 7%, transparent), transparent 34%),
+    var(--bg-primary);
+}
+
+.workspaceSurface {
+  position: absolute;
+  inset: 0;
+}
+
+.paneSurface,
+.sessionSlot,
+.paneChrome,
+.dropOverlay {
+  position: absolute;
+}
+
+.paneSurface,
+.sessionSlot {
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease;
+}
+
+.paneSurface {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--bg-secondary) 92%, transparent),
+      color-mix(in srgb, var(--bg-primary) 84%, transparent)
+    );
+}
+
+.paneSurface[data-focused] {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.paneSurface[data-empty] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.paneSurface[data-drag-over] {
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 12%, var(--bg-secondary)),
+      color-mix(in srgb, var(--bg-primary) 80%, transparent)
+    );
+}
+
+.sessionSlot {
+  background: #090909;
+}
+
+.sessionSlot[data-focused] {
+  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.paneChrome {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.paneHandle {
+  pointer-events: auto;
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: calc(100% - 1.1rem);
+  padding: 0.22rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+  cursor: grab;
+  opacity: 0.52;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease,
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.paneChrome[data-focused] .paneHandle {
+  opacity: 0.72;
+}
+
+.paneHandle:hover {
+  opacity: 1;
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+}
+
+.paneHandle:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.paneHandleLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropOverlay {
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.dropOverlayTint,
+.dropHighlight,
+.dropBadge {
+  position: absolute;
+}
+
+.dropOverlayTint {
+  inset: 0.5rem;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--bg-primary) 34%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.dropHighlight {
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 82%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 12px 32px color-mix(in srgb, var(--accent) 16%, transparent);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.dropHighlight[data-zone="top"] {
+  top: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: calc(50% - 0.35rem);
+}
+
+.dropHighlight[data-zone="left"] {
+  top: 0.5rem;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  width: calc(50% - 0.35rem);
+}
+
+.dropHighlight[data-zone="right"] {
+  top: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: calc(50% - 0.35rem);
+}
+
+.dropHighlight[data-zone="bottom"] {
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  height: calc(50% - 0.35rem);
+}
+
+.dropHighlight[data-zone="center"] {
+  inset: 0.5rem;
+}
+
+.dropOverlay[data-center-only] .dropHighlight[data-zone="center"] {
+  inset: 0.9rem;
+}
+
+.dropBadge {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-primary) 86%, transparent);
+  color: var(--text-primary);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--bg-primary) 52%, transparent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.emptyPaneContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.emptyPaneCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-primary) 78%, transparent);
+  color: var(--text-secondary);
+  max-width: 15rem;
+  backdrop-filter: blur(8px);
+}
+
+.emptyPaneTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.emptyPaneHint {
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.resizeHandle {
+  position: absolute;
+  z-index: 6;
+  background: transparent;
+}
+
+.resizeHandle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--border) 88%, transparent);
+  opacity: 0.88;
+  transition:
+    background-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.resizeHandle:hover::before,
+.resizeHandle[data-active]::before {
+  background: color-mix(in srgb, var(--accent) 68%, transparent);
+  opacity: 1;
+}
+
+.resizeHandle[data-orientation="vertical"] {
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  cursor: col-resize;
+}
+
+.resizeHandle[data-orientation="vertical"]::before {
+  width: 2px;
+  left: 3px;
+  right: 3px;
+}
+
+.resizeHandle[data-orientation="horizontal"] {
+  left: 0;
+  right: 0;
+  height: 8px;
+  margin-top: -4px;
+  cursor: row-resize;
+}
+
+.resizeHandle[data-orientation="horizontal"]::before {
+  height: 2px;
+  top: 3px;
+  bottom: 3px;
+}
+
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  z-index: 7;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 85%, transparent), var(--bg-primary));
+}
+
+.emptyStateBody {
+  text-align: center;
+}
