@@ -27,3 +27,6 @@ tsconfig.node.tsbuildinfo
 vite.config.js
 vite.config.d.ts
 src-tauri/gen/schemas/
+
+# Worktrees
+.worktrees/
