@@ -501,7 +501,7 @@ export function Sidebar() {
           padding: "8px",
         }}
       >
-        <Group justify="space-around" gap={0}>
+        <Group justify="space-between" align="center" gap={2} w="100%">
           {navItems.map((item) => {
             const isActive = activePanel === item.id;
             return (
@@ -519,7 +519,7 @@ export function Sidebar() {
                   aria-label={item.label}
                   aria-pressed={isActive}
                   title={item.label}
-                  size={32}
+                  size={28}
                   styles={{
                     root: {
                       color: isActive ? "var(--accent-glow)" : "var(--text-secondary)",

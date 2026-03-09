@@ -1,4 +1,5 @@
 import { ExternalLink, Zap } from "lucide-react";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugItem } from "../types";
 import classes from "./BugDetailView.module.css";
 
@@ -36,16 +37,15 @@ export function BugDetailView({ bug, onDelegate }: BugDetailViewProps) {
         <div className={classes.headerMeta}>
           <span className={classes.bugKey}>{bug.key}</span>
           <div className={classes.headerActions}>
-            <a
-              href={bug.url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               className={classes.externalLink}
+              onClick={() => void shellOpen(bug.url)}
               aria-label={`Open ${bug.key} in browser`}
             >
               <ExternalLink size={13} />
               Open in browser
-            </a>
+            </button>
             <button
               type="button"
               className={classes.delegateButton}

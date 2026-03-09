@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Bug, RefreshCw, Settings } from "lucide-react";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useProjectStore } from "@/stores/projectStore";
 import { useBugsStore } from "@/stores/bugsStore";
 import { startBugOauth, checkBugAuth, disconnectBugProvider } from "@/lib/tauri";
@@ -70,7 +71,7 @@ export function BugsPanel() {
     setConnecting(true);
     try {
       const { auth_url } = await startBugOauth(activeProjectId);
-      window.open(auth_url, "_blank");
+      await shellOpen(auth_url);
       // Poll for auth completion (background task handles the callback)
       for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 1000));

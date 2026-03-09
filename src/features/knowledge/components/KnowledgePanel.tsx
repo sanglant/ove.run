@@ -78,8 +78,16 @@ export function KnowledgePanel() {
   const [creating, setCreating] = useState(false);
   const [pendingDeleteEntry, setPendingDeleteEntry] = useState<KnowledgeEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const selectionTokenRef = useRef<string | null>(null);
+  const resetEditorState = () => {
+    selectionTokenRef.current = null;
+    setSelectedEntry(null);
+    setEditorContent("");
+    setLoadingContent(false);
+    setLoadError(null);
+  };
 
   const loadEntries = async () => {
     if (!activeProjectId) return;
@@ -100,13 +108,14 @@ export function KnowledgePanel() {
   };
 
   useEffect(() => {
-    selectionTokenRef.current = null;
+    resetEditorState();
+    setEntries([]);
+    setPendingDeleteEntry(null);
+    setShowNewForm(false);
+    setNewForm({ name: "", type: "notes" });
 
     if (!activeProjectId) {
-      setEntries([]);
-      setSelectedEntry(null);
-      setEditorContent("");
-      setLoadingContent(false);
+      setLoading(false);
       return;
     }
 
@@ -114,29 +123,38 @@ export function KnowledgePanel() {
   }, [activeProjectId]);
 
   const handleSelectEntry = async (entry: KnowledgeEntry) => {
+    if (!activeProjectId) return;
+
     const token = entry.id;
     selectionTokenRef.current = token;
 
     setSelectedEntry(entry);
-    setEditorContent("");
     setLoadingContent(true);
+    setLoadError(null);
 
-    let content = "";
-    let failed = false;
     try {
-      content = await readKnowledgeContent(activeProjectId ?? "", entry.id);
-    } catch {
-      failed = true;
+      const content = await readKnowledgeContent(activeProjectId, entry.id);
+
+      if (selectionTokenRef.current !== token) return;
+
+      setLoadingContent(false);
+      setEditorContent(content);
+    } catch (err) {
+      if (selectionTokenRef.current !== token) return;
+
+      console.error("Failed to load knowledge entry content:", err);
+      setLoadingContent(false);
+      setLoadError("Failed to load knowledge entry.");
     }
-
-    if (selectionTokenRef.current !== token) return;
-
-    setLoadingContent(false);
-    setEditorContent(failed ? "" : content);
   };
 
   const handleSave = async (content: string) => {
-    if (!selectedEntry || !activeProjectId) return;
+    if (!selectedEntry || !activeProjectId || loadError) return;
+    if (selectedEntry.project_id !== activeProjectId) {
+      console.error("Refused to save a knowledge entry outside the active project.");
+      resetEditorState();
+      return;
+    }
 
     try {
       const nextUpdatedAt = new Date().toISOString();
@@ -164,6 +182,12 @@ export function KnowledgePanel() {
 
   const handleDelete = async () => {
     if (!activeProjectId || !pendingDeleteEntry) return;
+    if (pendingDeleteEntry.project_id !== activeProjectId) {
+      console.error("Refused to delete a knowledge entry outside the active project.");
+      setPendingDeleteEntry(null);
+      resetEditorState();
+      return;
+    }
 
     setDeleting(true);
     try {
@@ -171,10 +195,7 @@ export function KnowledgePanel() {
       setEntries((prev) => prev.filter((entry) => entry.id !== pendingDeleteEntry.id));
 
       if (selectedEntry?.id === pendingDeleteEntry.id) {
-        selectionTokenRef.current = null;
-        setSelectedEntry(null);
-        setEditorContent("");
-        setLoadingContent(false);
+        resetEditorState();
       }
 
       setPendingDeleteEntry(null);
@@ -412,23 +433,30 @@ export function KnowledgePanel() {
       </aside>
 
       <main className={classes.editorArea}>
-        {selectedEntry && !loadingContent ? (
+        {selectedEntry && loadingContent ? (
+          <div className={classes.emptyState}>
+            <p>Loading entry…</p>
+          </div>
+        ) : selectedEntry && loadError ? (
+          <div className={classes.emptyState}>
+            <p>{loadError}</p>
+            <span>We kept the saved file untouched. Retry to reopen the entry.</span>
+            <button
+              type="button"
+              className={classes.primaryButton}
+              onClick={() => void handleSelectEntry(selectedEntry)}
+            >
+              Retry
+            </button>
+          </div>
+        ) : selectedEntry ? (
           <KnowledgeEditor
             key={selectedEntry.id}
             entry={selectedEntry}
             content={editorContent}
             onSave={handleSave}
-            onCancel={() => {
-              selectionTokenRef.current = null;
-              setSelectedEntry(null);
-              setEditorContent("");
-              setLoadingContent(false);
-            }}
+            onCancel={resetEditorState}
           />
-        ) : selectedEntry && loadingContent ? (
-          <div className={classes.emptyState}>
-            <p>Loading entry…</p>
-          </div>
         ) : (
           <div className={classes.emptyState}>
             <BookOpen size={42} strokeWidth={1} className={classes.emptyIcon} />

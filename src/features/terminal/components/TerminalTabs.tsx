@@ -4,8 +4,10 @@ import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useNotificationStore } from "@/stores/notificationStore";
 import { killPty } from "@/lib/tauri";
 import type { AgentSession, TerminalLayoutMode } from "@/types";
+import { v4 as uuidv4 } from "uuid";
 import classes from "./TerminalTabs.module.css";
 
 const SESSION_DRAG_MIME = "application/x-agentic-session";
@@ -65,6 +67,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   } = useSessionStore();
   const { activeProjectId, projects, setActiveProject } = useProjectStore();
   const { setActivePanel, tabViewMode, setTabViewMode } = useUiStore();
+  const addNotification = useNotificationStore((state) => state.addNotification);
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
   const [dropSessionId, setDropSessionId] = useState<string | null>(null);
 
@@ -87,27 +90,38 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     }
   };
 
-  const handleClose = async (event: MouseEvent, session: AgentSession) => {
-    event.stopPropagation();
+  const closeSession = async (session: AgentSession) => {
     try {
       await killPty(session.id);
-    } catch {
-      // ignore
+      removeSession(session.id);
+    } catch (err) {
+      const message = String(err);
+      if (message.includes("not found")) {
+        removeSession(session.id);
+        return;
+      }
+
+      console.error("Failed to close terminal session:", err);
+      addNotification({
+        id: uuidv4(),
+        title: "Session Close Failed",
+        body: `${session.label}: ${message.slice(0, 200)}`,
+        sessionId: session.id,
+        timestamp: new Date().toISOString(),
+      });
     }
-    removeSession(session.id);
   };
 
-  const handleKillActive = async () => {
+  const handleClose = (event: MouseEvent, session: AgentSession) => {
+    event.stopPropagation();
+    void closeSession(session);
+  };
+
+  const handleKillActive = () => {
     const activeSession = allSessions.find((session) => session.id === activeSessionId);
     if (!activeSession) return;
 
-    try {
-      await killPty(activeSession.id);
-    } catch {
-      // ignore
-    }
-
-    removeSession(activeSession.id);
+    void closeSession(activeSession);
   };
 
   const handleLayoutChange = (mode: TerminalLayoutMode) => {

@@ -118,7 +118,7 @@ pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<V
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .header("User-Agent", "agentic-app")
-        .query(&[("labels", "bug"), ("state", "open"), ("per_page", "50")])
+        .query(&[("state", "open"), ("per_page", "50")])
         .send()
         .await
         .map_err(|e| format!("GitHub API request failed: {}", e))?

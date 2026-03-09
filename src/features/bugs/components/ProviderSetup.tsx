@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TextInput } from "@mantine/core";
 import { saveBugProviderConfig, startBugOauth, checkBugAuth } from "@/lib/tauri";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugProviderType, ProviderConfig } from "../types";
 import classes from "./ProviderSetup.module.css";
 
@@ -95,7 +96,7 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
     setError(null);
     try {
       const { auth_url } = await startBugOauth(projectId);
-      window.open(auth_url, "_blank");
+      await shellOpen(auth_url);
       // Poll for auth completion (background task handles the callback)
       for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 1000));
@@ -183,10 +184,10 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
           <div className={classes.form}>
             <p className={classes.oauthHint}>
               {selectedProvider.type === "jira" && (
-                <>Create an OAuth 2.0 (3LO) app at <a href="https://developer.atlassian.com/console/myapps/" target="_blank" rel="noopener noreferrer">developer.atlassian.com</a>. Set the callback URL to <code>http://127.0.0.1</code>.</>
+                <>Create an OAuth 2.0 (3LO) app at <a href="#" onClick={(e) => { e.preventDefault(); void shellOpen("https://developer.atlassian.com/console/myapps/"); }}>developer.atlassian.com</a>. Set the callback URL to <code>http://127.0.0.1</code>.</>
               )}
               {selectedProvider.type === "github_projects" && (
-                <>Create an OAuth App at <a href="https://github.com/settings/developers" target="_blank" rel="noopener noreferrer">GitHub Developer Settings</a>. Set the callback URL to <code>http://127.0.0.1</code>.</>
+                <>Create an OAuth App at <a href="#" onClick={(e) => { e.preventDefault(); void shellOpen("https://github.com/settings/developers"); }}>GitHub Developer Settings</a>. Set the callback URL to <code>http://127.0.0.1</code>.</>
               )}
               {selectedProvider.type === "youtrack" && (
                 <>Register a service in your YouTrack Hub settings under <strong>OAuth 2.0</strong>. Set the redirect URI to <code>http://127.0.0.1</code>.</>

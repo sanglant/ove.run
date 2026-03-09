@@ -51,8 +51,19 @@ export function NotesPanel() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const selectionTokenRef = useRef<string | null>(null);
+  const resetEditorState = useCallback(() => {
+    selectionTokenRef.current = null;
+    setSelectedNote(null);
+    setEditorContent("");
+    setSavedContent("");
+    setEditorTitle("");
+    setSavedTitle("");
+    setLoadingContent(false);
+    setLoadError(null);
+  }, []);
 
   const loadNotes = useCallback(async () => {
     if (!activeProjectId) return;
@@ -73,52 +84,60 @@ export function NotesPanel() {
   }, [activeProjectId]);
 
   useEffect(() => {
-    selectionTokenRef.current = null;
+    resetEditorState();
+    setNotes([]);
+    setPendingDeleteNote(null);
+    setShowNewForm(false);
+    setNewTitle("");
 
     if (!activeProjectId) {
-      setNotes([]);
-      setSelectedNote(null);
-      setEditorContent("");
-      setSavedContent("");
-      setEditorTitle("");
-      setSavedTitle("");
-      setLoadingContent(false);
+      setLoadingList(false);
       return;
     }
 
     void loadNotes();
-  }, [activeProjectId, loadNotes]);
+  }, [activeProjectId, loadNotes, resetEditorState]);
 
   const handleSelectNote = async (note: ProjectNote) => {
+    if (!activeProjectId) return;
+
     const token = note.id;
     selectionTokenRef.current = token;
 
     setSelectedNote(note);
     setEditorTitle(note.title);
     setSavedTitle(note.title);
-    setEditorContent("");
-    setSavedContent("");
     setLoadingContent(true);
+    setLoadError(null);
 
-    let content = "";
-    let failed = false;
     try {
-      content = await readNoteContent(activeProjectId ?? "", note.id);
-    } catch {
-      failed = true;
+      const content = await readNoteContent(activeProjectId, note.id);
+
+      if (selectionTokenRef.current !== token) return;
+
+      setEditorContent(content);
+      setSavedContent(content);
+      setLoadingContent(false);
+    } catch (err) {
+      if (selectionTokenRef.current !== token) return;
+
+      console.error("Failed to load note content:", err);
+      setLoadingContent(false);
+      setLoadError("Failed to load note content.");
     }
-
-    if (selectionTokenRef.current !== token) return;
-
-    setLoadingContent(false);
-    setEditorContent(failed ? "" : content);
-    setSavedContent(failed ? "" : content);
   };
 
-  const dirty = editorContent !== savedContent || editorTitle !== savedTitle;
+  const dirty =
+    loadError === null &&
+    (editorContent !== savedContent || editorTitle !== savedTitle);
 
   const handleSave = async () => {
-    if (!selectedNote || !activeProjectId) return;
+    if (!selectedNote || !activeProjectId || loadError) return;
+    if (selectedNote.project_id !== activeProjectId) {
+      console.error("Refused to save a note outside the active project.");
+      resetEditorState();
+      return;
+    }
 
     setSaving(true);
     try {
@@ -178,6 +197,12 @@ export function NotesPanel() {
 
   const handleDelete = async () => {
     if (!activeProjectId || !pendingDeleteNote) return;
+    if (pendingDeleteNote.project_id !== activeProjectId) {
+      console.error("Refused to delete a note outside the active project.");
+      setPendingDeleteNote(null);
+      resetEditorState();
+      return;
+    }
 
     setDeleting(true);
     try {
@@ -185,13 +210,7 @@ export function NotesPanel() {
       setNotes((prev) => prev.filter((note) => note.id !== pendingDeleteNote.id));
 
       if (selectedNote?.id === pendingDeleteNote.id) {
-        selectionTokenRef.current = null;
-        setSelectedNote(null);
-        setEditorContent("");
-        setSavedContent("");
-        setEditorTitle("");
-        setSavedTitle("");
-        setLoadingContent(false);
+        resetEditorState();
       }
 
       setPendingDeleteNote(null);
@@ -203,13 +222,7 @@ export function NotesPanel() {
   };
 
   const handleCancel = () => {
-    selectionTokenRef.current = null;
-    setSelectedNote(null);
-    setEditorContent("");
-    setSavedContent("");
-    setEditorTitle("");
-    setSavedTitle("");
-    setLoadingContent(false);
+    resetEditorState();
   };
 
   if (!activeProjectId) {
@@ -361,7 +374,23 @@ export function NotesPanel() {
       </aside>
 
       <main className={classes.editorArea}>
-        {selectedNote && !loadingContent ? (
+        {selectedNote && loadingContent ? (
+          <div className={classes.emptyState}>
+            <p>Loading note…</p>
+          </div>
+        ) : selectedNote && loadError ? (
+          <div className={classes.emptyState}>
+            <p>{loadError}</p>
+            <span>We kept the saved file untouched. Retry to reopen the note.</span>
+            <button
+              type="button"
+              className={classes.primaryButton}
+              onClick={() => void handleSelectNote(selectedNote)}
+            >
+              Retry
+            </button>
+          </div>
+        ) : selectedNote ? (
           <MarkdownEditorWorkspace
             key={selectedNote.id}
             content={editorContent}
@@ -378,10 +407,6 @@ export function NotesPanel() {
             onCancel={handleCancel}
             placeholder="Start writing your note…"
           />
-        ) : selectedNote && loadingContent ? (
-          <div className={classes.emptyState}>
-            <p>Loading note…</p>
-          </div>
         ) : (
           <div className={classes.emptyState}>
             <StickyNote size={42} strokeWidth={1} className={classes.emptyIcon} />
