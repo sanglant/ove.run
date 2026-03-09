@@ -21,6 +21,8 @@ import {
 interface NewAgentDialogProps {
   projectId: string;
   onClose: () => void;
+  initialLabel?: string;
+  initialPrompt?: string;
 }
 
 const inputStyles = {
@@ -40,10 +42,10 @@ const inputStyles = {
   },
 };
 
-export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
+export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt }: NewAgentDialogProps) {
   const [agentType, setAgentType] = useState<AgentType>("claude");
   const [yoloMode, setYoloMode] = useState(false);
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState(initialLabel ?? "");
   const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -134,6 +136,7 @@ export function NewAgentDialog({ projectId, onClose }: NewAgentDialogProps) {
       createdAt: new Date().toISOString(),
       label: sessionLabel,
       isResumed: false,
+      ...(initialPrompt ? { initialPrompt } : {}),
     };
 
     addSession(session);

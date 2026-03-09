@@ -30,6 +30,7 @@ export interface AgentSession {
   createdAt: string;
   label: string;
   isResumed: boolean;
+  initialPrompt?: string;
 }
 
 export interface TerminalPaneLayoutNode {

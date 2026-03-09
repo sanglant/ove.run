@@ -3,6 +3,7 @@ import {
   FolderGit2,
   BookOpen,
   StickyNote,
+  Bug,
   Settings,
   Bell,
   Plus,
@@ -146,6 +147,11 @@ export function Sidebar() {
       id: "notes" as const,
       icon: <StickyNote size={16} />,
       label: "Notes",
+    },
+    {
+      id: "bugs" as const,
+      icon: <Bug size={16} />,
+      label: "Bugs",
     },
     {
       id: "settings" as const,

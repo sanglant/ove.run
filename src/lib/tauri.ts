@@ -10,6 +10,7 @@ import type {
   KnowledgeType,
   PersistedSession,
 } from "@/types";
+import type { BugItem, ProviderConfig } from "../features/bugs/types";
 
 export { listen, emit };
 
@@ -181,4 +182,32 @@ export async function deleteNote(
   noteId: string,
 ): Promise<void> {
   return invoke("delete_note", { projectId, noteId });
+}
+
+export async function getBugProviderConfig(projectId: string): Promise<ProviderConfig | null> {
+  return invoke("get_bug_provider_config", { projectId });
+}
+
+export async function saveBugProviderConfig(projectId: string, config: ProviderConfig): Promise<void> {
+  return invoke("save_bug_provider_config", { projectId, config });
+}
+
+export async function startBugOauth(projectId: string): Promise<{ auth_url: string; port: number }> {
+  return invoke("start_bug_oauth", { projectId });
+}
+
+export async function checkBugAuth(projectId: string): Promise<boolean> {
+  return invoke("check_bug_auth", { projectId });
+}
+
+export async function listBugs(projectId: string): Promise<BugItem[]> {
+  return invoke("list_bugs", { projectId });
+}
+
+export async function getBugDetail(projectId: string, bugId: string): Promise<BugItem> {
+  return invoke("get_bug_detail", { projectId, bugId });
+}
+
+export async function disconnectBugProvider(projectId: string): Promise<void> {
+  return invoke("disconnect_bug_provider", { projectId });
 }

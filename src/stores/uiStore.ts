@@ -5,6 +5,7 @@ type ActivePanel =
   | "git"
   | "knowledge"
   | "notes"
+  | "bugs"
   | "settings"
   | "notifications";
 export type TabViewMode = "grouped" | "flat";

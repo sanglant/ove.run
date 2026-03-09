@@ -3,6 +3,7 @@ use tauri::{Manager, WindowEvent};
 use tokio::sync::RwLock;
 
 pub mod agents;
+pub mod bugs;
 pub mod commands;
 pub mod git;
 pub mod knowledge;
@@ -15,6 +16,10 @@ pub mod state;
 pub mod tray;
 
 use commands::agent_commands::list_agent_types;
+use commands::bugs_commands::{
+    check_bug_auth, disconnect_bug_provider, get_bug_detail, get_bug_provider_config, list_bugs,
+    save_bug_provider_config, start_bug_oauth,
+};
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
 };
@@ -130,6 +135,14 @@ pub fn run() {
             save_sessions,
             load_sessions,
             send_desktop_notification,
+            // Bug commands
+            get_bug_provider_config,
+            save_bug_provider_config,
+            start_bug_oauth,
+            check_bug_auth,
+            list_bugs,
+            get_bug_detail,
+            disconnect_bug_provider,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

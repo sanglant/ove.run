@@ -83,6 +83,13 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
 
         await spawnPty(session.id, command, args, projectPath, envVars, cols, rows);
         updateStatus(session.id, "idle");
+
+        if (session.initialPrompt) {
+          setTimeout(async () => {
+            const bytes = Array.from(new TextEncoder().encode(session.initialPrompt + "\n"));
+            await writePty(session.id, bytes);
+          }, 2000);
+        }
       } catch (err) {
         console.error("Failed to spawn PTY:", err);
         term.writeln("\r\n\x1b[31mFailed to start agent process.\x1b[0m");

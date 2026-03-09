@@ -6,6 +6,7 @@ import { TerminalContainer } from "@/features/terminal/components/TerminalContai
 import { GitPanel } from "@/features/git/components/GitPanel";
 import { KnowledgePanel } from "@/features/knowledge/components/KnowledgePanel";
 import { NotesPanel } from "@/features/notes/components/NotesPanel";
+import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackModal } from "@/features/guardian/components/AgentFeedbackModal";
@@ -107,6 +108,13 @@ export default function App() {
           {activePanel === "notes" && (
             <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
               <NotesPanel />
+            </div>
+          )}
+
+          {/* Bugs panel */}
+          {activePanel === "bugs" && (
+            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+              <BugsPanel />
             </div>
           )}
 
