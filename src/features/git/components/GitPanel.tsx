@@ -7,6 +7,7 @@ import { CommitForm } from "./CommitForm";
 import type { GitFileStatus } from "@/types";
 import { Group, Text, ActionIcon } from "@mantine/core";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { EmptyState } from "@/components/ui/EmptyState";
 import cn from "clsx";
 import classes from "./GitPanel.module.css";
 
@@ -78,25 +79,20 @@ export function GitPanel() {
 
   if (!activeProject) {
     return (
-      <div className={classes.emptyState}>
-        Select a project to view git status
-      </div>
+      <EmptyState
+        icon={<GitBranch size={40} strokeWidth={1} />}
+        title="Select a project to view git status"
+      />
     );
   }
 
   if (!loading && status && !status.is_repo) {
     return (
-      <div className={classes.notRepoState}>
-        <GitMerge size={40} strokeWidth={1} />
-        <div className={classes.notRepoText}>
-          <Text fw={500} c="var(--text-primary)" size="sm">
-            Not a git repository
-          </Text>
-          <Text fz={14} mt={4} c="var(--text-secondary)">
-            {activeProject.path}
-          </Text>
-        </div>
-      </div>
+      <EmptyState
+        icon={<GitMerge size={40} strokeWidth={1} />}
+        title="Not a git repository"
+        description={activeProject.path}
+      />
     );
   }
 
@@ -260,7 +256,7 @@ export function GitPanel() {
       {/* Right: Diff viewer */}
       <div className={classes.diffPanel}>
         {committing ? (
-          <div className={classes.emptyState}>
+          <div className={classes.centeredText}>
             Committing...
           </div>
         ) : (

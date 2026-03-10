@@ -1,9 +1,10 @@
 import { Bell, CheckCheck, Trash2, ExternalLink } from "lucide-react";
-import cn from "classnames";
+import cn from "clsx";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
 import { Badge, Button, Text, Divider, Group } from "@mantine/core";
+import { EmptyState } from "@/components/ui/EmptyState";
 import classes from "./NotificationCenter.module.css";
 
 export function NotificationCenter() {
@@ -110,17 +111,11 @@ export function NotificationCenter() {
       {/* Notification list */}
       <div className={classes.listScroll}>
         {notifications.length === 0 ? (
-          <div className={classes.emptyState}>
-            <Bell size={40} strokeWidth={1} />
-            <div className={classes.emptyText}>
-              <Text size="sm" c="var(--text-primary)">
-                No notifications
-              </Text>
-              <Text size="xs" c="dimmed" mt={4}>
-                Agent events will appear here
-              </Text>
-            </div>
-          </div>
+          <EmptyState
+            icon={<Bell size={40} strokeWidth={1} />}
+            title="No notifications"
+            description="Agent events will appear here"
+          />
         ) : (
           <ul role="list" className={classes.list}>
             {notifications.map((notification) => (
