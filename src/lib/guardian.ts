@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import { useGuardianStore } from "@/stores/guardianStore";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { guardianReview, listKnowledge, readKnowledgeContent, createKnowledge, writePty } from "@/lib/tauri";
+import { guardianReview, listKnowledge, readKnowledgeContent, createKnowledge, writePty, listAgentTypes } from "@/lib/tauri";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
 import type { FeedbackItem, ParsedOption } from "@/types";
 
@@ -56,8 +57,21 @@ export async function guardianAnswer(
     `REASONING: {1-2 sentence explanation}\n` +
     (knowledgeNotes ? "" : `PROJECT_NOTES: {brief project summary, tech stack, key conventions for future reference}\n`);
 
+  // Resolve CLI command and model from global guardian settings
+  const globalSettings = useSettingsStore.getState().settings.global;
+  const guardianProvider = globalSettings.guardian_provider || "claude";
+  let cliCommand: string | undefined;
   try {
-    const response = await guardianReview(prompt, projectPath);
+    const defs = await listAgentTypes();
+    const def = defs.find((d) => d.agent_type === guardianProvider);
+    if (def) cliCommand = def.command;
+  } catch {
+    // fall back to default
+  }
+  const model = globalSettings.guardian_model || undefined;
+
+  try {
+    const response = await guardianReview(prompt, projectPath, cliCommand, model);
     const result = parseGuardianResponse(response, parsedOptions);
 
     const isDismiss = result.answer?.toLowerCase() === "dismiss";

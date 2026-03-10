@@ -105,6 +105,8 @@ export interface GlobalSettings {
   minimize_to_tray: boolean;
   terminal_scrollback: number;
   guardian_timeout_seconds: number;
+  guardian_provider: string;
+  guardian_model: string;
 }
 
 export interface AgentSettings {

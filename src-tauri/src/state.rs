@@ -95,6 +95,10 @@ pub struct GlobalSettings {
     pub terminal_scrollback: u32,
     #[serde(default = "default_guardian_timeout")]
     pub guardian_timeout_seconds: u32,
+    #[serde(default)]
+    pub guardian_provider: String,
+    #[serde(default)]
+    pub guardian_model: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,6 +123,8 @@ impl Default for AppSettings {
                 minimize_to_tray: false,
                 terminal_scrollback: 10000,
                 guardian_timeout_seconds: 20,
+                guardian_provider: String::new(),
+                guardian_model: String::new(),
             },
             agents: HashMap::new(),
         }

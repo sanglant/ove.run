@@ -133,8 +133,17 @@ export async function deleteKnowledge(
   return invoke("delete_knowledge", { projectId, knowledgeId });
 }
 
-export async function guardianReview(prompt: string, projectPath: string): Promise<string> {
-  return invoke("guardian_review", { prompt, projectPath });
+export async function guardianReview(
+  prompt: string,
+  projectPath: string,
+  cliCommand?: string,
+  model?: string,
+): Promise<string> {
+  return invoke("guardian_review", { prompt, projectPath, cliCommand, model });
+}
+
+export async function listCliModels(cliCommand: string): Promise<string[]> {
+  return invoke("list_cli_models", { cliCommand });
 }
 
 export async function saveSessions(sessions: PersistedSession[]): Promise<void> {

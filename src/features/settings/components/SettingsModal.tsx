@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { listCliModels } from "@/lib/tauri";
 import type { AppSettings, AgentType } from "@/types";
 import {
   Modal,
@@ -15,6 +16,7 @@ import {
   Code,
   Text,
   Stack,
+  Select,
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
 import { SectionTitle } from "@/components/ui/SectionTitle";
@@ -34,6 +36,22 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [saving, setSaving] = useState(false);
   const [newEnvKey, setNewEnvKey] = useState("");
   const [newEnvVal, setNewEnvVal] = useState("");
+  const [guardianModelOptions, setGuardianModelOptions] = useState<string[]>([]);
+
+  const providerOptions = [
+    { value: "claude", label: "Claude Code" },
+    { value: "gemini", label: "Gemini CLI" },
+    { value: "copilot", label: "GitHub Copilot" },
+    { value: "codex", label: "Codex CLI" },
+  ];
+
+  // Load available models when guardian provider changes
+  const guardianProvider = draft.global.guardian_provider || "claude";
+  useEffect(() => {
+    listCliModels(guardianProvider)
+      .then(setGuardianModelOptions)
+      .catch(() => setGuardianModelOptions([]));
+  }, [guardianProvider]);
 
   const handleGlobalChange = <K extends keyof AppSettings["global"]>(
     key: K,
@@ -239,6 +257,85 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 styles={INPUT_STYLES}
               />
             </Group>
+
+            {/* Guardian provider */}
+            <Group justify="space-between" align="center">
+              <div>
+                <Text size="sm" className={classes.settingLabel}>
+                  Guardian Provider
+                </Text>
+                <Text size="xs" className={classes.settingHint}>
+                  CLI agent tool used by Guardian
+                </Text>
+              </div>
+              <Select
+                data={providerOptions}
+                value={draft.global.guardian_provider || "claude"}
+                onChange={(val) => {
+                  handleGlobalChange("guardian_provider", val ?? "claude");
+                  // Reset model when provider changes
+                  handleGlobalChange("guardian_model", "");
+                }}
+                allowDeselect={false}
+                className={classes.inputWidth208}
+                styles={{
+                  input: {
+                    ...INPUT_STYLES.input,
+                    fontSize: "12px",
+                  },
+                  dropdown: {
+                    backgroundColor: "var(--bg-secondary)",
+                    borderColor: "var(--border)",
+                  },
+                  option: {
+                    fontSize: "12px",
+                    color: "var(--text-primary)",
+                    "&[data-selected]": { backgroundColor: "var(--accent)" },
+                    "&[data-hovered]": { backgroundColor: "var(--bg-tertiary)" },
+                  },
+                }}
+              />
+            </Group>
+
+            {/* Guardian model — only shown when provider has model aliases */}
+            {guardianModelOptions.length > 0 && (
+              <Group justify="space-between" align="center">
+                <div>
+                  <Text size="sm" className={classes.settingLabel}>
+                    Guardian Model
+                  </Text>
+                  <Text size="xs" className={classes.settingHint}>
+                    Model alias for guardian decisions
+                  </Text>
+                </div>
+                <Select
+                  data={[
+                    { value: "", label: "Default" },
+                    ...guardianModelOptions.map((m) => ({ value: m, label: m })),
+                  ]}
+                  value={draft.global.guardian_model || ""}
+                  onChange={(val) => handleGlobalChange("guardian_model", val ?? "")}
+                  allowDeselect={false}
+                  className={classes.inputWidth208}
+                  styles={{
+                    input: {
+                      ...INPUT_STYLES.input,
+                      fontSize: "12px",
+                    },
+                    dropdown: {
+                      backgroundColor: "var(--bg-secondary)",
+                      borderColor: "var(--border)",
+                    },
+                    option: {
+                      fontSize: "12px",
+                      color: "var(--text-primary)",
+                      "&[data-selected]": { backgroundColor: "var(--accent)" },
+                      "&[data-hovered]": { backgroundColor: "var(--bg-tertiary)" },
+                    },
+                  }}
+                />
+              </Group>
+            )}
           </Stack>
         </section>
 

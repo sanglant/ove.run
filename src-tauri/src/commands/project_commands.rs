@@ -114,19 +114,34 @@ pub fn load_projects_sync() -> Vec<Project> {
     load_projects_from_disk()
 }
 
-/// Run a one-shot guardian review using `claude -p <prompt>`.
+/// Run a one-shot guardian review using a CLI agent tool with `-p <prompt>`.
 /// This is non-interactive: the process receives the prompt, responds, and exits.
-/// Returns the full stdout of the claude process.
+/// Returns the full stdout of the process.
 #[tauri::command]
-pub async fn guardian_review(prompt: String, project_path: String) -> Result<String, String> {
-    let output = tokio::process::Command::new("claude")
-        .arg("--dangerously-skip-permissions")
-        .arg("-p")
-        .arg(&prompt)
-        .current_dir(&project_path)
+pub async fn guardian_review(
+    prompt: String,
+    project_path: String,
+    cli_command: Option<String>,
+    model: Option<String>,
+) -> Result<String, String> {
+    let command = cli_command.unwrap_or_else(|| "claude".to_string());
+
+    let mut cmd = tokio::process::Command::new(&command);
+    // Only add --dangerously-skip-permissions for claude
+    if command == "claude" {
+        cmd.arg("--dangerously-skip-permissions");
+    }
+    if let Some(ref m) = model {
+        if !m.is_empty() {
+            cmd.arg("--model").arg(m);
+        }
+    }
+    cmd.arg("-p").arg(&prompt).current_dir(&project_path);
+
+    let output = cmd
         .output()
         .await
-        .map_err(|e| format!("Failed to run claude for guardian review: {}", e))?;
+        .map_err(|e| format!("Failed to run {} for guardian review: {}", command, e))?;
 
     if output.status.success() {
         String::from_utf8(output.stdout)
@@ -134,5 +149,30 @@ pub async fn guardian_review(prompt: String, project_path: String) -> Result<Str
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("Guardian review process failed: {}", stderr))
+    }
+}
+
+/// Return known model aliases and IDs for a given CLI agent tool.
+/// Uses official documentation as source for aliases.
+#[tauri::command]
+pub async fn list_cli_models(cli_command: String) -> Result<Vec<String>, String> {
+    let cmd = cli_command.trim().split_whitespace().next().unwrap_or("claude");
+
+    match cmd {
+        "claude" => Ok(vec![
+            "sonnet".to_string(),
+            "opus".to_string(),
+            "haiku".to_string(),
+            "opusplan".to_string(),
+        ]),
+        "gemini" => Ok(vec![
+            "auto".to_string(),
+            "pro".to_string(),
+            "flash".to_string(),
+            "flash-lite".to_string(),
+        ]),
+        // Copilot and Codex: no stable aliases, use CLI default
+        "copilot" | "codex" => Ok(vec![]),
+        _ => Ok(vec![]),
     }
 }

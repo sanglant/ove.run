@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     minimize_to_tray: false,
     terminal_scrollback: 10000,
     guardian_timeout_seconds: 20,
+    guardian_provider: "",
+    guardian_model: "",
   },
   agents: {
     claude: {
