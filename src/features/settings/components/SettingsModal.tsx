@@ -17,6 +17,7 @@ import {
   Stack,
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import classes from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
@@ -128,9 +129,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       <Stack gap="xl" className={classes.content}>
         {/* Global settings */}
         <section>
-          <Text size="xs" className={classes.sectionTitle}>
+          <SectionTitle mb={16}>
             Global
-          </Text>
+          </SectionTitle>
           <Stack gap="sm">
             {/* Font family */}
             <Group justify="space-between" align="center">
@@ -242,9 +243,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
         {/* Agent settings */}
         <section>
-          <Text size="xs" className={classes.sectionTitle}>
+          <SectionTitle mb={16}>
             Agent Settings
-          </Text>
+          </SectionTitle>
 
           <Tabs
             value={activeAgentTab}

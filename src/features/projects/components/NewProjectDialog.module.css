@@ -2,14 +2,6 @@
   padding: 20px;
 }
 
-.sectionTitle {
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 500;
-  margin-bottom: 6px;
-}
-
 .flex1 {
   flex: 1;
 }

@@ -6,7 +6,8 @@ import { DiffViewer } from "./DiffViewer";
 import { CommitForm } from "./CommitForm";
 import type { GitFileStatus } from "@/types";
 import { Group, Text, ActionIcon } from "@mantine/core";
-import cn from "classnames";
+import { SectionTitle } from "@/components/ui/SectionTitle";
+import cn from "clsx";
 import classes from "./GitPanel.module.css";
 
 const FILE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -151,9 +152,9 @@ export function GitPanel() {
           {stagedFiles.length > 0 && (
             <div>
               <div className={classes.sectionHeader}>
-                <span className={classes.sectionTitle}>
+                <SectionTitle mb={0}>
                   Staged ({stagedFiles.length})
-                </span>
+                </SectionTitle>
                 <button
                   onClick={handleUnstageAll}
                   className={cn(classes.sectionAction, classes.sectionActionUnstage)}
@@ -197,9 +198,9 @@ export function GitPanel() {
           {unstagedFiles.length > 0 && (
             <div>
               <div className={classes.sectionHeaderSpaced}>
-                <span className={classes.sectionTitle}>
+                <SectionTitle mb={0}>
                   Changes ({unstagedFiles.length})
-                </span>
+                </SectionTitle>
                 <button
                   onClick={handleStageAll}
                   className={cn(classes.sectionAction, classes.sectionActionStage)}

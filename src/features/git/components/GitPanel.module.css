@@ -74,14 +74,6 @@
   margin-top: 4px;
 }
 
-.sectionTitle {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-}
-
 .sectionAction {
   font-size: 10px;
   color: var(--text-secondary);

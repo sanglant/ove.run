@@ -11,6 +11,7 @@ import {
   Stack,
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import classes from "./NewProjectDialog.module.css";
 
 interface NewProjectDialogProps {
@@ -93,9 +94,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
         />
 
         <div>
-          <Text size="xs" className={classes.sectionTitle}>
-            Directory Path
-          </Text>
+          <SectionTitle mb={6}>Directory Path</SectionTitle>
           <Group gap="xs" wrap="nowrap">
             <TextInput
               id="project-path"

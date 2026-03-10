@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { getAgentMeta } from "@/constants/agents";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
+import { SectionTitle } from "@/components/ui/SectionTitle";
 import classes from "./NewAgentDialog.module.css";
 
 interface NewAgentDialogProps {
@@ -150,9 +151,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       <Stack gap="lg" className={classes.content}>
         {/* Agent type selector */}
         <div>
-          <Text size="xs" className={classes.sectionTitle}>
-            Agent Type
-          </Text>
+          <SectionTitle>Agent Type</SectionTitle>
           <SimpleGrid cols={2} spacing="xs">
             {agentDefs.map((def) => {
               const meta = getAgentMeta(def.agent_type);
@@ -222,9 +221,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
         {agentType !== "terminal" && (
         <Stack gap="xs">
           <Group justify="space-between">
-            <Text size="xs" className={classes.sectionTitle} mb={0}>
-              YOLO Mode
-            </Text>
+            <SectionTitle mb={0}>YOLO Mode</SectionTitle>
             <Switch
               checked={yoloMode}
               onChange={(e) => setYoloMode(e.currentTarget.checked)}
