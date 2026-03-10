@@ -47,8 +47,10 @@ export async function guardianAnswer(
     `Agent terminal output: ${compactOutput}. ` +
     `Available options: ${optionLabels || "(none)"}. ` +
     `Free text input allowed: ${allowFreeInput ? "yes" : "no"}. ` +
-    `Pick the best option for this project. Respond with:\n` +
-    `ANSWER: {exact option label}\n` +
+    `Pick the best option for this project. If the agent appears to have already resolved the issue ` +
+    `or the prompt is stale/no longer relevant, respond with ANSWER: DISMISS to close without answering.\n` +
+    `Respond with:\n` +
+    `ANSWER: {exact option label} (or ANSWER: DISMISS to skip)\n` +
     `or if free text is needed:\n` +
     `ANSWER_TEXT: {your response}\n` +
     `REASONING: {1-2 sentence explanation}\n` +
@@ -58,22 +60,26 @@ export async function guardianAnswer(
     const response = await guardianReview(prompt, projectPath);
     const result = parseGuardianResponse(response, parsedOptions);
 
-    if (result.answer) {
-      const option = parsedOptions.find(
-        (o) => o.label.toLowerCase() === result.answer!.toLowerCase(),
-      );
+    const isDismiss = result.answer?.toLowerCase() === "dismiss";
+
+    if (isDismiss) {
+      // Guardian determined the issue is resolved — dismiss without sending input
+      useSessionStore.getState().updateSessionStatus(sessionId, "working");
+    } else if (result.answer) {
+      const option = matchOption(result.answer, parsedOptions);
       if (option) {
         await sendKeys(sessionId, option.keys);
       } else if (allowFreeInput) {
         await sendText(sessionId, result.answer);
       }
+      useSessionStore.getState().updateSessionStatus(sessionId, "working");
     } else if (result.answerText && allowFreeInput) {
       await sendText(sessionId, result.answerText);
+      useSessionStore.getState().updateSessionStatus(sessionId, "working");
     } else if (parsedOptions.length > 0) {
       await sendKeys(sessionId, parsedOptions[0].keys);
+      useSessionStore.getState().updateSessionStatus(sessionId, "working");
     }
-
-    useSessionStore.getState().updateSessionStatus(sessionId, "working");
 
     if (result.projectNotes && !knowledgeNotes) {
       try {
@@ -85,7 +91,7 @@ export async function guardianAnswer(
     }
 
     const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId);
-    const choiceLabel = result.answer || result.answerText || "first option";
+    const choiceLabel = isDismiss ? "dismissed (resolved)" : (result.answer || result.answerText || "first option");
     useNotificationStore.getState().addNotification({
       id: uuidv4(),
       title: "Guardian Answered",
@@ -110,6 +116,38 @@ interface GuardianResult {
   answerText?: string;
   reasoning?: string;
   projectNotes?: string;
+}
+
+/**
+ * Match Guardian's answer to a parsed option using progressively looser strategies:
+ * 1. Exact match (case-insensitive)
+ * 2. One label contains the other
+ * 3. First word match (e.g. "Yes" matches "Yes (default)")
+ */
+function matchOption(answer: string, options: ParsedOption[]): ParsedOption | undefined {
+  const a = answer.toLowerCase().trim();
+
+  // Exact match
+  const exact = options.find((o) => o.label.toLowerCase() === a);
+  if (exact) return exact;
+
+  // Containment match (answer inside label or label inside answer)
+  const contained = options.find((o) => {
+    const l = o.label.toLowerCase();
+    return l.includes(a) || a.includes(l);
+  });
+  if (contained) return contained;
+
+  // First-word match
+  const aFirstWord = a.split(/[\s(]/)[0];
+  if (aFirstWord.length >= 2) {
+    const firstWord = options.find(
+      (o) => o.label.toLowerCase().split(/[\s(]/)[0] === aFirstWord,
+    );
+    if (firstWord) return firstWord;
+  }
+
+  return undefined;
 }
 
 function parseGuardianResponse(response: string, _options: ParsedOption[]): GuardianResult {
