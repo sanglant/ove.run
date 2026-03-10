@@ -2,7 +2,8 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Group, Modal, Alert, Text } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
-import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import { getStatusMeta } from "@/constants/agents";
+import { AgentBadge } from "@/components/ui/AgentBadge";
 import cn from "clsx";
 import classes from "./TopBar.module.css";
 
@@ -35,15 +36,7 @@ export function TopBar() {
           {activeSession ? (
             <>
               {/* Agent type badge */}
-              <span
-                className={classes.agentBadge}
-                style={{
-                  '--agent-badge-bg': `color-mix(in srgb, ${getAgentMeta(activeSession.agentType).color} 15%, transparent)`,
-                  '--agent-badge-color': getAgentMeta(activeSession.agentType).color,
-                } as React.CSSProperties}
-              >
-                {getAgentMeta(activeSession.agentType).displayName}
-              </span>
+              <AgentBadge agentType={activeSession.agentType} variant="displayName" />
 
               {/* Session label */}
               <Text size="sm" fw={500} truncate="end" className={classes.sessionLabel}>

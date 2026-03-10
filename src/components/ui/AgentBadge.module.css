@@ -1,0 +1,9 @@
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background-color: var(--agent-badge-bg);
+  color: var(--agent-badge-color);
+}

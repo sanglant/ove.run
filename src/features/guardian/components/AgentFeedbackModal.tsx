@@ -23,8 +23,8 @@ import { guardianAnswer } from "@/lib/guardian";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
-import { getAgentMeta } from "@/constants/agents";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, BUTTON_STYLES } from "@/constants/styles";
+import { AgentBadge } from "@/components/ui/AgentBadge";
 import classes from "./AgentFeedbackModal.module.css";
 
 export function AgentFeedbackModal() {
@@ -58,8 +58,6 @@ function FeedbackModalContent({
 
   const session = sessions.find((s) => s.id === item.sessionId);
   const project = projects.find((p) => p.id === item.projectId);
-  const agentMeta = getAgentMeta(session?.agentType ?? "");
-
   const updateStatus = useSessionStore((s) => s.updateSessionStatus);
 
   const handleSendKeys = useCallback(
@@ -175,15 +173,7 @@ function FeedbackModalContent({
   const modalTitle = (
     <div className={classes.titleRow}>
       {/* Agent type badge */}
-      <span
-        className={classes.agentBadge}
-        style={{
-          '--agent-badge-bg': `color-mix(in srgb, ${agentMeta.color} 15%, transparent)`,
-          '--agent-badge-color': agentMeta.color,
-        } as React.CSSProperties}
-      >
-        {agentMeta.label}
-      </span>
+      <AgentBadge agentType={session?.agentType ?? ""} />
       <Text fw={600} size="sm" c="var(--text-primary)">
         {project?.name ?? "Project"}
       </Text>
