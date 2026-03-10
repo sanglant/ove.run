@@ -11,7 +11,7 @@ import {
   deleteNote,
 } from "@/lib/tauri";
 import type { ProjectNote } from "@/types";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./NotesPanel.module.css";
 
 function formatRelativeDate(iso: string): string {

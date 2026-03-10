@@ -11,7 +11,7 @@ import {
   deleteKnowledge,
 } from "@/lib/tauri";
 import type { KnowledgeEntry, KnowledgeType } from "@/types";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./KnowledgePanel.module.css";
 
 const TYPE_ICONS: Record<KnowledgeType, ReactNode> = {

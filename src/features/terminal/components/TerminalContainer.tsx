@@ -10,7 +10,7 @@ import {
 } from "react";
 import { GripVertical, Terminal } from "lucide-react";
 import { Stack, Text, Button } from "@mantine/core";
-import cn from "classnames";
+import cn from "clsx";
 import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";

@@ -131,7 +131,7 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
     <div className={classes.root}>
       <div className={classes.inner}>
         <div className={classes.header}>
-          <p className={classes.eyebrow}>Bug tracker integration</p>
+          <p className={classes.eyebrow}>Delegate bug fixing</p>
           <h2 className={classes.title}>Connect Bug Tracker</h2>
           <p className={classes.subtitle}>
             Choose a provider, enter your OAuth credentials, then authenticate to sync issues.

@@ -8,7 +8,7 @@ import { ProviderSetup } from "./ProviderSetup";
 import { BugDetailView } from "./BugDetailView";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { BugItem } from "../types";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./BugsPanel.module.css";
 
 function statusClass(status: string): string {

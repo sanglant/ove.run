@@ -15,7 +15,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./App.module.css";
 
 export default function App() {

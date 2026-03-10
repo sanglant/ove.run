@@ -1,7 +1,7 @@
 import { ExternalLink, Zap } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugItem } from "../types";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./BugDetailView.module.css";
 
 function statusClass(status: string): string {
