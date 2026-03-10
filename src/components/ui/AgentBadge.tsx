@@ -1,3 +1,4 @@
+import cn from "clsx";
 import { getAgentMeta } from "@/constants/agents";
 import classes from "./AgentBadge.module.css";
 
@@ -11,7 +12,7 @@ export function AgentBadge({ agentType, variant = "label", className }: AgentBad
   const meta = getAgentMeta(agentType);
   return (
     <span
-      className={`${classes.badge}${className ? ` ${className}` : ""}`}
+      className={cn(classes.badge, className)}
       style={{
         "--agent-badge-bg": `color-mix(in srgb, ${meta.color} 15%, transparent)`,
         "--agent-badge-color": meta.color,

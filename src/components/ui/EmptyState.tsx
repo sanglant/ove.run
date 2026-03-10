@@ -15,7 +15,7 @@ export function EmptyState({ icon, title, description, children, className }: Em
   return (
     <div className={cn(classes.container, className)}>
       {icon}
-      <div style={{ textAlign: "center" }}>
+      <div className={classes.textBlock}>
         <Text size="sm" c="var(--text-primary)">
           {title}
         </Text>

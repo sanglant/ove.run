@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
 import { Modal, TextInput, Text } from "@mantine/core";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
 import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
 import { useProjectStore } from "@/stores/projectStore";
 import {
@@ -422,28 +423,10 @@ export function NotesPanel() {
         title="Delete note"
         centered
         size="sm"
-        overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
+        overlayProps={MODAL_OVERLAY_PROPS}
         styles={{
-          header: {
-            backgroundColor: "var(--bg-elevated)",
-            borderBottom: "1px solid var(--border)",
-          },
-          title: {
-            color: "var(--text-primary)",
-            fontSize: "14px",
-            fontWeight: 600,
-          },
-          body: {
-            padding: 20,
-            backgroundColor: "var(--bg-elevated)",
-          },
-          content: {
-            backgroundColor: "var(--bg-elevated)",
-            border: "1px solid var(--border)",
-          },
-          close: {
-            color: "var(--text-secondary)",
-          },
+          ...MODAL_STYLES,
+          body: { ...MODAL_STYLES.body, padding: 20 },
         }}
       >
         <Text size="sm" c="var(--text-secondary)" mb="md">
