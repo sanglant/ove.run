@@ -8,6 +8,7 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { killPty } from "@/lib/tauri";
 import type { AgentSession, TerminalLayoutMode } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import cn from "classnames";
 import classes from "./TerminalTabs.module.css";
 
 const SESSION_DRAG_MIME = "application/x-agentic-session";
@@ -28,10 +29,10 @@ const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
 };
 
 const AGENT_LABEL: Record<string, string> = {
-  claude: "C",
-  gemini: "G",
-  copilot: "P",
-  codex: "X",
+  claude: "CC",
+  gemini: "GC",
+  copilot: "CP",
+  codex: "CX",
   terminal: ">_",
 };
 
@@ -459,28 +460,16 @@ function FlatTabs({
               onDragEnd={onTabDragEnd}
             >
               <span
-                className={statusColor.className}
-                style={{
-                  width: "0.375rem",
-                  height: "0.375rem",
-                  borderRadius: "9999px",
-                  flexShrink: 0,
-                  backgroundColor: statusColor.bg,
-                }}
+                className={cn(classes.statusDot, statusColor.className)}
+                style={{ '--status-color': statusColor.bg } as React.CSSProperties}
               />
 
               <div className={classes.twoLineLabel}>
-                <div className={classes.flatMetaLine}>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "0.5625rem",
-                      color: agentColor,
-                    }}
-                  >
+                <div className={classes.flatMetaLine} style={{ '--agent-color': agentColor } as React.CSSProperties}>
+                  <span className={classes.agentLabel}>
                     {AGENT_LABEL[session.agentType] ?? "?"}
                   </span>
-                  <span className={classes.projectNameLabel} style={{ color: agentColor }}>
+                  <span className={classes.projectNameLabel}>
                     {projectName}
                   </span>
                 </div>
@@ -490,7 +479,7 @@ function FlatTabs({
               <button
                 aria-label={`Close session ${session.label}`}
                 onClick={(event) => onClose(event, session)}
-                className={`${classes.revealOnHover} ${classes.closeButton}`}
+                className={cn(classes.revealOnHover, classes.closeButton)}
               >
                 <X size={10} />
               </button>
@@ -550,31 +539,20 @@ function SessionTab({
       onDragEnd={onDragEnd}
     >
       <span
-        style={{
-          fontWeight: "bold",
-          fontSize: "10px",
-          width: "1rem",
-          textAlign: "center",
-          color: AGENT_COLOR[session.agentType] ?? "var(--accent)",
-        }}
+        className={classes.agentLabelCompact}
+        style={{ '--agent-color': AGENT_COLOR[session.agentType] ?? 'var(--accent)' } as React.CSSProperties}
       >
         {AGENT_LABEL[session.agentType] ?? "?"}
       </span>
       <span
-        className={statusColor.className}
-        style={{
-          width: "0.375rem",
-          height: "0.375rem",
-          borderRadius: "9999px",
-          flexShrink: 0,
-          backgroundColor: statusColor.bg,
-        }}
+        className={cn(classes.statusDot, statusColor.className)}
+        style={{ '--status-color': statusColor.bg } as React.CSSProperties}
       />
       <span className={classes.sessionNameLabel}>{session.label}</span>
       <button
         aria-label={`Close session ${session.label}`}
         onClick={(event) => onClose(event, session)}
-        className={`${classes.revealOnHover} ${classes.closeButton}`}
+        className={cn(classes.revealOnHover, classes.closeButton)}
       >
         <X size={10} />
       </button>

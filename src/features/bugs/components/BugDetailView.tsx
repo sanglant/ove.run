@@ -1,6 +1,7 @@
 import { ExternalLink, Zap } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugItem } from "../types";
+import cn from "classnames";
 import classes from "./BugDetailView.module.css";
 
 function statusClass(status: string): string {
@@ -59,11 +60,11 @@ export function BugDetailView({ bug, onDelegate }: BugDetailViewProps) {
         </div>
         <h2 className={classes.title}>{bug.title}</h2>
         <div className={classes.metaRow}>
-          <span className={`${classes.statusBadge} ${statusClass(bug.status)}`}>
+          <span className={cn(classes.statusBadge, statusClass(bug.status))}>
             {bug.status}
           </span>
           {bug.priority && (
-            <span className={`${classes.priorityBadge} ${priorityClass(bug.priority)}`}>
+            <span className={cn(classes.priorityBadge, priorityClass(bug.priority))}>
               {bug.priority}
             </span>
           )}

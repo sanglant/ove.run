@@ -3,6 +3,8 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
+import cn from "classnames";
+import panelClasses from "./TerminalPanel.module.css";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
@@ -66,8 +68,13 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
       updateStatus(session.id, "starting");
 
       try {
-        fitAddon.fit();
-        const { cols, rows } = term;
+        try {
+          fitAddon.fit();
+        } catch {
+          // Container may not be visible yet — use defaults
+        }
+        const cols = term.cols || 80;
+        const rows = term.rows || 24;
         const agentDef = agentDefRef.current;
 
         const cmdParts = agentDef.command.split(" ");
@@ -86,7 +93,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
 
         if (session.initialPrompt) {
           setTimeout(async () => {
-            const bytes = Array.from(new TextEncoder().encode(session.initialPrompt + "\n"));
+            const bytes = Array.from(new TextEncoder().encode(session.initialPrompt + "\r"));
             await writePty(session.id, bytes);
           }, 2000);
         }
@@ -347,13 +354,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   return (
     <div
       ref={containerRef}
-      style={{
-        display: isVisible ? "flex" : "none",
-        width: "100%",
-        height: "100%",
-        flex: 1,
-        overflow: "hidden",
-      }}
+      className={cn(panelClasses.container, !isVisible && panelClasses.containerHidden)}
       aria-label={`Terminal for session ${session.label}`}
     />
   );

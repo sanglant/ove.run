@@ -11,6 +11,7 @@ import {
   deleteNote,
 } from "@/lib/tauri";
 import type { ProjectNote } from "@/types";
+import cn from "classnames";
 import classes from "./NotesPanel.module.css";
 
 function formatRelativeDate(iso: string): string {
@@ -323,7 +324,7 @@ export function NotesPanel() {
               return (
                 <div
                   key={note.id}
-                  className={`${classes.listItem} ${isSelected ? classes.listItemActive : ""}`}
+                  className={cn(classes.listItem, isSelected && classes.listItemActive)}
                 >
                   <div className={classes.cardAccent} aria-hidden="true" />
                   <div

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { GripVertical, Terminal } from "lucide-react";
 import { Stack, Text, Button } from "@mantine/core";
+import cn from "classnames";
 import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
@@ -570,12 +571,8 @@ export function TerminalContainer() {
             return (
               <div
                 key={session.id}
-                className={classes.sessionSlot}
-                style={{
-                  ...(renderedPane ? paneRectToStyle(renderedPane.rect) : {}),
-                  display: isVisible && renderedPane ? "block" : "none",
-                  zIndex: isFocused ? 3 : 2,
-                }}
+                className={cn(classes.sessionSlot, !(isVisible && renderedPane) && classes.sessionSlotHidden)}
+                style={renderedPane ? paneRectToStyle(renderedPane.rect) : undefined}
                 data-focused={isFocused || undefined}
                 onMouseDown={() => {
                   if (renderedPane && activeProjectId) {
@@ -694,11 +691,11 @@ export function TerminalContainer() {
             align="center"
             justify="center"
             gap="md"
-            className={`${classes.emptyState} animate-fade-in`}
+            className={cn(classes.emptyState, "animate-fade-in")}
           >
             <Terminal size={48} strokeWidth={1} />
             <div className={classes.emptyStateBody}>
-              <Text size="lg" fw={500} style={{ color: "var(--text-primary)" }}>
+              <Text size="lg" fw={500} c="var(--text-primary)">
                 No active sessions
               </Text>
               <Text size="sm" mt={4}>
@@ -710,10 +707,7 @@ export function TerminalContainer() {
             {activeProjectId && (
               <Button
                 onClick={() => setShowNewDialog(true)}
-                style={{
-                  backgroundColor: "var(--accent)",
-                  color: "var(--bg-primary)",
-                }}
+                className={classes.newSessionButton}
               >
                 New Agent Session
               </Button>

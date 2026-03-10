@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { GitCommit } from "lucide-react";
 import { Button, Text, Textarea } from "@mantine/core";
+import classes from "./CommitForm.module.css";
 
 interface CommitFormProps {
   stagedCount: number;
@@ -33,16 +34,8 @@ export function CommitForm({ stagedCount, onCommit }: CommitFormProps) {
   };
 
   return (
-    <div
-      style={{
-        borderTop: "1px solid var(--border)",
-        padding: "12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div className={classes.container}>
+      <div className={classes.statusRow}>
         {stagedCount > 0 ? (
           <Text size="xs" c="var(--success)">
             {stagedCount} staged
@@ -103,7 +96,7 @@ export function CommitForm({ stagedCount, onCommit }: CommitFormProps) {
         {loading ? "Committing..." : "Commit"}
       </Button>
 
-      <Text size="xs" c="var(--text-secondary)" style={{ textAlign: "center", fontSize: "10px" }}>
+      <Text size="xs" c="var(--text-secondary)" className={classes.hint}>
         Ctrl+Enter to commit
       </Text>
     </div>

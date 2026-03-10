@@ -68,11 +68,21 @@
 
 .sessionSlot {
   background: #090909;
+  z-index: 2;
+}
+
+.sessionSlotHidden {
+  display: none;
+}
+
+.sessionSlot:not(.sessionSlotHidden) {
+  display: block;
 }
 
 .sessionSlot[data-focused] {
   border-color: color-mix(in srgb, var(--accent) 68%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
+  z-index: 3;
 }
 
 .paneChrome {
@@ -319,4 +329,9 @@
 
 .emptyStateBody {
   text-align: center;
+}
+
+.newSessionButton {
+  background-color: var(--accent);
+  color: var(--bg-primary);
 }

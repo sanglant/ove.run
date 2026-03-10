@@ -10,6 +10,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import classes from "./NewProjectDialog.module.css";
 
 interface NewProjectDialogProps {
   onClose: () => void;
@@ -114,7 +115,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
       }}
     >
       {/* Body */}
-      <Stack gap="md" style={{ padding: "20px" }}>
+      <Stack gap="md" className={classes.content}>
         <TextInput
           id="project-name"
           label="Project Name"
@@ -129,16 +130,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
         />
 
         <div>
-          <Text
-            size="xs"
-            style={{
-              color: "var(--text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontWeight: 500,
-              marginBottom: "6px",
-            }}
-          >
+          <Text size="xs" className={classes.sectionTitle}>
             Directory Path
           </Text>
           <Group gap="xs" wrap="nowrap">
@@ -147,7 +139,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
               value={path}
               onChange={(e) => setPath(e.target.value)}
               placeholder="/home/user/my-project"
-              style={{ flex: 1 }}
+              className={classes.flex1}
               styles={{
                 input: {
                   ...inputStyles.input,
@@ -179,19 +171,14 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
         </div>
 
         {error && (
-          <Text size="xs" style={{ color: "var(--danger)" }}>
+          <Text size="xs" c="var(--danger)">
             {error}
           </Text>
         )}
       </Stack>
 
       {/* Footer */}
-      <div
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "16px 20px",
-        }}
-      >
+      <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
           <Button
             variant="subtle"

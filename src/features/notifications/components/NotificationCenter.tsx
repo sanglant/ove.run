@@ -1,8 +1,10 @@
 import { Bell, CheckCheck, Trash2, ExternalLink } from "lucide-react";
+import cn from "classnames";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
 import { Badge, Button, Text, Divider, Group } from "@mantine/core";
+import classes from "./NotificationCenter.module.css";
 
 export function NotificationCenter() {
   const { notifications, markRead, markAllRead, clearAll } =
@@ -37,24 +39,12 @@ export function NotificationCenter() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div className={classes.container}>
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--border)",
-          flexShrink: 0,
-        }}
-      >
+      <div className={classes.header}>
         <Group gap={8} wrap="nowrap">
           <Bell size={14} color="var(--accent)" />
-          <Text
-            size="sm"
-            style={{ fontWeight: 500, color: "var(--text-primary)" }}
-          >
+          <Text size="sm" fw={500} c="var(--text-primary)">
             Notifications
           </Text>
           {unreadCount > 0 && (
@@ -118,44 +108,25 @@ export function NotificationCenter() {
       </div>
 
       {/* Notification list */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div className={classes.listScroll}>
         {notifications.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "12px",
-              color: "var(--text-secondary)",
-            }}
-          >
+          <div className={classes.emptyState}>
             <Bell size={40} strokeWidth={1} />
-            <div style={{ textAlign: "center" }}>
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+            <div className={classes.emptyText}>
+              <Text size="sm" c="var(--text-primary)">
                 No notifications
               </Text>
-              <Text size="xs" c="dimmed" style={{ marginTop: "4px" }}>
+              <Text size="xs" c="dimmed" mt={4}>
                 Agent events will appear here
               </Text>
             </div>
           </div>
         ) : (
-          <ul role="list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
+          <ul role="list" className={classes.list}>
             {notifications.map((notification) => (
               <li
                 key={notification.id}
-                style={{
-                  position: "relative",
-                  cursor: "pointer",
-                  borderLeft: notification.read
-                    ? "2px solid transparent"
-                    : "2px solid var(--accent)",
-                  backgroundColor: notification.read
-                    ? "transparent"
-                    : "color-mix(in srgb, var(--accent) 5%, transparent)",
-                }}
+                className={cn(classes.notificationItem, notification.read ? classes.notificationItemRead : classes.notificationItemUnread)}
                 onClick={() =>
                   handleNotificationClick(notification.id, notification.sessionId)
                 }
@@ -168,82 +139,29 @@ export function NotificationCenter() {
                 }}
                 aria-label={`Notification: ${notification.title}`}
               >
-                <div
-                  style={{ padding: "12px 16px", transition: "background-color 150ms" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--bg-tertiary)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                <div className={classes.notificationContent}>
+                  <div className={classes.notificationRow}>
+                    <div className={classes.notificationBody}>
                       <Text
                         size="sm"
-                        style={{
-                          fontWeight: 500,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          color: notification.read
-                            ? "var(--text-secondary)"
-                            : "var(--text-primary)",
-                        }}
+                        className={classes.notificationTitle}
+                        c={notification.read ? "var(--text-secondary)" : "var(--text-primary)"}
                       >
                         {notification.title}
                       </Text>
-                      <Text
-                        size="xs"
-                        lineClamp={2}
-                        style={{
-                          color: "var(--text-secondary)",
-                          marginTop: "2px",
-                        }}
-                      >
+                      <Text size="xs" lineClamp={2} c="var(--text-secondary)" mt={2}>
                         {notification.body}
                       </Text>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-end",
-                        gap: "4px",
-                        flexShrink: 0,
-                      }}
-                    >
+                    <div className={classes.notificationMeta}>
                       <Text size="xs" c="dimmed">
                         {formatTime(notification.timestamp)}
                       </Text>
-                      <ExternalLink
-                        size={10}
-                        style={{
-                          color: "var(--text-secondary)",
-                          opacity: 0,
-                          transition: "opacity 150ms",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.opacity = "1")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.opacity = "0")
-                        }
-                      />
+                      <ExternalLink size={10} className={classes.jumpIcon} />
                     </div>
                   </div>
                 </div>
-                <Divider
-                  style={{ marginLeft: "16px", marginRight: "16px" }}
-                  color="var(--border)"
-                />
+                <Divider className={classes.divider} color="var(--border)" />
               </li>
             ))}
           </ul>

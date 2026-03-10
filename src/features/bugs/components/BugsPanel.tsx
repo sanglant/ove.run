@@ -8,6 +8,7 @@ import { ProviderSetup } from "./ProviderSetup";
 import { BugDetailView } from "./BugDetailView";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { BugItem } from "../types";
+import cn from "classnames";
 import classes from "./BugsPanel.module.css";
 
 function statusClass(status: string): string {
@@ -136,9 +137,9 @@ export function BugsPanel() {
   // No provider configured or in setup mode
   if (!providerConfig || showSettings) {
     return (
-      <div style={{ height: "100%", overflow: "hidden" }}>
+      <div className={classes.setupContainer}>
         {showSettings && (
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+          <div className={classes.setupHeader}>
             <button
               type="button"
               className={classes.iconButton}
@@ -224,7 +225,7 @@ export function BugsPanel() {
               return (
                 <div
                   key={bug.id}
-                  className={`${classes.listItem} ${isSelected ? classes.listItemActive : ""}`}
+                  className={cn(classes.listItem, isSelected && classes.listItemActive)}
                   role="listitem"
                 >
                   <div className={classes.cardAccent} aria-hidden="true" />
@@ -245,7 +246,7 @@ export function BugsPanel() {
                       <span className={classes.bugKey}>{bug.key}</span>
                       {bug.priority && (
                         <span
-                          className={`${classes.priorityDot} ${priorityDotClass(bug.priority)}`}
+                          className={cn(classes.priorityDot, priorityDotClass(bug.priority))}
                           title={bug.priority}
                           aria-label={`Priority: ${bug.priority}`}
                         />
@@ -253,7 +254,7 @@ export function BugsPanel() {
                     </div>
                     <span className={classes.bugTitle}>{bug.title}</span>
                     <div className={classes.bugMetaRow}>
-                      <span className={`${classes.statusBadge} ${statusClass(bug.status)}`}>
+                      <span className={cn(classes.statusBadge, statusClass(bug.status))}>
                         {bug.status}
                       </span>
                     </div>
@@ -280,7 +281,7 @@ export function BugsPanel() {
             </button>
             <button
               type="button"
-              style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", marginTop: 4 }}
+              className={classes.removeButton}
               onClick={() => void handleDisconnect()}
             >
               Remove configuration

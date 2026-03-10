@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import { ScrollArea } from "@mantine/core";
+import classes from "./DiffViewer.module.css";
 
 interface DiffViewerProps {
   diff: string;
@@ -40,12 +40,12 @@ function parseDiff(raw: string): DiffLine[] {
   return result;
 }
 
-const LINE_STYLES: Record<DiffLine["type"], CSSProperties> = {
-  addition: { backgroundColor: "rgba(140, 192, 132, 0.1)", color: "var(--success)" },
-  deletion: { backgroundColor: "rgba(229, 115, 127, 0.1)", color: "var(--danger)" },
-  context: { color: "var(--text-secondary)" },
-  header: { color: "var(--accent)", fontWeight: 500, backgroundColor: "var(--bg-tertiary)" },
-  hunk: { color: "var(--warning)", backgroundColor: "var(--bg-tertiary)", fontStyle: "italic" },
+const LINE_CLASS: Record<DiffLine["type"], string> = {
+  addition: classes.lineAddition,
+  deletion: classes.lineDeletion,
+  context: classes.lineContext,
+  header: classes.lineHeader,
+  hunk: classes.lineHunk,
 };
 
 const LINE_PREFIX: Record<DiffLine["type"], string> = {
@@ -59,16 +59,7 @@ const LINE_PREFIX: Record<DiffLine["type"], string> = {
 export function DiffViewer({ diff, filePath }: DiffViewerProps) {
   if (!diff) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "var(--text-secondary)",
-          fontSize: "13px",
-        }}
-      >
+      <div className={classes.emptyState}>
         {filePath ? "No changes in selected file" : "Select a file to view diff"}
       </div>
     );
@@ -77,67 +68,28 @@ export function DiffViewer({ diff, filePath }: DiffViewerProps) {
   const lines = parseDiff(diff);
 
   return (
-    <ScrollArea h="100%" style={{ fontFamily: "monospace", fontSize: "12px" }}>
+    <ScrollArea h="100%" className={classes.scrollArea}>
       {filePath && (
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            padding: "6px 16px",
-            backgroundColor: "var(--bg-secondary)",
-            borderBottom: "1px solid var(--border)",
-            color: "var(--text-secondary)",
-            fontFamily: "monospace",
-            fontSize: "12px",
-            zIndex: 1,
-          }}
-        >
+        <div className={classes.fileHeader}>
           {filePath}
         </div>
       )}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className={classes.diffTable}>
         <tbody>
           {lines.map((line, i) => (
             <tr
               key={i}
-              style={{ ...LINE_STYLES[line.type], lineHeight: 1.6 }}
+              className={LINE_CLASS[line.type]}
             >
-              <td
-                style={{
-                  userSelect: "none",
-                  paddingLeft: "12px",
-                  paddingRight: "8px",
-                  color: "var(--text-secondary)",
-                  textAlign: "right",
-                  width: "40px",
-                  borderRight: "1px solid var(--border)",
-                  opacity: 0.6,
-                }}
-              >
+              <td className={classes.lineNumCell}>
                 {line.type === "addition" || line.type === "context"
                   ? line.lineNum ?? ""
                   : ""}
               </td>
-              <td
-                style={{
-                  userSelect: "none",
-                  paddingLeft: "8px",
-                  paddingRight: "12px",
-                  width: "20px",
-                  textAlign: "center",
-                  opacity: 0.7,
-                }}
-              >
+              <td className={classes.prefixCell}>
                 {LINE_PREFIX[line.type]}
               </td>
-              <td
-                style={{
-                  paddingLeft: "8px",
-                  paddingRight: "16px",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                }}
-              >
+              <td className={classes.contentCell}>
                 {line.content}
               </td>
             </tr>

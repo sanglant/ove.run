@@ -5,6 +5,7 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useUiStore } from "@/stores/uiStore";
 import type { AgentStatus } from "@/types";
+import classes from "./StatusBar.module.css";
 
 const STATUS_ORDER: AgentStatus[] = [
   "working",
@@ -44,36 +45,18 @@ export function StatusBar() {
   const totalSessions = sessions.length;
 
   return (
-    <footer
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        height: 24,
-        paddingLeft: 12,
-        paddingRight: 12,
-        backgroundColor: "var(--bg-secondary)",
-        borderTop: "1px solid var(--border)",
-        flexShrink: 0,
-        fontSize: 10,
-      }}
-    >
+    <footer className={classes.footer}>
       {/* Left: Session summary */}
-      <Group gap={12} style={{ color: "var(--text-secondary)" }}>
+      <Group gap={12} className={classes.sessionSummary}>
         {totalSessions === 0 ? (
-          <Text span size="xs" style={{ fontSize: 10 }}>No sessions</Text>
+          <Text span fz={10}>No sessions</Text>
         ) : (
           <>
-            <Text span size="xs" style={{ fontSize: 10 }}>
+            <Text span fz={10}>
               {totalSessions} session{totalSessions !== 1 ? "s" : ""}
             </Text>
             {STATUS_ORDER.filter((s) => statusCounts[s]).map((status) => (
-              <Text
-                key={status}
-                span
-                size="xs"
-                style={{ fontSize: 10, color: STATUS_COLORS[status] }}
-              >
+              <Text key={status} span fz={10} c={STATUS_COLORS[status]}>
                 {statusCounts[status]} {status.replace("_", " ")}
               </Text>
             ))}
@@ -83,19 +66,8 @@ export function StatusBar() {
 
       {/* Center: Project path */}
       {activeProject && (
-        <div
-          style={{
-            flex: 1,
-            textAlign: "center",
-            color: "var(--text-secondary)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            paddingLeft: 16,
-            paddingRight: 16,
-          }}
-        >
-          <Text span ff="monospace" style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+        <div className={classes.projectPath}>
+          <Text span ff="monospace" fz={10} c="var(--text-tertiary)">
             {activeProject.path}
           </Text>
         </div>
@@ -105,21 +77,11 @@ export function StatusBar() {
       <button
         onClick={() => setActivePanel("notifications")}
         aria-label={`${unreadCount} unread notifications`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          color: "var(--text-secondary)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          fontSize: 10,
-        }}
+        className={classes.notificationButton}
       >
         <Bell size={10} />
         {unreadCount > 0 && (
-          <Text span style={{ fontSize: 10, color: "var(--danger)", fontWeight: 700 }}>
+          <Text span fz={10} c="var(--danger)" fw={700}>
             {unreadCount > 99 ? "99+" : unreadCount}
           </Text>
         )}

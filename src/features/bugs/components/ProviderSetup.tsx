@@ -3,6 +3,7 @@ import { TextInput } from "@mantine/core";
 import { saveBugProviderConfig, startBugOauth, checkBugAuth } from "@/lib/tauri";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugProviderType, ProviderConfig } from "../types";
+import cn from "classnames";
 import classes from "./ProviderSetup.module.css";
 
 interface ProviderCard {
@@ -150,7 +151,7 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
               <button
                 key={provider.type}
                 type="button"
-                className={`${classes.providerCard} ${isSelected ? classes.providerCardActive : ""}`}
+                className={cn(classes.providerCard, isSelected && classes.providerCardActive)}
                 onClick={() => {
                   setSelectedProvider(provider);
                   setSaved(false);
@@ -159,16 +160,7 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
                 aria-pressed={isSelected}
               >
                 <span
-                  className={classes.providerIcon}
-                  style={{
-                    color: isSelected ? "var(--accent-glow)" : "var(--text-secondary)",
-                    borderColor: isSelected
-                      ? "color-mix(in srgb, var(--accent) 40%, transparent)"
-                      : "var(--border)",
-                    backgroundColor: isSelected
-                      ? "color-mix(in srgb, var(--accent) 12%, transparent)"
-                      : "var(--bg-tertiary)",
-                  }}
+                  className={cn(classes.providerIcon, isSelected && classes.providerIconActive)}
                 >
                   {provider.icon}
                 </span>

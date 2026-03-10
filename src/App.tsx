@@ -15,6 +15,8 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import cn from "classnames";
+import classes from "./App.module.css";
 
 export default function App() {
   const { loadProjects } = useProjectStore();
@@ -40,87 +42,59 @@ export default function App() {
   }, []);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100%",
-        width: "100%",
-        overflow: "hidden",
-        background: "var(--bg-primary)",
-      }}
-    >
+    <div className={classes.root}>
       {/* Sidebar */}
       {!sidebarCollapsed && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flexShrink: 0,
-            overflow: "hidden",
-            width: 240,
-          }}
-        >
+        <div className={classes.sidebarWrapper}>
           <Sidebar />
         </div>
       )}
 
       {/* Main area */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-        }}
-      >
+      <div className={classes.mainArea}>
         {/* TopBar: only shown for terminal panel */}
         {activePanel === "terminal" && <TopBar />}
 
         {/* Content */}
-        <main style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+        <main className={classes.content}>
           {/* Terminal is always mounted but hidden when not active */}
           <div
-            style={{
-              display: activePanel === "terminal" ? "flex" : "none",
-              position: "absolute",
-              inset: 0,
-            }}
+            className={cn(classes.terminalContainer, activePanel !== "terminal" && classes.terminalContainerHidden)}
           >
             <TerminalContainer />
           </div>
 
           {/* Git panel */}
           {activePanel === "git" && (
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div className={classes.panelContainer}>
               <GitPanel />
             </div>
           )}
 
           {/* Knowledge panel */}
           {activePanel === "knowledge" && (
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div className={classes.panelContainer}>
               <KnowledgePanel />
             </div>
           )}
 
           {/* Notes panel */}
           {activePanel === "notes" && (
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div className={classes.panelContainer}>
               <NotesPanel />
             </div>
           )}
 
           {/* Bugs panel */}
           {activePanel === "bugs" && (
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div className={classes.panelContainer}>
               <BugsPanel />
             </div>
           )}
 
           {/* Notifications panel */}
           {activePanel === "notifications" && (
-            <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div className={classes.panelContainer}>
               <NotificationCenter />
             </div>
           )}

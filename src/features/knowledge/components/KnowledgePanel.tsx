@@ -11,6 +11,7 @@ import {
   deleteKnowledge,
 } from "@/lib/tauri";
 import type { KnowledgeEntry, KnowledgeType } from "@/types";
+import cn from "classnames";
 import classes from "./KnowledgePanel.module.css";
 
 const TYPE_ICONS: Record<KnowledgeType, ReactNode> = {
@@ -378,7 +379,7 @@ export function KnowledgePanel() {
                       return (
                         <div
                           key={entry.id}
-                          className={`${classes.listItem} ${isSelected ? classes.listItemActive : ""}`}
+                          className={cn(classes.listItem, isSelected && classes.listItemActive)}
                         >
                           <div className={classes.cardAccent} aria-hidden="true" />
                           <div

@@ -23,12 +23,13 @@ import { guardianAnswer } from "@/lib/guardian";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
+import classes from "./AgentFeedbackModal.module.css";
 
 const AGENT_META: Record<string, { label: string; color: string; displayName: string }> = {
-  claude: { label: "C", color: "var(--claude)", displayName: "Claude" },
-  gemini: { label: "G", color: "var(--gemini)", displayName: "Gemini" },
-  copilot: { label: "P", color: "var(--copilot)", displayName: "Copilot" },
-  codex: { label: "X", color: "var(--codex)", displayName: "Codex" },
+  claude: { label: "CC", color: "var(--claude)", displayName: "Claude" },
+  gemini: { label: "GC", color: "var(--gemini)", displayName: "Gemini" },
+  copilot: { label: "CP", color: "var(--copilot)", displayName: "Copilot" },
+  codex: { label: "CX", color: "var(--codex)", displayName: "Codex" },
   terminal: { label: ">_", color: "var(--text-secondary)", displayName: "Terminal" },
 };
 
@@ -178,28 +179,24 @@ function FeedbackModalContent({
   }, [outputHtml]);
 
   const modalTitle = (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className={classes.titleRow}>
       {/* Agent type badge */}
       <span
+        className={classes.agentBadge}
         style={{
-          padding: "2px 6px",
-          borderRadius: 4,
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          backgroundColor: `color-mix(in srgb, ${agentMeta.color} 15%, transparent)`,
-          color: agentMeta.color,
-        }}
+          '--agent-badge-bg': `color-mix(in srgb, ${agentMeta.color} 15%, transparent)`,
+          '--agent-badge-color': agentMeta.color,
+        } as React.CSSProperties}
       >
         {agentMeta.label}
       </span>
-      <Text fw={600} size="sm" style={{ color: "var(--text-primary)" }}>
+      <Text fw={600} size="sm" c="var(--text-primary)">
         {project?.name ?? "Project"}
       </Text>
-      <Text size="sm" style={{ color: "var(--text-secondary)" }}>
+      <Text size="sm" c="var(--text-secondary)">
         —
       </Text>
-      <Text size="sm" style={{ color: "var(--text-secondary)" }}>
+      <Text size="sm" c="var(--text-secondary)">
         {session?.label ?? "Session"}
       </Text>
     </div>
@@ -238,30 +235,19 @@ function FeedbackModalContent({
         },
       }}
     >
-      <Stack gap="md" style={{ padding: "20px" }}>
+      <Stack gap="md" className={classes.content}>
         {/* Output display */}
         <ScrollArea h={220} type="auto" viewportRef={scrollViewportRef}>
           <div
             dangerouslySetInnerHTML={{ __html: outputHtml }}
-            style={{
-              fontFamily: "JetBrains Mono, Cascadia Code, monospace",
-              fontSize: "12px",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              color: "var(--text-secondary)",
-              lineHeight: 1.4,
-              padding: "12px",
-              backgroundColor: "var(--bg-primary)",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-            }}
+            className={classes.output}
           />
         </ScrollArea>
 
         {/* Guardian timer */}
         {isQuestion && item.guardianEnabled && (
           <div>
-            <Text size="xs" style={{ color: "var(--text-secondary)" }} mb={4}>
+            <Text size="xs" c="var(--text-secondary)" mb={4}>
               Guardian auto-answer in {Math.ceil(timeLeft / 1000)}s
             </Text>
             <Progress
@@ -311,7 +297,7 @@ function FeedbackModalContent({
                 if (e.key === "Enter") handleFreeTextSubmit();
               }}
               size="xs"
-              style={{ flex: 1 }}
+              className={classes.flex1}
               styles={{
                 input: {
                   fontFamily: "JetBrains Mono, Cascadia Code, monospace",
@@ -342,12 +328,7 @@ function FeedbackModalContent({
       </Stack>
 
       {/* Footer */}
-      <div
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "16px 20px",
-        }}
-      >
+      <div className={classes.footer}>
         <Group gap="xs" justify="flex-end">
           <Button
             size="xs"

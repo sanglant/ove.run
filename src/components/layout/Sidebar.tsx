@@ -27,6 +27,7 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { Project } from "@/types";
+import cn from "classnames";
 import classes from "./Sidebar.module.css";
 
 const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
@@ -39,10 +40,10 @@ const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
 };
 
 const AGENT_ICON: Record<string, { label: string; color: string }> = {
-  claude: { label: "C", color: "var(--claude)" },
-  gemini: { label: "G", color: "var(--gemini)" },
-  copilot: { label: "P", color: "var(--copilot)" },
-  codex: { label: "X", color: "var(--codex)" },
+  claude: { label: "CC", color: "var(--claude)" },
+  gemini: { label: "GC", color: "var(--gemini)" },
+  copilot: { label: "CP", color: "var(--copilot)" },
+  codex: { label: "CX", color: "var(--codex)" },
   terminal: { label: ">_", color: "var(--text-secondary)" },
 };
 
@@ -167,43 +168,31 @@ export function Sidebar() {
   ];
 
   return (
-    <aside
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        backgroundColor: "var(--bg-secondary)",
-        borderRight: "1px solid var(--border)",
-      }}
-      aria-label="Sidebar navigation"
-    >
+    <aside className={classes.sidebar} aria-label="Sidebar navigation">
       {/* App title */}
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>
-          <span style={{ color: "var(--accent-glow)" }}>Ag</span>
-          <span style={{ color: "var(--text-primary)" }}>entic</span>
+      <div className={classes.header}>
+        <h1 className={classes.title}>
+          <span className={classes.titleAccent}>Ag</span>
+          <span className={classes.titleText}>entic</span>
         </h1>
       </div>
 
       {/* Project list */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        <div style={{ padding: "12px 12px 4px" }}>
+      <div className={classes.projectsScroll}>
+        <div className={classes.sectionLabel}>
           <Text
             size="xs"
             tt="uppercase"
             c="dimmed"
-            style={{ letterSpacing: "0.05em", fontWeight: 600, fontSize: 10 }}
+            fz={10}
+            fw={600}
+            lts="0.05em"
           >
             Projects
           </Text>
         </div>
 
-        <ul role="list" style={{ padding: "0 8px", margin: 0, listStyle: "none" }}>
+        <ul role="list" className={classes.projectList}>
           {projects.map((project) => {
             const projectSessions = sessions.filter(
               (s) => s.projectId === project.id,
@@ -212,22 +201,10 @@ export function Sidebar() {
             const isActiveProject = project.id === activeProjectId;
 
             return (
-              <li key={project.id} style={{ marginBottom: 2 }}>
+              <li key={project.id} className={classes.projectItem}>
                 {/* Project row */}
                 <div
-                  className={classes.row}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    padding: "4px 4px",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    transition: "color 150ms",
-                    color: isActiveProject
-                      ? "var(--text-primary)"
-                      : "var(--text-secondary)",
-                  }}
+                  className={cn(classes.row, classes.projectRow, isActiveProject && classes.projectRowActive)}
                   onClick={() => handleProjectClick(project)}
                   role="button"
                   tabIndex={0}
@@ -243,18 +220,7 @@ export function Sidebar() {
                     }}
                     aria-label={isExpanded ? "Collapse" : "Expand"}
                     aria-expanded={isExpanded}
-                    style={{
-                      flexShrink: 0,
-                      width: 16,
-                      color: "var(--text-secondary)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    className={classes.expandToggle}
                   >
                     {isExpanded ? (
                       <ChevronDown size={12} />
@@ -267,46 +233,23 @@ export function Sidebar() {
                   {project.git_enabled ? (
                     <FolderGit2
                       size={14}
-                      style={{
-                        flexShrink: 0,
-                        color: isActiveProject ? "var(--accent)" : undefined,
-                      }}
+                      className={cn(classes.projectIcon, isActiveProject && classes.projectIconActive)}
                     />
                   ) : (
                     <Folder
                       size={14}
-                      style={{
-                        flexShrink: 0,
-                        color: isActiveProject ? "var(--accent)" : undefined,
-                      }}
+                      className={cn(classes.projectIcon, isActiveProject && classes.projectIconActive)}
                     />
                   )}
 
                   {/* Project name */}
-                  <span
-                    style={{
-                      flex: 1,
-                      fontSize: 12,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontWeight: 500,
-                    }}
-                  >
+                  <span className={classes.projectName}>
                     {project.name}
                   </span>
 
                   {/* Session count badge */}
                   {projectSessions.length > 0 && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: "0 4px",
-                        borderRadius: 9999,
-                        backgroundColor: "var(--bg-tertiary)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
+                    <span className={classes.sessionCountBadge}>
                       {projectSessions.length}
                     </span>
                   )}
@@ -319,25 +262,9 @@ export function Sidebar() {
                         onClick={(e) => handleGuardianToggle(e, project)}
                         aria-label={guardianActive ? `Disable guardian for ${project.name}` : `Enable guardian for ${project.name}`}
                         aria-pressed={guardianActive}
-                        className={guardianActive ? undefined : classes.revealOnHover}
-                        style={{
-                          color: guardianActive ? "var(--guardian)" : "var(--text-secondary)",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          display: "flex",
-                          alignItems: "center",
-                        }}
+                        className={cn(classes.iconButton, guardianActive ? classes.guardianActive : classes.revealOnHover)}
                       >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            lineHeight: 1,
-                            fontWeight: 700,
-                            color: guardianActive ? "var(--guardian)" : "var(--text-secondary)",
-                          }}
-                        >
+                        <span className={cn(classes.guardianLabel, guardianActive && classes.guardianActive)}>
                           G
                         </span>
                       </button>
@@ -348,16 +275,7 @@ export function Sidebar() {
                   <button
                     onClick={(e) => handleNewAgent(e, project.id)}
                     aria-label={`New agent session for ${project.name}`}
-                    className={classes.revealOnHover}
-                    style={{
-                      color: "var(--text-secondary)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+                    className={cn(classes.iconButton, classes.revealOnHover)}
                   >
                     <Plus size={12} />
                   </button>
@@ -365,90 +283,41 @@ export function Sidebar() {
 
                 {/* Sessions list */}
                 {isExpanded && projectSessions.length > 0 && (
-                  <ul
-                    style={{ marginLeft: 20, marginTop: 2, listStyle: "none", padding: 0 }}
-                    role="list"
-                  >
+                  <ul className={classes.sessionList} role="list">
                     {projectSessions.map((session) => {
                       const isActive = session.id === activeSessionId;
                       const agentIcon = AGENT_ICON[session.agentType];
                       const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
 
                       return (
-                        <li key={session.id} style={{ marginBottom: 2 }}>
+                        <li key={session.id} className={classes.sessionItem}>
                           <UnstyledButton
                             onClick={() => handleSessionClick(session.id, project.id)}
                             draggable
                             onDragStart={(event: DragEvent<HTMLButtonElement>) =>
                               handleSessionDragStart(event, session.id)
                             }
-                            style={{
-                              width: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              padding: "6px 8px",
-                              borderRadius: 4,
-                              fontSize: 12,
-                              textAlign: "left",
-                              cursor: "grab",
-                              transition: "background-color 150ms, color 150ms",
-                              backgroundColor: isActive
-                                ? "color-mix(in srgb, var(--accent) 15%, transparent)"
-                                : "transparent",
-                              color: isActive
-                                ? "var(--text-primary)"
-                                : "var(--text-secondary)",
-                            }}
+                            className={cn(classes.sessionButton, isActive && classes.sessionButtonActive)}
                           >
                             {/* Status dot */}
                             <span
-                              className={statusColor.className}
-                              style={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: "50%",
-                                flexShrink: 0,
-                                backgroundColor: statusColor.bg,
-                                display: "inline-block",
-                              }}
+                              className={cn(classes.statusDot, statusColor.className)}
+                              style={{ '--status-color': statusColor.bg } as React.CSSProperties}
                             />
                             {/* Agent icon */}
                             <span
-                              style={{
-                                fontWeight: 700,
-                                fontSize: 10,
-                                width: 12,
-                                textAlign: "center",
-                                color: agentIcon?.color ?? "var(--accent)",
-                              }}
+                              className={classes.agentIcon}
+                              style={{ '--agent-color': agentIcon?.color ?? 'var(--accent)' } as React.CSSProperties}
                             >
                               {agentIcon?.label ?? "?"}
                             </span>
                             {/* Session label */}
-                            <span
-                              style={{
-                                flex: 1,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <Text size="sm" className={classes.sessionLabel}>
                               {session.label}
-                            </span>
+                            </Text>
                             {/* YOLO badge */}
                             {session.yoloMode && (
-                              <span
-                                style={{
-                                  fontSize: 9,
-                                  fontWeight: 700,
-                                  color: "var(--danger)",
-                                  padding: "0 4px",
-                                  borderRadius: 4,
-                                  backgroundColor: "rgba(229,115,127,0.15)",
-                                  border: "1px solid rgba(229,115,127,0.2)",
-                                }}
-                              >
+                              <span className={classes.yoloBadge}>
                                 Y
                               </span>
                             )}
@@ -465,12 +334,7 @@ export function Sidebar() {
       </div>
 
       {/* Add project button */}
-      <div
-        style={{
-          padding: "8px 12px",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      <div className={classes.addProjectSection}>
         <Button
           variant="subtle"
           fullWidth
@@ -494,13 +358,7 @@ export function Sidebar() {
       </div>
 
       {/* Bottom nav icons */}
-      <nav
-        aria-label="Panel navigation"
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "8px",
-        }}
-      >
+      <nav aria-label="Panel navigation" className={classes.nav}>
         <Group justify="space-between" align="center" gap={2} w="100%">
           {navItems.map((item) => {
             const isActive = activePanel === item.id;

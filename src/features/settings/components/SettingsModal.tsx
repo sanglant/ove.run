@@ -16,6 +16,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import classes from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -161,38 +162,29 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       }}
     >
       {/* Content */}
-      <Stack gap="xl" style={{ padding: "20px" }}>
+      <Stack gap="xl" className={classes.content}>
         {/* Global settings */}
         <section>
-          <Text
-            size="xs"
-            style={{
-              color: "var(--text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontWeight: 600,
-              marginBottom: "16px",
-            }}
-          >
+          <Text size="xs" className={classes.sectionTitle}>
             Global
           </Text>
           <Stack gap="sm">
             {/* Font family */}
             <Group justify="space-between" align="center">
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+              <Text size="sm" className={classes.settingLabel}>
                 Terminal Font Family
               </Text>
               <TextInput
                 value={draft.global.font_family}
                 onChange={(e) => handleGlobalChange("font_family", e.target.value)}
-                style={{ width: "208px" }}
+                className={classes.inputWidth208}
                 styles={inputStyles}
               />
             </Group>
 
             {/* Font size */}
             <Group justify="space-between" align="center">
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+              <Text size="sm" className={classes.settingLabel}>
                 Terminal Font Size
               </Text>
               <NumberInput
@@ -202,14 +194,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 onChange={(val) =>
                   handleGlobalChange("font_size", typeof val === "number" ? val : parseInt(String(val), 10))
                 }
-                style={{ width: "80px" }}
+                className={classes.inputWidth80}
                 styles={inputStyles}
               />
             </Group>
 
             {/* Scrollback */}
             <Group justify="space-between" align="center">
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+              <Text size="sm" className={classes.settingLabel}>
                 Scrollback Lines
               </Text>
               <NumberInput
@@ -223,14 +215,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     typeof val === "number" ? val : parseInt(String(val), 10),
                   )
                 }
-                style={{ width: "112px" }}
+                className={classes.inputWidth112}
                 styles={inputStyles}
               />
             </Group>
 
             {/* Notifications */}
             <Group justify="space-between" align="center">
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+              <Text size="sm" className={classes.settingLabel}>
                 Notifications Enabled
               </Text>
               <Switch
@@ -245,7 +237,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
             {/* Minimize to tray */}
             <Group justify="space-between" align="center">
-              <Text size="sm" style={{ color: "var(--text-primary)" }}>
+              <Text size="sm" className={classes.settingLabel}>
                 Minimize to Tray
               </Text>
               <Switch
@@ -261,10 +253,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             {/* Guardian timeout */}
             <Group justify="space-between" align="center">
               <div>
-                <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                <Text size="sm" className={classes.settingLabel}>
                   Guardian Timeout
                 </Text>
-                <Text size="xs" style={{ color: "var(--text-secondary)", marginTop: "2px" }}>
+                <Text size="xs" className={classes.settingHint}>
                   Seconds before guardian auto-answers
                 </Text>
               </div>
@@ -278,7 +270,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     typeof val === "number" ? val : parseInt(String(val), 10),
                   )
                 }
-                style={{ width: "80px" }}
+                className={classes.inputWidth80}
                 styles={inputStyles}
               />
             </Group>
@@ -287,16 +279,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
         {/* Agent settings */}
         <section>
-          <Text
-            size="xs"
-            style={{
-              color: "var(--text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontWeight: 600,
-              marginBottom: "16px",
-            }}
-          >
+          <Text size="xs" className={classes.sectionTitle}>
             Agent Settings
           </Text>
 
@@ -335,13 +318,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   {/* Default YOLO */}
                   <Group justify="space-between" align="flex-start">
                     <div>
-                      <Text size="sm" style={{ color: "var(--text-primary)" }}>
+                      <Text size="sm" className={classes.settingLabel}>
                         Default YOLO Mode
                       </Text>
-                      <Text
-                        size="xs"
-                        style={{ color: "var(--text-secondary)", marginTop: "2px" }}
-                      >
+                      <Text size="xs" className={classes.settingHint}>
                         Skip confirmation prompts by default
                       </Text>
                     </div>
@@ -361,12 +341,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
                   {/* Custom args */}
                   <div>
-                    <Text size="sm" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>
+                    <Text size="sm" mb={6} className={classes.settingLabel}>
                       Custom Arguments
                       <Text
                         component="span"
                         size="xs"
-                        style={{ color: "var(--text-secondary)", marginLeft: "8px", fontWeight: 400 }}
+                        c="var(--text-secondary)"
+                        ml={8}
+                        fw={400}
                       >
                         (one per line)
                       </Text>
@@ -391,48 +373,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
                   {/* Env vars */}
                   <div>
-                    <Text size="sm" style={{ color: "var(--text-primary)", marginBottom: "6px" }}>
+                    <Text size="sm" mb={6} className={classes.settingLabel}>
                       Environment Variables
                     </Text>
-                    <Stack gap="xs" style={{ marginBottom: "8px" }}>
+                    <Stack gap="xs" className={classes.envVarsList}>
                       {Object.entries(agentSettings.env_vars ?? {}).map(([k, v]) => (
                         <Group key={k} gap="xs" wrap="nowrap">
-                          <Code
-                            style={{
-                              flex: 1,
-                              backgroundColor: "var(--bg-tertiary)",
-                              color: "var(--accent)",
-                              fontSize: "12px",
-                              padding: "4px 8px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <Code className={classes.envVarKey}>
                             {k}
                           </Code>
-                          <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                          <Text size="xs" c="var(--text-secondary)">
                             =
                           </Text>
-                          <Code
-                            style={{
-                              flex: 1,
-                              backgroundColor: "var(--bg-tertiary)",
-                              color: "var(--text-primary)",
-                              fontSize: "12px",
-                              padding: "4px 8px",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
+                          <Code className={classes.envVarValue}>
                             {v}
                           </Code>
                           <ActionIcon
                             variant="subtle"
                             onClick={() => handleRemoveEnvVar(activeAgentTab, k)}
                             aria-label={`Remove env var ${k}`}
-                            style={{ color: "var(--danger)" }}
+                            c="var(--danger)"
                           >
                             <Trash2 size={12} />
                           </ActionIcon>
@@ -444,7 +404,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         value={newEnvKey}
                         onChange={(e) => setNewEnvKey(e.target.value)}
                         placeholder="KEY"
-                        style={{ flex: 1 }}
+                        className={classes.flex1}
                         styles={{
                           input: {
                             ...inputStyles.input,
@@ -453,14 +413,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                           },
                         }}
                       />
-                      <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+                      <Text size="xs" c="var(--text-secondary)">
                         =
                       </Text>
                       <TextInput
                         value={newEnvVal}
                         onChange={(e) => setNewEnvVal(e.target.value)}
                         placeholder="value"
-                        style={{ flex: 1 }}
+                        className={classes.flex1}
                         styles={{
                           input: {
                             ...inputStyles.input,
@@ -476,7 +436,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         variant="subtle"
                         onClick={() => handleAddEnvVar(activeAgentTab)}
                         aria-label="Add environment variable"
-                        style={{ color: "var(--accent)" }}
+                        c="var(--accent)"
                       >
                         <Plus size={14} />
                       </ActionIcon>
@@ -490,13 +450,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       </Stack>
 
       {/* Footer */}
-      <div
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "16px 20px",
-          flexShrink: 0,
-        }}
-      >
+      <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
           <Button
             variant="subtle"

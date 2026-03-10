@@ -1,0 +1,66 @@
+.content {
+  padding: 20px;
+}
+
+.sectionTitle {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.settingLabel {
+  color: var(--text-primary);
+}
+
+.settingHint {
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.inputWidth208 {
+  width: 208px;
+}
+
+.inputWidth112 {
+  width: 112px;
+}
+
+.inputWidth80 {
+  width: 80px;
+}
+
+.envVarCode {
+  flex: 1;
+  background-color: var(--bg-tertiary);
+  font-size: 12px;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.envVarKey {
+  composes: envVarCode;
+  color: var(--accent);
+}
+
+.envVarValue {
+  composes: envVarCode;
+  color: var(--text-primary);
+}
+
+.envVarsList {
+  margin-bottom: 8px;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+  flex-shrink: 0;
+}

@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useUiStore } from "@/stores/uiStore";
 import { listAgentTypes } from "@/lib/tauri";
 import type { AgentType, AgentDefinition, AgentSession } from "@/types";
 import {
@@ -17,6 +18,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import classes from "./NewAgentDialog.module.css";
 
 interface NewAgentDialogProps {
   projectId: string;
@@ -51,6 +53,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
 
   const { addSession } = useSessionStore();
   const { settings } = useSettingsStore();
+  const setActivePanel = useUiStore((s) => s.setActivePanel);
 
   useEffect(() => {
     listAgentTypes()
@@ -140,15 +143,16 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
     };
 
     addSession(session);
+    setActivePanel("terminal");
     setLoading(false);
     onClose();
   };
 
   const AGENT_META: Record<string, { label: string; color: string }> = {
-    claude: { label: "C", color: "var(--claude)" },
-    gemini: { label: "G", color: "var(--gemini)" },
-    copilot: { label: "P", color: "var(--copilot)" },
-    codex: { label: "X", color: "var(--codex)" },
+    claude: { label: "CC", color: "var(--claude)" },
+    gemini: { label: "GC", color: "var(--gemini)" },
+    copilot: { label: "CP", color: "var(--copilot)" },
+    codex: { label: "CX", color: "var(--codex)" },
     terminal: { label: ">_", color: "var(--text-secondary)" },
   };
 
@@ -186,19 +190,10 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       }}
     >
       {/* Body */}
-      <Stack gap="lg" style={{ padding: "20px" }}>
+      <Stack gap="lg" className={classes.content}>
         {/* Agent type selector */}
         <div>
-          <Text
-            size="xs"
-            style={{
-              color: "var(--text-secondary)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              fontWeight: 500,
-              marginBottom: "8px",
-            }}
-          >
+          <Text size="xs" className={classes.sectionTitle}>
             Agent Type
           </Text>
           <SimpleGrid cols={2} spacing="xs">
@@ -210,36 +205,26 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
                   key={def.agent_type}
                   withBorder
                   p="sm"
-                  style={{
-                    cursor: "pointer",
-                    backgroundColor: isSelected
-                      ? `color-mix(in srgb, ${meta.color} 10%, transparent)`
-                      : "var(--bg-tertiary)",
-                    borderColor: isSelected ? meta.color : "var(--border)",
-                    transition: "border-color 0.15s, background-color 0.15s",
+                  className={classes.agentCard}
+                  styles={{
+                    root: {
+                      backgroundColor: isSelected
+                        ? `color-mix(in srgb, ${meta.color} 10%, transparent)`
+                        : "var(--bg-tertiary)",
+                      borderColor: isSelected ? meta.color : "var(--border)",
+                    },
                   }}
                   onClick={() => setAgentType(def.agent_type as AgentType)}
                 >
                   <Group gap="sm" wrap="nowrap">
-                    <Text
-                      style={{
-                        fontSize: "18px",
-                        fontWeight: 700,
-                        color: meta.color,
-                        lineHeight: 1,
-                      }}
-                    >
+                    <Text className={classes.agentIconLabel} c={meta.color}>
                       {meta.label}
                     </Text>
                     <div>
                       <Text
                         size="sm"
                         fw={500}
-                        style={{
-                          color: isSelected
-                            ? "var(--text-primary)"
-                            : "var(--text-secondary)",
-                        }}
+                        c={isSelected ? "var(--text-primary)" : "var(--text-secondary)"}
                       >
                         {def.display_name}
                       </Text>
@@ -260,7 +245,8 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
               <Text
                 component="span"
                 size="xs"
-                style={{ color: "var(--text-secondary)", fontWeight: 400 }}
+                c="var(--text-secondary)"
+                fw={400}
               >
                 (optional)
               </Text>
@@ -279,15 +265,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
         {agentType !== "terminal" && (
         <Stack gap="xs">
           <Group justify="space-between">
-            <Text
-              size="xs"
-              style={{
-                color: "var(--text-secondary)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                fontWeight: 500,
-              }}
-            >
+            <Text size="xs" className={classes.sectionTitle} mb={0}>
               YOLO Mode
             </Text>
             <Switch
@@ -325,12 +303,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       </Stack>
 
       {/* Footer */}
-      <div
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "16px 20px",
-        }}
-      >
+      <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
           <Button
             variant="subtle"

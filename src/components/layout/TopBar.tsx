@@ -2,6 +2,8 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Group, Modal, Alert, Text } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
+import cn from "classnames";
+import classes from "./TopBar.module.css";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   starting: { label: "Starting", color: "var(--warning)" },
@@ -37,60 +39,36 @@ export function TopBar() {
 
   return (
     <>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: 36,
-          paddingLeft: 12,
-          paddingRight: 12,
-          backgroundColor: "var(--bg-secondary)",
-          borderBottom: "1px solid var(--border)",
-          flexShrink: 0,
-        }}
-      >
+      <header className={classes.header}>
         {/* Left: Session info */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <div className={classes.sessionInfo}>
           {activeSession ? (
             <>
               {/* Agent type badge */}
               <span
+                className={classes.agentBadge}
                 style={{
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  backgroundColor: `color-mix(in srgb, var(--${activeSession.agentType}) 15%, transparent)`,
-                  color: `var(--${activeSession.agentType})`,
-                }}
+                  '--agent-badge-bg': `color-mix(in srgb, var(--${activeSession.agentType}) 15%, transparent)`,
+                  '--agent-badge-color': `var(--${activeSession.agentType})`,
+                } as React.CSSProperties}
               >
                 {AGENT_DISPLAY_NAMES[activeSession.agentType] || activeSession.agentType}
               </span>
 
               {/* Session label */}
-              <Text
-                size="sm"
-                fw={500}
-                truncate="end"
-                style={{
-                  color: "var(--text-primary)",
-                  maxWidth: 200,
-                }}
-              >
+              <Text size="sm" fw={500} truncate="end" className={classes.sessionLabel}>
                 {activeSession.label}
               </Text>
 
               {/* Status */}
               {statusMeta && (
-                <Text size="xs" style={{ color: statusMeta.color }}>
+                <Text size="xs" c={statusMeta.color}>
                   {statusMeta.label}
                 </Text>
               )}
             </>
           ) : (
-            <Text size="xs" style={{ color: "var(--text-secondary)" }}>
+            <Text size="xs" c="var(--text-secondary)">
               No active session
             </Text>
           )}
@@ -107,34 +85,10 @@ export function TopBar() {
                   ? "YOLO mode active — click to disable (will respawn)"
                   : "Enable YOLO mode (will respawn)"
               }
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 8px",
-                borderRadius: 4,
-                fontSize: 10,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                cursor: "pointer",
-                transition: "color 150ms, background-color 150ms",
-                backgroundColor: activeSession.yoloMode
-                  ? "color-mix(in srgb, var(--danger) 20%, transparent)"
-                  : "transparent",
-                color: activeSession.yoloMode
-                  ? "var(--danger)"
-                  : "var(--text-secondary)",
-                border: activeSession.yoloMode
-                  ? "1px solid color-mix(in srgb, var(--danger) 40%, transparent)"
-                  : "1px solid transparent",
-                boxShadow: activeSession.yoloMode
-                  ? "0 0 8px 0 color-mix(in srgb, var(--danger) 25%, transparent)"
-                  : "none",
-              }}
+              className={cn(classes.yoloButton, activeSession.yoloMode && classes.yoloButtonActive)}
             >
               {activeSession.yoloMode && (
-                <AlertTriangle size={10} style={{ flexShrink: 0 }} />
+                <AlertTriangle size={10} className={classes.flexShrink0} />
               )}
               YOLO
             </button>
@@ -178,36 +132,13 @@ export function TopBar() {
             <Group justify="flex-end" gap={8}>
               <button
                 onClick={() => setShowYoloWarning(false)}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 14,
-                  color: "var(--text-secondary)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  borderRadius: 4,
-                  transition: "color 150ms",
-                }}
+                className={classes.cancelButton}
               >
                 Cancel
               </button>
               <button
                 onClick={handleYoloConfirm}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  borderRadius: 4,
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "opacity 150ms",
-                  backgroundColor: activeSession.yoloMode
-                    ? "var(--bg-tertiary)"
-                    : "var(--danger)",
-                  color: activeSession.yoloMode
-                    ? "var(--text-primary)"
-                    : "white",
-                }}
+                className={cn(classes.confirmButton, activeSession.yoloMode ? classes.confirmButtonDisable : classes.confirmButtonEnable)}
               >
                 {activeSession.yoloMode ? "Disable" : "Enable YOLO"}
               </button>

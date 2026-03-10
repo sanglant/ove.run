@@ -5,3 +5,171 @@
   opacity: 0;
   transition: opacity 150ms;
 }
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.notRepoState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.notRepoText {
+  text-align: center;
+}
+
+.container {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fileListPanel {
+  display: flex;
+  flex-direction: column;
+  width: 256px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.branchHeader {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+}
+
+.branchName {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileListScroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+}
+
+.sectionHeaderSpaced {
+  composes: sectionHeader;
+  margin-top: 4px;
+}
+
+.sectionTitle {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.sectionAction {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 150ms;
+}
+
+.sectionAction:hover {
+  color: var(--text-primary);
+}
+
+.sectionActionUnstage:hover {
+  color: var(--danger);
+}
+
+.sectionActionStage:hover {
+  color: var(--success);
+}
+
+.fileButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 150ms, color 150ms;
+}
+
+.fileButton:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.fileButtonSelected {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.statusLabel {
+  width: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: var(--status-color);
+}
+
+.filePath {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.toggleUnstage {
+  font-size: 10px;
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.toggleStage {
+  font-size: 10px;
+  color: var(--success);
+  cursor: pointer;
+}
+
+.emptyFiles {
+  padding: 32px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.emptyFilesIcon {
+  margin: 0 auto 8px;
+  display: block;
+  opacity: 0.5;
+}
+
+.diffPanel {
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}

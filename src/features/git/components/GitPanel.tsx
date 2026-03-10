@@ -6,6 +6,7 @@ import { DiffViewer } from "./DiffViewer";
 import { CommitForm } from "./CommitForm";
 import type { GitFileStatus } from "@/types";
 import { Group, Text, ActionIcon } from "@mantine/core";
+import cn from "classnames";
 import classes from "./GitPanel.module.css";
 
 const FILE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -55,7 +56,6 @@ export function GitPanel() {
     } else {
       await stageFiles([file.path]);
     }
-    // Re-load diff if this is selected file
     if (selectedFile?.path === file.path) {
       await loadDiff(file.path, !file.staged);
     }
@@ -77,16 +77,7 @@ export function GitPanel() {
 
   if (!activeProject) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "var(--text-secondary)",
-          fontSize: "14px",
-        }}
-      >
+      <div className={classes.emptyState}>
         Select a project to view git status
       </div>
     );
@@ -94,25 +85,15 @@ export function GitPanel() {
 
   if (!loading && status && !status.is_repo) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          gap: "12px",
-          color: "var(--text-secondary)",
-        }}
-      >
+      <div className={classes.notRepoState}>
         <GitMerge size={40} strokeWidth={1} />
-        <div style={{ textAlign: "center" }}>
-          <p style={{ color: "var(--text-primary)", fontWeight: 500, margin: 0 }}>
+        <div className={classes.notRepoText}>
+          <Text fw={500} c="var(--text-primary)" size="sm">
             Not a git repository
-          </p>
-          <p style={{ fontSize: "14px", marginTop: "4px", marginBottom: 0 }}>
+          </Text>
+          <Text fz={14} mt={4} c="var(--text-secondary)">
             {activeProject.path}
-          </p>
+          </Text>
         </div>
       </div>
     );
@@ -122,47 +103,24 @@ export function GitPanel() {
   const unstagedFiles = status?.files.filter((f) => !f.staged) ?? [];
 
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+    <div className={classes.container}>
       {/* Left: File list + commit */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "256px",
-          flexShrink: 0,
-          borderRight: "1px solid var(--border)",
-          overflow: "hidden",
-        }}
-      >
+      <div className={classes.fileListPanel}>
         {/* Branch header */}
-        <div
-          style={{
-            borderBottom: "1px solid var(--border)",
-            padding: "8px 12px",
-          }}
-        >
+        <div className={classes.branchHeader}>
           <Group justify="space-between" wrap="nowrap" gap={0}>
             <Group gap={6} wrap="nowrap">
               <GitBranch size={12} color="var(--text-secondary)" />
-              <Text
-                size="xs"
-                style={{
-                  color: "var(--text-primary)",
-                  fontWeight: 500,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <Text size="xs" className={classes.branchName}>
                 {status?.branch ?? "—"}
               </Text>
               {(status?.ahead ?? 0) > 0 && (
-                <Text style={{ color: "var(--success)", fontSize: "10px" }}>
+                <Text c="var(--success)" fz={10}>
                   ↑{status?.ahead}
                 </Text>
               )}
               {(status?.behind ?? 0) > 0 && (
-                <Text style={{ color: "var(--danger)", fontSize: "10px" }}>
+                <Text c="var(--danger)" fz={10}>
                   ↓{status?.behind}
                 </Text>
               )}
@@ -188,46 +146,17 @@ export function GitPanel() {
         </div>
 
         {/* File list */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className={classes.fileListScroll}>
           {/* Staged */}
           {stagedFiles.length > 0 && (
             <div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "6px 12px",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: "var(--text-secondary)",
-                  }}
-                >
+              <div className={classes.sectionHeader}>
+                <span className={classes.sectionTitle}>
                   Staged ({stagedFiles.length})
-                </Text>
+                </span>
                 <button
                   onClick={handleUnstageAll}
-                  style={{
-                    fontSize: "10px",
-                    color: "var(--text-secondary)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    transition: "color 150ms",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--danger)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--text-secondary)")
-                  }
+                  className={cn(classes.sectionAction, classes.sectionActionUnstage)}
                 >
                   Unstage all
                 </button>
@@ -241,54 +170,12 @@ export function GitPanel() {
                     key={`staged-${file.path}`}
                     onClick={() => handleFileClick(file)}
                     onDoubleClick={() => handleToggleStage(file)}
-                    className={classes.row}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      textAlign: "left",
-                      background: isSelected ? "var(--bg-tertiary)" : "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
-                      transition: "background 150ms, color 150ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "var(--bg-tertiary)";
-                        e.currentTarget.style.color = "var(--text-primary)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "none";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                      }
-                    }}
+                    className={cn(classes.row, classes.fileButton, isSelected && classes.fileButtonSelected)}
                   >
-                    <span
-                      style={{
-                        width: "12px",
-                        fontWeight: 700,
-                        flexShrink: 0,
-                        color: meta.color,
-                      }}
-                    >
+                    <span className={classes.statusLabel} style={{ '--status-color': meta.color } as React.CSSProperties}>
                       {meta.label}
                     </span>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                      }}
-                    >
+                    <span className={classes.filePath}>
                       {file.path}
                     </span>
                     <span
@@ -296,12 +183,7 @@ export function GitPanel() {
                         e.stopPropagation();
                         handleToggleStage(file);
                       }}
-                      className={classes.revealOnHover}
-                      style={{
-                        fontSize: "10px",
-                        color: "var(--danger)",
-                        cursor: "pointer",
-                      }}
+                      className={cn(classes.revealOnHover, classes.toggleUnstage)}
                     >
                       −
                     </span>
@@ -314,43 +196,13 @@ export function GitPanel() {
           {/* Unstaged */}
           {unstagedFiles.length > 0 && (
             <div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "6px 12px",
-                  marginTop: "4px",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: "var(--text-secondary)",
-                  }}
-                >
+              <div className={classes.sectionHeaderSpaced}>
+                <span className={classes.sectionTitle}>
                   Changes ({unstagedFiles.length})
-                </Text>
+                </span>
                 <button
                   onClick={handleStageAll}
-                  style={{
-                    fontSize: "10px",
-                    color: "var(--text-secondary)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    transition: "color 150ms",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--success)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--text-secondary)")
-                  }
+                  className={cn(classes.sectionAction, classes.sectionActionStage)}
                 >
                   Stage all
                 </button>
@@ -364,54 +216,12 @@ export function GitPanel() {
                     key={`unstaged-${file.path}`}
                     onClick={() => handleFileClick(file)}
                     onDoubleClick={() => handleToggleStage(file)}
-                    className={classes.row}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      textAlign: "left",
-                      background: isSelected ? "var(--bg-tertiary)" : "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: isSelected
-                        ? "var(--text-primary)"
-                        : "var(--text-secondary)",
-                      transition: "background 150ms, color 150ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "var(--bg-tertiary)";
-                        e.currentTarget.style.color = "var(--text-primary)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.background = "none";
-                        e.currentTarget.style.color = "var(--text-secondary)";
-                      }
-                    }}
+                    className={cn(classes.row, classes.fileButton, isSelected && classes.fileButtonSelected)}
                   >
-                    <span
-                      style={{
-                        width: "12px",
-                        fontWeight: 700,
-                        flexShrink: 0,
-                        color: meta.color,
-                      }}
-                    >
+                    <span className={classes.statusLabel} style={{ '--status-color': meta.color } as React.CSSProperties}>
                       {meta.label}
                     </span>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        flex: 1,
-                      }}
-                    >
+                    <span className={classes.filePath}>
                       {file.path}
                     </span>
                     <span
@@ -419,12 +229,7 @@ export function GitPanel() {
                         e.stopPropagation();
                         handleToggleStage(file);
                       }}
-                      className={classes.revealOnHover}
-                      style={{
-                        fontSize: "10px",
-                        color: "var(--success)",
-                        cursor: "pointer",
-                      }}
+                      className={cn(classes.revealOnHover, classes.toggleStage)}
                     >
                       +
                     </span>
@@ -435,31 +240,14 @@ export function GitPanel() {
           )}
 
           {!loading && status?.files.length === 0 && (
-            <div
-              style={{
-                padding: "32px 12px",
-                textAlign: "center",
-                fontSize: "12px",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <FileDiff
-                size={24}
-                style={{ margin: "0 auto 8px", display: "block", opacity: 0.5 }}
-              />
+            <div className={classes.emptyFiles}>
+              <FileDiff size={24} className={classes.emptyFilesIcon} />
               No changes
             </div>
           )}
 
           {loading && (
-            <div
-              style={{
-                padding: "32px 12px",
-                textAlign: "center",
-                fontSize: "12px",
-                color: "var(--text-secondary)",
-              }}
-            >
+            <div className={classes.emptyFiles}>
               Loading...
             </div>
           )}
@@ -469,24 +257,9 @@ export function GitPanel() {
       </div>
 
       {/* Right: Diff viewer */}
-      <div
-        style={{
-          flex: 1,
-          overflow: "hidden",
-          backgroundColor: "var(--bg-primary)",
-        }}
-      >
+      <div className={classes.diffPanel}>
         {committing ? (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              color: "var(--text-secondary)",
-              fontSize: "14px",
-            }}
-          >
+          <div className={classes.emptyState}>
             Committing...
           </div>
         ) : (

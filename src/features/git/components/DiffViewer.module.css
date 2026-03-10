@@ -1,0 +1,88 @@
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.scrollArea {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.fileHeader {
+  position: sticky;
+  top: 0;
+  padding: 6px 16px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1;
+}
+
+.diffTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lineNumCell {
+  user-select: none;
+  padding-left: 12px;
+  padding-right: 8px;
+  color: var(--text-secondary);
+  text-align: right;
+  width: 40px;
+  border-right: 1px solid var(--border);
+  opacity: 0.6;
+}
+
+.prefixCell {
+  user-select: none;
+  padding-left: 8px;
+  padding-right: 12px;
+  width: 20px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.contentCell {
+  padding-left: 8px;
+  padding-right: 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.lineAddition {
+  background-color: rgba(140, 192, 132, 0.1);
+  color: var(--success);
+  line-height: 1.6;
+}
+
+.lineDeletion {
+  background-color: rgba(229, 115, 127, 0.1);
+  color: var(--danger);
+  line-height: 1.6;
+}
+
+.lineContext {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lineHeader {
+  color: var(--accent);
+  font-weight: 500;
+  background-color: var(--bg-tertiary);
+  line-height: 1.6;
+}
+
+.lineHunk {
+  color: var(--warning);
+  background-color: var(--bg-tertiary);
+  font-style: italic;
+  line-height: 1.6;
+}

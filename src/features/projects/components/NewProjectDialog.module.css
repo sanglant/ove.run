@@ -1,0 +1,20 @@
+.content {
+  padding: 20px;
+}
+
+.sectionTitle {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.flex1 {
+  flex: 1;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 20px;
+}
