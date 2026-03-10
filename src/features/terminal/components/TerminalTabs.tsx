@@ -8,7 +8,8 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { killPty } from "@/lib/tauri";
 import type { AgentSession, TerminalLayoutMode } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import { getAgentMeta } from "@/constants/agents";
+import { StatusDot } from "@/components/ui/StatusDot";
 import cn from "clsx";
 import classes from "./TerminalTabs.module.css";
 
@@ -415,7 +416,6 @@ function FlatTabs({
       <div className={classes.scrollArea} role="tablist" aria-label="All sessions">
         {allSessions.map((session) => {
           const isActive = session.id === activeSessionId;
-          const statusMeta = getStatusMeta(session.status);
           const projectName = projectMap.get(session.projectId) ?? "Unknown";
           const agentMeta = getAgentMeta(session.agentType);
 
@@ -435,10 +435,7 @@ function FlatTabs({
               onDrop={(event) => onTabDrop(event, session)}
               onDragEnd={onTabDragEnd}
             >
-              <span
-                className={cn(classes.statusDot, statusMeta.className)}
-                style={{ '--status-color': statusMeta.color } as React.CSSProperties}
-              />
+              <StatusDot status={session.status} />
 
               <div className={classes.twoLineLabel}>
                 <div className={classes.flatMetaLine} style={{ '--agent-color': agentMeta.color } as React.CSSProperties}>
@@ -496,7 +493,6 @@ function SessionTab({
   onDrop,
   onDragEnd,
 }: SessionTabProps) {
-  const statusMeta = getStatusMeta(session.status);
   const agentMeta = getAgentMeta(session.agentType);
 
   return (
@@ -521,10 +517,7 @@ function SessionTab({
       >
         {agentMeta.label}
       </span>
-      <span
-        className={cn(classes.statusDot, statusMeta.className)}
-        style={{ '--status-color': statusMeta.color } as React.CSSProperties}
-      />
+      <StatusDot status={session.status} />
       <span className={classes.sessionNameLabel}>{session.label}</span>
       <button
         aria-label={`Close session ${session.label}`}

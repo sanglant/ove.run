@@ -27,7 +27,8 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { Project } from "@/types";
-import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import { getAgentMeta } from "@/constants/agents";
+import { StatusDot } from "@/components/ui/StatusDot";
 import cn from "clsx";
 import classes from "./Sidebar.module.css";
 
@@ -271,7 +272,6 @@ export function Sidebar() {
                     {projectSessions.map((session) => {
                       const isActive = session.id === activeSessionId;
                       const agentMeta = getAgentMeta(session.agentType);
-                      const statusMeta = getStatusMeta(session.status);
 
                       return (
                         <li key={session.id} className={classes.sessionItem}>
@@ -284,10 +284,7 @@ export function Sidebar() {
                             className={cn(classes.sessionButton, isActive && classes.sessionButtonActive)}
                           >
                             {/* Status dot */}
-                            <span
-                              className={cn(classes.statusDot, statusMeta.className)}
-                              style={{ '--status-color': statusMeta.color } as React.CSSProperties}
-                            />
+                            <StatusDot status={session.status} />
                             {/* Agent icon */}
                             <span
                               className={classes.agentIcon}
