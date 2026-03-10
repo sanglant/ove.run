@@ -2,19 +2,9 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Group, Modal, Alert, Text } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
-import cn from "classnames";
+import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import cn from "clsx";
 import classes from "./TopBar.module.css";
-
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  starting: { label: "Starting", color: "var(--warning)" },
-  idle: { label: "Idle", color: "var(--text-secondary)" },
-  working: { label: "Working", color: "var(--accent)" },
-  needs_input: { label: "Needs Input", color: "var(--warning)" },
-  finished: { label: "Finished", color: "var(--success)" },
-  error: { label: "Error", color: "var(--danger)" },
-};
-
-const AGENT_DISPLAY_NAMES: Record<string, string> = { claude: 'Claude', gemini: 'Gemini', copilot: 'Copilot', codex: 'Codex', terminal: 'Terminal' };
 
 export function TopBar() {
   const { sessions, activeSessionId, updateSessionYolo } =
@@ -23,7 +13,7 @@ export function TopBar() {
 
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const statusMeta = activeSession
-    ? (STATUS_LABELS[activeSession.status] ?? { label: activeSession.status, color: "var(--text-secondary)" })
+    ? getStatusMeta(activeSession.status)
     : null;
 
   const handleYoloToggle = () => {
@@ -48,11 +38,11 @@ export function TopBar() {
               <span
                 className={classes.agentBadge}
                 style={{
-                  '--agent-badge-bg': `color-mix(in srgb, var(--${activeSession.agentType}) 15%, transparent)`,
-                  '--agent-badge-color': `var(--${activeSession.agentType})`,
+                  '--agent-badge-bg': `color-mix(in srgb, ${getAgentMeta(activeSession.agentType).color} 15%, transparent)`,
+                  '--agent-badge-color': getAgentMeta(activeSession.agentType).color,
                 } as React.CSSProperties}
               >
-                {AGENT_DISPLAY_NAMES[activeSession.agentType] || activeSession.agentType}
+                {getAgentMeta(activeSession.agentType).displayName}
               </span>
 
               {/* Session label */}

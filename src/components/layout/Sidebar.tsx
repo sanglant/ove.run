@@ -27,25 +27,9 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import type { Project } from "@/types";
-import cn from "classnames";
+import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import cn from "clsx";
 import classes from "./Sidebar.module.css";
-
-const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
-  starting: { bg: "var(--warning)" },
-  idle: { bg: "var(--text-secondary)" },
-  working: { bg: "var(--accent)", className: "animate-pulse-glow" },
-  needs_input: { bg: "var(--warning)", className: "animate-status-pulse" },
-  finished: { bg: "var(--success)" },
-  error: { bg: "var(--danger)" },
-};
-
-const AGENT_ICON: Record<string, { label: string; color: string }> = {
-  claude: { label: "CC", color: "var(--claude)" },
-  gemini: { label: "GC", color: "var(--gemini)" },
-  copilot: { label: "CP", color: "var(--copilot)" },
-  codex: { label: "CX", color: "var(--codex)" },
-  terminal: { label: ">_", color: "var(--text-secondary)" },
-};
 
 export function Sidebar() {
   const { projects, activeProjectId, setActiveProject, updateProject } = useProjectStore();
@@ -286,8 +270,8 @@ export function Sidebar() {
                   <ul className={classes.sessionList} role="list">
                     {projectSessions.map((session) => {
                       const isActive = session.id === activeSessionId;
-                      const agentIcon = AGENT_ICON[session.agentType];
-                      const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
+                      const agentMeta = getAgentMeta(session.agentType);
+                      const statusMeta = getStatusMeta(session.status);
 
                       return (
                         <li key={session.id} className={classes.sessionItem}>
@@ -301,15 +285,15 @@ export function Sidebar() {
                           >
                             {/* Status dot */}
                             <span
-                              className={cn(classes.statusDot, statusColor.className)}
-                              style={{ '--status-color': statusColor.bg } as React.CSSProperties}
+                              className={cn(classes.statusDot, statusMeta.className)}
+                              style={{ '--status-color': statusMeta.color } as React.CSSProperties}
                             />
                             {/* Agent icon */}
                             <span
                               className={classes.agentIcon}
-                              style={{ '--agent-color': agentIcon?.color ?? 'var(--accent)' } as React.CSSProperties}
+                              style={{ '--agent-color': agentMeta.color } as React.CSSProperties}
                             >
-                              {agentIcon?.label ?? "?"}
+                              {agentMeta.label}
                             </span>
                             {/* Session label */}
                             <Text size="sm" className={classes.sessionLabel}>

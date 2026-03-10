@@ -18,6 +18,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import { getAgentMeta } from "@/constants/agents";
 import classes from "./NewAgentDialog.module.css";
 
 interface NewAgentDialogProps {
@@ -148,14 +149,6 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
     onClose();
   };
 
-  const AGENT_META: Record<string, { label: string; color: string }> = {
-    claude: { label: "CC", color: "var(--claude)" },
-    gemini: { label: "GC", color: "var(--gemini)" },
-    copilot: { label: "CP", color: "var(--copilot)" },
-    codex: { label: "CX", color: "var(--codex)" },
-    terminal: { label: ">_", color: "var(--text-secondary)" },
-  };
-
   return (
     <Modal
       opened={true}
@@ -198,7 +191,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           </Text>
           <SimpleGrid cols={2} spacing="xs">
             {agentDefs.map((def) => {
-              const meta = AGENT_META[def.agent_type] ?? { label: "?", color: "var(--text-secondary)" };
+              const meta = getAgentMeta(def.agent_type);
               const isSelected = agentType === def.agent_type;
               return (
                 <Paper

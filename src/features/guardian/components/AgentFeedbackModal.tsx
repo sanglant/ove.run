@@ -23,15 +23,8 @@ import { guardianAnswer } from "@/lib/guardian";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
+import { getAgentMeta } from "@/constants/agents";
 import classes from "./AgentFeedbackModal.module.css";
-
-const AGENT_META: Record<string, { label: string; color: string; displayName: string }> = {
-  claude: { label: "CC", color: "var(--claude)", displayName: "Claude" },
-  gemini: { label: "GC", color: "var(--gemini)", displayName: "Gemini" },
-  copilot: { label: "CP", color: "var(--copilot)", displayName: "Copilot" },
-  codex: { label: "CX", color: "var(--codex)", displayName: "Codex" },
-  terminal: { label: ">_", color: "var(--text-secondary)", displayName: "Terminal" },
-};
 
 export function AgentFeedbackModal() {
   const queue = useAgentFeedbackStore((s) => s.queue);
@@ -64,7 +57,7 @@ function FeedbackModalContent({
 
   const session = sessions.find((s) => s.id === item.sessionId);
   const project = projects.find((p) => p.id === item.projectId);
-  const agentMeta = AGENT_META[session?.agentType ?? ""] ?? AGENT_META.claude;
+  const agentMeta = getAgentMeta(session?.agentType ?? "");
 
   const updateStatus = useSessionStore((s) => s.updateSessionStatus);
 

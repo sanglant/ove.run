@@ -8,7 +8,8 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { killPty } from "@/lib/tauri";
 import type { AgentSession, TerminalLayoutMode } from "@/types";
 import { v4 as uuidv4 } from "uuid";
-import cn from "classnames";
+import { getAgentMeta, getStatusMeta } from "@/constants/agents";
+import cn from "clsx";
 import classes from "./TerminalTabs.module.css";
 
 const SESSION_DRAG_MIME = "application/x-agentic-session";
@@ -18,31 +19,6 @@ interface TerminalTabsProps {
   allSessions: AgentSession[];
   onNewSession: () => void;
 }
-
-const STATUS_COLORS: Record<string, { bg: string; className?: string }> = {
-  starting: { bg: "var(--warning)" },
-  idle: { bg: "var(--text-secondary)" },
-  working: { bg: "var(--accent)", className: "animate-pulse-glow" },
-  needs_input: { bg: "var(--warning)", className: "animate-status-pulse" },
-  finished: { bg: "var(--success)" },
-  error: { bg: "var(--danger)" },
-};
-
-const AGENT_LABEL: Record<string, string> = {
-  claude: "CC",
-  gemini: "GC",
-  copilot: "CP",
-  codex: "CX",
-  terminal: ">_",
-};
-
-const AGENT_COLOR: Record<string, string> = {
-  claude: "var(--claude)",
-  gemini: "var(--gemini)",
-  copilot: "var(--copilot)",
-  codex: "var(--codex)",
-  terminal: "var(--text-secondary)",
-};
 
 const LAYOUT_OPTIONS: Array<{ mode: TerminalLayoutMode; label: string; icon: ReactNode }> = [
   {
@@ -439,9 +415,9 @@ function FlatTabs({
       <div className={classes.scrollArea} role="tablist" aria-label="All sessions">
         {allSessions.map((session) => {
           const isActive = session.id === activeSessionId;
-          const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
+          const statusMeta = getStatusMeta(session.status);
           const projectName = projectMap.get(session.projectId) ?? "Unknown";
-          const agentColor = AGENT_COLOR[session.agentType] ?? "var(--accent)";
+          const agentMeta = getAgentMeta(session.agentType);
 
           return (
             <button
@@ -460,14 +436,14 @@ function FlatTabs({
               onDragEnd={onTabDragEnd}
             >
               <span
-                className={cn(classes.statusDot, statusColor.className)}
-                style={{ '--status-color': statusColor.bg } as React.CSSProperties}
+                className={cn(classes.statusDot, statusMeta.className)}
+                style={{ '--status-color': statusMeta.color } as React.CSSProperties}
               />
 
               <div className={classes.twoLineLabel}>
-                <div className={classes.flatMetaLine} style={{ '--agent-color': agentColor } as React.CSSProperties}>
+                <div className={classes.flatMetaLine} style={{ '--agent-color': agentMeta.color } as React.CSSProperties}>
                   <span className={classes.agentLabel}>
-                    {AGENT_LABEL[session.agentType] ?? "?"}
+                    {agentMeta.label}
                   </span>
                   <span className={classes.projectNameLabel}>
                     {projectName}
@@ -520,7 +496,8 @@ function SessionTab({
   onDrop,
   onDragEnd,
 }: SessionTabProps) {
-  const statusColor = STATUS_COLORS[session.status] ?? { bg: "var(--text-secondary)" };
+  const statusMeta = getStatusMeta(session.status);
+  const agentMeta = getAgentMeta(session.agentType);
 
   return (
     <button
@@ -540,13 +517,13 @@ function SessionTab({
     >
       <span
         className={classes.agentLabelCompact}
-        style={{ '--agent-color': AGENT_COLOR[session.agentType] ?? 'var(--accent)' } as React.CSSProperties}
+        style={{ '--agent-color': agentMeta.color } as React.CSSProperties}
       >
-        {AGENT_LABEL[session.agentType] ?? "?"}
+        {agentMeta.label}
       </span>
       <span
-        className={cn(classes.statusDot, statusColor.className)}
-        style={{ '--status-color': statusColor.bg } as React.CSSProperties}
+        className={cn(classes.statusDot, statusMeta.className)}
+        style={{ '--status-color': statusMeta.color } as React.CSSProperties}
       />
       <span className={classes.sessionNameLabel}>{session.label}</span>
       <button
