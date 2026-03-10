@@ -19,6 +19,7 @@ import {
   Stack,
 } from "@mantine/core";
 import { getAgentMeta } from "@/constants/agents";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
 import classes from "./NewAgentDialog.module.css";
 
 interface NewAgentDialogProps {
@@ -27,23 +28,6 @@ interface NewAgentDialogProps {
   initialLabel?: string;
   initialPrompt?: string;
 }
-
-const inputStyles = {
-  input: {
-    backgroundColor: "var(--bg-tertiary)",
-    borderColor: "var(--border)",
-    color: "var(--text-primary)",
-    "&::placeholder": { color: "var(--text-secondary)" },
-    "&:focus": { borderColor: "var(--accent)" },
-  },
-  label: {
-    color: "var(--text-secondary)",
-    fontSize: "10px",
-    fontWeight: 500,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-};
 
 export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt }: NewAgentDialogProps) {
   const [agentType, setAgentType] = useState<AgentType>("claude");
@@ -155,31 +139,11 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       onClose={onClose}
       title="New Agent Session"
       centered
-      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
-      transitionProps={{ transition: "slide-up" }}
+      overlayProps={MODAL_OVERLAY_PROPS}
+      transitionProps={MODAL_TRANSITION_PROPS}
       styles={{
-        header: {
-          backgroundColor: "var(--bg-elevated)",
-          borderBottom: "1px solid var(--border)",
-          padding: "16px 20px",
-        },
-        title: {
-          color: "var(--text-primary)",
-          fontSize: "14px",
-          fontWeight: 600,
-        },
-        body: {
-          padding: 0,
-          backgroundColor: "var(--bg-elevated)",
-        },
-        content: {
-          backgroundColor: "var(--bg-elevated)",
-          border: "1px solid var(--border-bright)",
-          width: "420px",
-        },
-        close: {
-          color: "var(--text-secondary)",
-        },
+        ...MODAL_STYLES,
+        content: { ...MODAL_STYLES.content, width: "420px" },
       }}
     >
       {/* Body */}
@@ -248,7 +212,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="e.g. Feature branch, Bug fix..."
-          styles={inputStyles}
+          styles={INPUT_STYLES}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleStart();
           }}
@@ -298,33 +262,10 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       {/* Footer */}
       <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
-          <Button
-            variant="subtle"
-            onClick={onClose}
-            styles={{
-              root: {
-                color: "var(--text-secondary)",
-                "&:hover": {
-                  color: "var(--text-primary)",
-                  backgroundColor: "transparent",
-                },
-              },
-            }}
-          >
+          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
             Cancel
           </Button>
-          <Button
-            onClick={handleStart}
-            disabled={loading || !projectId}
-            styles={{
-              root: {
-                backgroundColor: "var(--accent)",
-                color: "var(--bg-primary)",
-                "&:hover": { backgroundColor: "var(--accent-hover)" },
-                "&:disabled": { opacity: 0.5 },
-              },
-            }}
-          >
+          <Button onClick={handleStart} disabled={loading || !projectId} styles={BUTTON_STYLES.primary}>
             {loading ? "Starting..." : "Start Session"}
           </Button>
         </Group>

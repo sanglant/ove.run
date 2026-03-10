@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { TextInput } from "@mantine/core";
+import { INPUT_STYLES } from "@/constants/styles";
 import { saveBugProviderConfig, startBugOauth, checkBugAuth } from "@/lib/tauri";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugProviderType, ProviderConfig } from "../types";
-import cn from "classnames";
+import cn from "clsx";
 import classes from "./ProviderSetup.module.css";
 
 interface ProviderCard {
@@ -117,17 +118,11 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
 
   const inputStyles = {
     input: {
-      backgroundColor: "var(--bg-tertiary)",
-      borderColor: "var(--border)",
-      color: "var(--text-primary)",
+      ...INPUT_STYLES.input,
       fontSize: "12px",
     },
     label: {
-      color: "var(--text-secondary)",
-      fontSize: "10px",
-      fontWeight: 500,
-      textTransform: "uppercase" as const,
-      letterSpacing: "0.05em",
+      ...INPUT_STYLES.label,
       marginBottom: "6px",
     },
   };

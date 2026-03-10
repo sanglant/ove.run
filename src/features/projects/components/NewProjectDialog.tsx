@@ -10,29 +10,12 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
 import classes from "./NewProjectDialog.module.css";
 
 interface NewProjectDialogProps {
   onClose: () => void;
 }
-
-const inputStyles = {
-  input: {
-    backgroundColor: "var(--bg-tertiary)",
-    borderColor: "var(--border)",
-    color: "var(--text-primary)",
-    fontFamily: "inherit",
-    "& ::placeholder": { color: "var(--text-secondary)" },
-    "&:focus": { borderColor: "var(--accent)" },
-  },
-  label: {
-    color: "var(--text-secondary)",
-    fontSize: "10px",
-    fontWeight: 500,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-};
 
 export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
   const [name, setName] = useState("");
@@ -87,31 +70,11 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
       onClose={onClose}
       title="Add Project"
       centered
-      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
-      transitionProps={{ transition: "slide-up" }}
+      overlayProps={MODAL_OVERLAY_PROPS}
+      transitionProps={MODAL_TRANSITION_PROPS}
       styles={{
-        header: {
-          backgroundColor: "var(--bg-elevated)",
-          borderBottom: "1px solid var(--border)",
-          padding: "16px 20px",
-        },
-        title: {
-          color: "var(--text-primary)",
-          fontSize: "14px",
-          fontWeight: 600,
-        },
-        body: {
-          padding: 0,
-          backgroundColor: "var(--bg-elevated)",
-        },
-        content: {
-          backgroundColor: "var(--bg-elevated)",
-          border: "1px solid var(--border-bright)",
-          width: "400px",
-        },
-        close: {
-          color: "var(--text-secondary)",
-        },
+        ...MODAL_STYLES,
+        content: { ...MODAL_STYLES.content, width: "400px" },
       }}
     >
       {/* Body */}
@@ -123,7 +86,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="My Project"
           autoFocus
-          styles={inputStyles}
+          styles={INPUT_STYLES}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleAdd();
           }}
@@ -142,7 +105,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
               className={classes.flex1}
               styles={{
                 input: {
-                  ...inputStyles.input,
+                  ...INPUT_STYLES.input,
                   fontFamily: "monospace",
                 },
               }}
@@ -180,33 +143,10 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
       {/* Footer */}
       <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
-          <Button
-            variant="subtle"
-            onClick={onClose}
-            styles={{
-              root: {
-                color: "var(--text-secondary)",
-                "&:hover": {
-                  color: "var(--text-primary)",
-                  backgroundColor: "transparent",
-                },
-              },
-            }}
-          >
+          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
             Cancel
           </Button>
-          <Button
-            onClick={handleAdd}
-            disabled={loading || !name.trim() || !path.trim()}
-            styles={{
-              root: {
-                backgroundColor: "var(--accent)",
-                color: "var(--bg-primary)",
-                "&:hover": { backgroundColor: "var(--accent-hover)" },
-                "&:disabled": { opacity: 0.5 },
-              },
-            }}
-          >
+          <Button onClick={handleAdd} disabled={loading || !name.trim() || !path.trim()} styles={BUTTON_STYLES.primary}>
             {loading ? "Adding..." : "Add Project"}
           </Button>
         </Group>

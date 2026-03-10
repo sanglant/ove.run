@@ -16,6 +16,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
 import classes from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
@@ -23,30 +24,6 @@ interface SettingsModalProps {
 }
 
 type AgentTab = AgentType;
-
-const inputStyles = {
-  input: {
-    backgroundColor: "var(--bg-tertiary)",
-    borderColor: "var(--border)",
-    color: "var(--text-primary)",
-    "&::placeholder": { color: "var(--text-secondary)" },
-    "&:focus": { borderColor: "var(--accent)" },
-  },
-  label: {
-    color: "var(--text-secondary)",
-    fontSize: "10px",
-    fontWeight: 500,
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-};
-
-const switchStyles = (active: boolean) => ({
-  track: {
-    backgroundColor: active ? undefined : "var(--bg-tertiary)",
-    borderColor: "var(--bg-tertiary)",
-  },
-});
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, updateSettings } = useSettingsStore();
@@ -130,34 +107,20 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       title="Settings"
       size="lg"
       centered
-      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
-      transitionProps={{ transition: "slide-up" }}
+      overlayProps={MODAL_OVERLAY_PROPS}
+      transitionProps={MODAL_TRANSITION_PROPS}
       styles={{
-        header: {
-          backgroundColor: "var(--bg-elevated)",
-          borderBottom: "1px solid var(--border)",
-          padding: "16px 20px",
-        },
-        title: {
-          color: "var(--text-primary)",
-          fontSize: "14px",
-          fontWeight: 600,
-        },
+        ...MODAL_STYLES,
         body: {
-          padding: 0,
-          backgroundColor: "var(--bg-elevated)",
+          ...MODAL_STYLES.body,
           maxHeight: "calc(80vh - 120px)",
           overflowY: "auto",
         },
         content: {
-          backgroundColor: "var(--bg-elevated)",
-          border: "1px solid var(--border-bright)",
+          ...MODAL_STYLES.content,
           maxHeight: "80vh",
           display: "flex",
           flexDirection: "column",
-        },
-        close: {
-          color: "var(--text-secondary)",
         },
       }}
     >
@@ -178,7 +141,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 value={draft.global.font_family}
                 onChange={(e) => handleGlobalChange("font_family", e.target.value)}
                 className={classes.inputWidth208}
-                styles={inputStyles}
+                styles={INPUT_STYLES}
               />
             </Group>
 
@@ -195,7 +158,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   handleGlobalChange("font_size", typeof val === "number" ? val : parseInt(String(val), 10))
                 }
                 className={classes.inputWidth80}
-                styles={inputStyles}
+                styles={INPUT_STYLES}
               />
             </Group>
 
@@ -216,7 +179,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   )
                 }
                 className={classes.inputWidth112}
-                styles={inputStyles}
+                styles={INPUT_STYLES}
               />
             </Group>
 
@@ -271,7 +234,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   )
                 }
                 className={classes.inputWidth80}
-                styles={inputStyles}
+                styles={INPUT_STYLES}
               />
             </Group>
           </Stack>
@@ -362,7 +325,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       placeholder={"--verbose\n--no-cache"}
                       styles={{
                         input: {
-                          ...inputStyles.input,
+                          ...INPUT_STYLES.input,
                           fontFamily: "monospace",
                           resize: "none" as const,
                           fontSize: "12px",
@@ -407,7 +370,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         className={classes.flex1}
                         styles={{
                           input: {
-                            ...inputStyles.input,
+                            ...INPUT_STYLES.input,
                             fontFamily: "monospace",
                             fontSize: "12px",
                           },
@@ -423,7 +386,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         className={classes.flex1}
                         styles={{
                           input: {
-                            ...inputStyles.input,
+                            ...INPUT_STYLES.input,
                             fontFamily: "monospace",
                             fontSize: "12px",
                           },
@@ -452,33 +415,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       {/* Footer */}
       <div className={classes.footer}>
         <Group justify="flex-end" gap="xs">
-          <Button
-            variant="subtle"
-            onClick={onClose}
-            styles={{
-              root: {
-                color: "var(--text-secondary)",
-                "&:hover": {
-                  color: "var(--text-primary)",
-                  backgroundColor: "transparent",
-                },
-              },
-            }}
-          >
+          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            styles={{
-              root: {
-                backgroundColor: "var(--accent)",
-                color: "var(--bg-primary)",
-                "&:hover": { backgroundColor: "var(--accent-hover)" },
-                "&:disabled": { opacity: 0.5 },
-              },
-            }}
-          >
+          <Button onClick={handleSave} disabled={saving} styles={BUTTON_STYLES.primary}>
             {saving ? "Saving..." : "Save Settings"}
           </Button>
         </Group>

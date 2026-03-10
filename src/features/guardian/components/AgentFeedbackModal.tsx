@@ -24,6 +24,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
 import { getAgentMeta } from "@/constants/agents";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, BUTTON_STYLES } from "@/constants/styles";
 import classes from "./AgentFeedbackModal.module.css";
 
 export function AgentFeedbackModal() {
@@ -202,31 +203,9 @@ function FeedbackModalContent({
       title={modalTitle}
       size="lg"
       centered
-      overlayProps={{ blur: 3, backgroundOpacity: 0.6 }}
-      transitionProps={{ transition: "slide-up" }}
-      styles={{
-        header: {
-          backgroundColor: "var(--bg-elevated)",
-          borderBottom: "1px solid var(--border)",
-          padding: "16px 20px",
-        },
-        title: {
-          color: "var(--text-primary)",
-          fontSize: "14px",
-          fontWeight: 600,
-        },
-        body: {
-          padding: 0,
-          backgroundColor: "var(--bg-elevated)",
-        },
-        content: {
-          backgroundColor: "var(--bg-elevated)",
-          border: "1px solid var(--border-bright)",
-        },
-        close: {
-          color: "var(--text-secondary)",
-        },
-      }}
+      overlayProps={MODAL_OVERLAY_PROPS}
+      transitionProps={MODAL_TRANSITION_PROPS}
+      styles={MODAL_STYLES}
     >
       <Stack gap="md" className={classes.content}>
         {/* Output display */}
@@ -305,14 +284,7 @@ function FeedbackModalContent({
               size="xs"
               onClick={handleFreeTextSubmit}
               disabled={!freeText.trim()}
-              styles={{
-                root: {
-                  backgroundColor: "var(--accent)",
-                  color: "var(--bg-primary)",
-                  "&:hover": { backgroundColor: "var(--accent-hover)" },
-                  "&:disabled": { opacity: 0.5 },
-                },
-              }}
+              styles={BUTTON_STYLES.primary}
             >
               Send
             </Button>
@@ -342,15 +314,7 @@ function FeedbackModalContent({
             size="xs"
             variant="subtle"
             onClick={onDismiss}
-            styles={{
-              root: {
-                color: "var(--text-secondary)",
-                "&:hover": {
-                  color: "var(--text-primary)",
-                  backgroundColor: "transparent",
-                },
-              },
-            }}
+            styles={BUTTON_STYLES.subtle}
           >
             Dismiss
           </Button>
