@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ModalFooter } from "@/components/ui/ModalFooter";
 import classes from "./SettingsModal.module.css";
 
 interface SettingsModalProps {
@@ -414,16 +415,14 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       </Stack>
 
       {/* Footer */}
-      <div className={classes.footer}>
-        <Group justify="flex-end" gap="xs">
-          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving} styles={BUTTON_STYLES.primary}>
-            {saving ? "Saving..." : "Save Settings"}
-          </Button>
-        </Group>
-      </div>
+      <ModalFooter>
+        <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={saving} styles={BUTTON_STYLES.primary}>
+          {saving ? "Saving..." : "Save Settings"}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

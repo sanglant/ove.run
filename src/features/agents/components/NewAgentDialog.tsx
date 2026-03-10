@@ -21,6 +21,7 @@ import {
 import { getAgentMeta } from "@/constants/agents";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ModalFooter } from "@/components/ui/ModalFooter";
 import classes from "./NewAgentDialog.module.css";
 
 interface NewAgentDialogProps {
@@ -257,16 +258,14 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       </Stack>
 
       {/* Footer */}
-      <div className={classes.footer}>
-        <Group justify="flex-end" gap="xs">
-          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
-            Cancel
-          </Button>
-          <Button onClick={handleStart} disabled={loading || !projectId} styles={BUTTON_STYLES.primary}>
-            {loading ? "Starting..." : "Start Session"}
-          </Button>
-        </Group>
-      </div>
+      <ModalFooter>
+        <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
+          Cancel
+        </Button>
+        <Button onClick={handleStart} disabled={loading || !projectId} styles={BUTTON_STYLES.primary}>
+          {loading ? "Starting..." : "Start Session"}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

@@ -25,6 +25,7 @@ import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, BUTTON_STYLES } from "@/constants/styles";
 import { AgentBadge } from "@/components/ui/AgentBadge";
+import { ModalFooter } from "@/components/ui/ModalFooter";
 import classes from "./AgentFeedbackModal.module.css";
 
 export function AgentFeedbackModal() {
@@ -283,33 +284,31 @@ function FeedbackModalContent({
       </Stack>
 
       {/* Footer */}
-      <div className={classes.footer}>
-        <Group gap="xs" justify="flex-end">
-          <Button
-            size="xs"
-            variant="subtle"
-            onClick={handleFocusTerminal}
-            styles={{
-              root: {
-                color: "var(--accent)",
-                "&:hover": {
-                  backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)",
-                },
+      <ModalFooter>
+        <Button
+          size="xs"
+          variant="subtle"
+          onClick={handleFocusTerminal}
+          styles={{
+            root: {
+              color: "var(--accent)",
+              "&:hover": {
+                backgroundColor: "color-mix(in srgb, var(--accent) 10%, transparent)",
               },
-            }}
-          >
-            Focus Terminal
-          </Button>
-          <Button
-            size="xs"
-            variant="subtle"
-            onClick={onDismiss}
-            styles={BUTTON_STYLES.subtle}
-          >
-            Dismiss
-          </Button>
-        </Group>
-      </div>
+            },
+          }}
+        >
+          Focus Terminal
+        </Button>
+        <Button
+          size="xs"
+          variant="subtle"
+          onClick={onDismiss}
+          styles={BUTTON_STYLES.subtle}
+        >
+          Dismiss
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }

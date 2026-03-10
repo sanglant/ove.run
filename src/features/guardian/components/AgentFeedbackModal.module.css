@@ -24,8 +24,3 @@
   border-radius: 6px;
   border: 1px solid var(--border);
 }
-
-.footer {
-  border-top: 1px solid var(--border);
-  padding: 16px 20px;
-}

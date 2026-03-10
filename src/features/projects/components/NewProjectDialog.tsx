@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES } from "@/constants/styles";
 import { SectionTitle } from "@/components/ui/SectionTitle";
+import { ModalFooter } from "@/components/ui/ModalFooter";
 import classes from "./NewProjectDialog.module.css";
 
 interface NewProjectDialogProps {
@@ -140,16 +141,14 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
       </Stack>
 
       {/* Footer */}
-      <div className={classes.footer}>
-        <Group justify="flex-end" gap="xs">
-          <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
-            Cancel
-          </Button>
-          <Button onClick={handleAdd} disabled={loading || !name.trim() || !path.trim()} styles={BUTTON_STYLES.primary}>
-            {loading ? "Adding..." : "Add Project"}
-          </Button>
-        </Group>
-      </div>
+      <ModalFooter>
+        <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
+          Cancel
+        </Button>
+        <Button onClick={handleAdd} disabled={loading || !name.trim() || !path.trim()} styles={BUTTON_STYLES.primary}>
+          {loading ? "Adding..." : "Add Project"}
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 }
