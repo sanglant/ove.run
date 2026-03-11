@@ -10,7 +10,7 @@ Add interactive guided tours using driver.js to document app features. Includes 
 
 **`src/hooks/useTour.ts`** — Custom hook wrapping driver.js:
 - Initializes `driver()` with dark-themed config using CSS variables defined in app stylesheets (`--bg-secondary`, `--text-primary`, etc.)
-- Uses `onPopoverRender` to inject Mantine components into the popover DOM element via `createRoot` from `react-dom/client`. The root must be wrapped in `MantineProvider` to inherit theme context. Cleanup via `root.unmount()` in `onDeselected` or `onDestroyed`.
+- Uses `onPopoverRender` to inject Mantine components into the popover DOM element via `createRoot` from `react-dom/client`. The root must be wrapped in `MantineProvider` to inherit theme context. Track the current root in a `ref` — unmount the previous root before creating a new one on each step transition to avoid React warnings. Cleanup via `root.unmount()` in `onDestroyed`.
 - Exposes `startTour(panelName: string)` and `isRunning` state
 - Steps that target missing DOM elements are automatically skipped (check `document.querySelector` before adding to the active step list)
 
@@ -40,7 +40,7 @@ The `settings` and `notifications` panels do not have dedicated tours. When the 
 **`src/styles/tour.css`** — Dark theme overrides for driver.js:
 - Popover background: `var(--bg-secondary)`
 - Text: `var(--text-primary)` / `var(--text-secondary)`
-- Border: `var(--border-primary)`
+- Border: `var(--border)`
 - Overlay: semi-transparent dark
 - Buttons rendered as Mantine `Button` components via `onPopoverRender`
 
@@ -87,10 +87,10 @@ If the user dismisses the tour early (overlay click, Escape key), it is still ma
 5. **Notes panel icon** (`data-tour="sidebar-notes"`) — "Keep project notes and documentation"
 6. **Bugs panel icon** (`data-tour="sidebar-bugs"`) — "Track and delegate bugs from Jira, GitHub, or YouTrack"
 7. **Settings icon** (`data-tour="sidebar-settings"`) — "Configure app preferences, guardian provider, and more"
-8. **Guardian toggle** (`data-tour="sidebar-guardian"`) — "Guardian auto-answers agent questions using AI. Enable per-project from the project list."
+8. **Guardian toggle** (`data-tour="project-guardian-toggle"`) — "Guardian auto-answers agent questions using AI. Enable per-project from the project list."
 9. **Notification bell** (`data-tour="statusbar-notifications"`) — "Get notified about agent activity and guardian decisions"
 
-Note: Step 8 targets the guardian toggle on the first project row. If no projects exist, this step is skipped (element not found).
+Note: Step 8 targets the guardian toggle on the active project row (or first project if none active). The `data-tour` attribute is applied only to one project row's guardian toggle. If no projects exist, this step is skipped (element not found). The `data-tour` attribute on the StatusBar notification bell (step 9) is distinct from the sidebar notifications icon — only the StatusBar element is targeted.
 
 ## StatusBar Help Tour Button
 
@@ -101,7 +101,7 @@ In `StatusBar.tsx`, right section, before the notification bell.
 ### Behavior
 
 - Mantine `ActionIcon` with `CircleHelp` icon (lucide-react)
-- Visible when `activePanel` has a tour defined in `panelTours` (hides for `settings` and `notifications`)
+- Visible when `activePanel in panelTours` is true (hides for `settings` and `notifications`)
 - Clicking calls `startTour(activePanel)` from `useTour` hook
 - `activePanel` from `useUiStore`
 
@@ -151,7 +151,7 @@ On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the
 1. **Provider selector** (`data-tour="bugs-provider-select"`) — "Select Jira as your bug tracker"
 2. **Client ID field** (`data-tour="bugs-client-id"`) — "Go to developer.atlassian.com → Profile icon → Developer console → Create → OAuth 2.0 integration. Then go to Settings in the left menu to find your Client ID"
 3. **Client Secret field** (`data-tour="bugs-client-secret"`) — "On the same Settings page in your Atlassian Developer Console, copy the Client Secret"
-4. **Base URL field** (`data-tour="bugs-base-url"`) — "Enter your Jira Cloud URL (e.g., https://yourteam.atlassian.net)" *(shown if base URL field is rendered)*
+4. **Base URL field** (`data-tour="bugs-base-url"`) — "Optionally enter your Jira Cloud URL if using a custom domain (e.g., https://yourteam.atlassian.net)" *(skipped if field not rendered)*
 5. **Project Key field** (`data-tour="bugs-project-key"`) — "Your project key is the prefix before issue numbers (e.g., PROJ in PROJ-123). Find it under Projects in Jira's top navigation"
 
 ### GitHub Issues Tour
@@ -168,6 +168,10 @@ On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the
 3. **Client ID field** (`data-tour="bugs-client-id"`) — "In YouTrack, go to Administration → Server Settings → Services → New service. After creation, find the Service ID (Client ID) on the service's Settings tab"
 4. **Client Secret field** (`data-tour="bugs-client-secret"`) — "On the same Settings tab of your service in Hub, copy the Secret. You can regenerate it with the Change button"
 5. **Project Key field** (`data-tour="bugs-project-key"`) — "The project short name appears as a prefix in issue IDs (e.g., XT in XT-123). Find it under Projects in YouTrack"
+
+## Prerequisites
+
+`driver.js` (1.4.0) is already installed as a dependency in `package.json`. No additional packages needed.
 
 ## Files to Create
 
