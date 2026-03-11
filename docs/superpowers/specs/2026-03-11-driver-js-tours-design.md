@@ -9,10 +9,10 @@ Add interactive guided tours using driver.js to document app features. Includes 
 ### Core Infrastructure
 
 **`src/hooks/useTour.ts`** — Custom hook wrapping driver.js:
-- Initializes `driver()` with dark-themed config using CSS variables from `theme.ts`
-- Uses `onPopoverRender` to replace default popover content with Mantine components (`Paper`, `Text`, `Button`, `Group`, progress indicator)
+- Initializes `driver()` with dark-themed config using CSS variables defined in app stylesheets (`--bg-secondary`, `--text-primary`, etc.)
+- Uses `onPopoverRender` to inject Mantine components into the popover DOM element via `createRoot` from `react-dom/client`. The root must be wrapped in `MantineProvider` to inherit theme context. Cleanup via `root.unmount()` in `onDeselected` or `onDestroyed`.
 - Exposes `startTour(panelName: string)` and `isRunning` state
-- On tour completion, marks the panel as "seen" in settings store
+- Steps that target missing DOM elements are automatically skipped (check `document.querySelector` before adding to the active step list)
 
 **`src/constants/tours/`** — Tour config directory with one file per tour:
 - `home.ts` — First-start tour (9 steps)
@@ -25,6 +25,18 @@ Add interactive guided tours using driver.js to document app features. Includes 
 
 Each config exports a `DriveStep[]` array with `element` selectors (using `data-tour` attributes), popover content (title + description), and positioning.
 
+**`src/constants/tours/index.ts`** — Barrel export mapping panel names to tour configs:
+```typescript
+export const panelTours: Record<string, DriveStep[]> = {
+  terminal: terminalTour,
+  git: gitTour,
+  knowledge: knowledgeTour,
+  notes: notesTour,
+  bugs: bugsTour,
+};
+```
+The `settings` and `notifications` panels do not have dedicated tours. When the help button is clicked on these panels, show a brief non-tour popover ("No tour available for this panel") or disable the button.
+
 **`src/styles/tour.css`** — Dark theme overrides for driver.js:
 - Popover background: `var(--bg-secondary)`
 - Text: `var(--text-primary)` / `var(--text-secondary)`
@@ -36,15 +48,35 @@ Each config exports a `DriveStep[]` array with `element` selectors (using `data-
 
 Components participating in tours get `data-tour` attributes as selectors (e.g., `data-tour="sidebar-project-list"`, `data-tour="terminal-tabs"`). This avoids coupling to fragile CSS class selectors.
 
+### Element Availability
+
+Tours filter steps before starting: each step's `element` selector is checked against the DOM. Missing elements are skipped. This handles:
+- Empty states (no projects, no bugs loaded)
+- Conditional rendering (ProviderSetup vs BugsPanel based on config state)
+- Lazy-loaded content
+
+The bugs panel tour detects whether provider setup is complete: if `ProviderSetup` is shown, the help button triggers the setup instructions tour instead of the usage tour.
+
 ## First-Start Auto-Tour
 
 ### Detection
 
-`hasSeenHomeTour: boolean` added to `settingsStore.ts` (persisted). Defaults to `false`.
+A dedicated **`src/stores/tourStore.ts`** using Zustand with `persist` middleware (localStorage). This avoids modifying the Tauri backend `AppSettings` type for a purely frontend concern.
+
+```typescript
+interface TourState {
+  hasSeenHomeTour: boolean;
+  setHomeTourSeen: () => void;
+}
+```
 
 ### Trigger
 
-In `App.tsx`, on mount: if `hasSeenHomeTour` is `false`, start the home tour after a short delay (let UI render). On tour completion (`onDestroyed` callback), set `hasSeenHomeTour: true`.
+In `App.tsx`, on mount: if `hasSeenHomeTour` is `false`, start the home tour after a short delay (let UI render). On tour completion (`onDestroyed` callback), call `setHomeTourSeen()`.
+
+### Dismissal Behavior
+
+If the user dismisses the tour early (overlay click, Escape key), it is still marked as seen. Users can replay via the StatusBar help button (the home tour plays when no panel-specific tour is active, i.e., on the default terminal view).
 
 ### Home Tour Steps (9 steps)
 
@@ -55,8 +87,10 @@ In `App.tsx`, on mount: if `hasSeenHomeTour` is `false`, start the home tour aft
 5. **Notes panel icon** (`data-tour="sidebar-notes"`) — "Keep project notes and documentation"
 6. **Bugs panel icon** (`data-tour="sidebar-bugs"`) — "Track and delegate bugs from Jira, GitHub, or YouTrack"
 7. **Settings icon** (`data-tour="sidebar-settings"`) — "Configure app preferences, guardian provider, and more"
-8. **Guardian toggle** (`data-tour="sidebar-guardian"`) — "Guardian auto-answers agent questions using AI"
+8. **Guardian toggle** (`data-tour="sidebar-guardian"`) — "Guardian auto-answers agent questions using AI. Enable per-project from the project list."
 9. **Notification bell** (`data-tour="statusbar-notifications"`) — "Get notified about agent activity and guardian decisions"
+
+Note: Step 8 targets the guardian toggle on the first project row. If no projects exist, this step is skipped (element not found).
 
 ## StatusBar Help Tour Button
 
@@ -66,8 +100,8 @@ In `StatusBar.tsx`, right section, before the notification bell.
 
 ### Behavior
 
-- Mantine `ActionIcon` or compact `Button` with `CircleHelp` icon (lucide-react)
-- Always visible (every panel has a tour)
+- Mantine `ActionIcon` with `CircleHelp` icon (lucide-react)
+- Visible when `activePanel` has a tour defined in `panelTours` (hides for `settings` and `notifications`)
 - Clicking calls `startTour(activePanel)` from `useTour` hook
 - `activePanel` from `useUiStore`
 
@@ -97,6 +131,10 @@ In `StatusBar.tsx`, right section, before the notification bell.
 
 ### Bugs
 
+The help button on the bugs panel is context-aware:
+- If provider is not configured (ProviderSetup shown): triggers the setup instructions tour
+- If provider is configured (BugsPanel shown): triggers the usage tour below
+
 1. **Bug list** (`data-tour="bugs-list"`) — "Browse and search bugs from your provider"
 2. **Bug detail view** (`data-tour="bugs-detail"`) — "View full bug details, status, and priority"
 3. **Delegate button** (`data-tour="bugs-delegate"`) — "Send a bug to an agent for fixing"
@@ -106,14 +144,15 @@ In `StatusBar.tsx`, right section, before the notification bell.
 
 ### Instructions Button
 
-On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the top of the form. Dynamically picks the tour based on selected provider. If no provider selected, runs generic tour starting from provider selection.
+On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the top of the form. Dynamically picks the tour based on selected provider. If no provider is selected yet, runs generic tour starting from provider selection.
 
 ### Jira Tour
 
 1. **Provider selector** (`data-tour="bugs-provider-select"`) — "Select Jira as your bug tracker"
 2. **Client ID field** (`data-tour="bugs-client-id"`) — "Go to developer.atlassian.com → Profile icon → Developer console → Create → OAuth 2.0 integration. Then go to Settings in the left menu to find your Client ID"
 3. **Client Secret field** (`data-tour="bugs-client-secret"`) — "On the same Settings page in your Atlassian Developer Console, copy the Client Secret"
-4. **Project Key field** (`data-tour="bugs-project-key"`) — "Your project key is the prefix before issue numbers (e.g., PROJ in PROJ-123). Find it under Projects in Jira's top navigation"
+4. **Base URL field** (`data-tour="bugs-base-url"`) — "Enter your Jira Cloud URL (e.g., https://yourteam.atlassian.net)" *(shown if base URL field is rendered)*
+5. **Project Key field** (`data-tour="bugs-project-key"`) — "Your project key is the prefix before issue numbers (e.g., PROJ in PROJ-123). Find it under Projects in Jira's top navigation"
 
 ### GitHub Issues Tour
 
@@ -133,6 +172,7 @@ On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the
 ## Files to Create
 
 - `src/hooks/useTour.ts`
+- `src/stores/tourStore.ts`
 - `src/styles/tour.css`
 - `src/constants/tours/home.ts`
 - `src/constants/tours/terminal.ts`
@@ -145,13 +185,12 @@ On the `ProviderSetup` screen: Mantine `Button` with `CircleHelp` icon, near the
 
 ## Files to Modify
 
-- `src/stores/settingsStore.ts` — Add `hasSeenHomeTour` flag
 - `src/App.tsx` — Auto-trigger home tour on first start
 - `src/components/layout/StatusBar.tsx` — Add Help Tour button
 - `src/components/layout/Sidebar.tsx` — Add `data-tour` attributes to panel icons
-- `src/features/terminal/TerminalContainer.tsx` — Add `data-tour` attributes
-- `src/features/git/GitPanel.tsx` — Add `data-tour` attributes
-- `src/features/knowledge/KnowledgePanel.tsx` — Add `data-tour` attributes
-- `src/features/notes/NotesPanel.tsx` — Add `data-tour` attributes
-- `src/features/bugs/BugsPanel.tsx` — Add `data-tour` attributes
-- `src/features/bugs/ProviderSetup.tsx` — Add Instructions button + `data-tour` attributes
+- `src/features/terminal/components/TerminalContainer.tsx` — Add `data-tour` attributes
+- `src/features/git/components/GitPanel.tsx` — Add `data-tour` attributes
+- `src/features/knowledge/components/KnowledgePanel.tsx` — Add `data-tour` attributes
+- `src/features/notes/components/NotesPanel.tsx` — Add `data-tour` attributes
+- `src/features/bugs/components/BugsPanel.tsx` — Add `data-tour` attributes
+- `src/features/bugs/components/ProviderSetup.tsx` — Add Instructions button + `data-tour` attributes
