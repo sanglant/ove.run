@@ -253,7 +253,7 @@ export function KnowledgePanel() {
 
   return (
     <div className={classes.root}>
-      <aside className={classes.sidebar} aria-label="Knowledge navigation">
+      <aside className={classes.sidebar} aria-label="Knowledge navigation" data-tour="knowledge-file-list">
         <div className={classes.sidebarHeader}>
           <div>
             <p className={classes.sidebarEyebrow}>Reference workspace</p>
@@ -434,7 +434,7 @@ export function KnowledgePanel() {
         </div>
       </aside>
 
-      <main className={classes.editorArea}>
+      <main className={classes.editorArea} data-tour="knowledge-editor">
         {selectedEntry && loadingContent ? (
           <div className={classes.emptyState}>
             <p>Loading entry…</p>

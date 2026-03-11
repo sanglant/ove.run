@@ -163,7 +163,7 @@ export function BugsPanel() {
 
   return (
     <div className={classes.root}>
-      <aside className={classes.sidebar} aria-label="Bug list navigation">
+      <aside className={classes.sidebar} aria-label="Bug list navigation" data-tour="bugs-list">
         <div className={classes.sidebarHeader}>
           <div>
             <p className={classes.sidebarEyebrow}>{providerConfig.provider.replace("_", " ")}</p>
@@ -184,6 +184,7 @@ export function BugsPanel() {
               disabled={loading}
               aria-label="Refresh bugs"
               title="Refresh"
+              data-tour="bugs-refresh"
             >
               <RefreshCw size={14} className={loading ? classes.iconButtonSpin : undefined} />
             </button>
@@ -266,7 +267,7 @@ export function BugsPanel() {
         </div>
       </aside>
 
-      <main className={classes.mainArea}>
+      <main className={classes.mainArea} data-tour="bugs-detail">
         {!authenticated ? (
           <div className={classes.connectArea}>
             <Bug size={34} strokeWidth={1} className={classes.emptyIcon} />

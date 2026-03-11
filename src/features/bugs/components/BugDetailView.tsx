@@ -52,6 +52,7 @@ export function BugDetailView({ bug, onDelegate }: BugDetailViewProps) {
               className={classes.delegateButton}
               onClick={handleDelegate}
               aria-label={`Delegate ${bug.key} to agent`}
+              data-tour="bugs-delegate"
             >
               <Zap size={13} />
               Delegate to Agent

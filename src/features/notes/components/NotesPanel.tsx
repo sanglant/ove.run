@@ -238,7 +238,7 @@ export function NotesPanel() {
 
   return (
     <div className={classes.root}>
-      <aside className={classes.sidebar} aria-label="Notes navigation">
+      <aside className={classes.sidebar} aria-label="Notes navigation" data-tour="notes-list">
         <div className={classes.sidebarHeader}>
           <div>
             <p className={classes.sidebarEyebrow}>Markdown workspace</p>
@@ -375,7 +375,7 @@ export function NotesPanel() {
         </div>
       </aside>
 
-      <main className={classes.editorArea}>
+      <main className={classes.editorArea} data-tour="notes-editor">
         {selectedNote && loadingContent ? (
           <div className={classes.emptyState}>
             <p>Loading note…</p>

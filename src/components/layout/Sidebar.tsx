@@ -118,31 +118,37 @@ export function Sidebar() {
       id: "terminal" as const,
       icon: <Terminal size={16} />,
       label: "Terminal",
+      tourId: "sidebar-terminal",
     },
     {
       id: "git" as const,
       icon: <FolderGit2 size={16} />,
       label: "Git",
+      tourId: "sidebar-git",
     },
     {
       id: "knowledge" as const,
       icon: <BookOpen size={16} />,
       label: "Knowledge",
+      tourId: "sidebar-knowledge",
     },
     {
       id: "notes" as const,
       icon: <StickyNote size={16} />,
       label: "Notes",
+      tourId: "sidebar-notes",
     },
     {
       id: "bugs" as const,
       icon: <Bug size={16} />,
       label: "Bugs",
+      tourId: "sidebar-bugs",
     },
     {
       id: "settings" as const,
       icon: <Settings size={16} />,
       label: "Settings",
+      tourId: "sidebar-settings",
     },
     {
       id: "notifications" as const,
@@ -163,7 +169,7 @@ export function Sidebar() {
       </div>
 
       {/* Project list */}
-      <div className={classes.projectsScroll}>
+      <div className={classes.projectsScroll} data-tour="sidebar-project-list">
         <div className={classes.sectionLabel}>
           <Text
             size="xs"
@@ -248,6 +254,7 @@ export function Sidebar() {
                         aria-label={guardianActive ? `Disable guardian for ${project.name}` : `Enable guardian for ${project.name}`}
                         aria-pressed={guardianActive}
                         className={cn(classes.iconButton, guardianActive ? classes.guardianActive : classes.revealOnHover)}
+                        {...(isActiveProject ? { "data-tour": "project-guardian-toggle" } : {})}
                       >
                         <span className={cn(classes.guardianLabel, guardianActive && classes.guardianActive)}>
                           G
@@ -359,6 +366,7 @@ export function Sidebar() {
                   aria-pressed={isActive}
                   title={item.label}
                   size={28}
+                  {...("tourId" in item ? { "data-tour": item.tourId } : {})}
                   styles={{
                     root: {
                       color: isActive ? "var(--accent-glow)" : "var(--text-secondary)",

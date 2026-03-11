@@ -102,7 +102,7 @@ export function GitPanel() {
   return (
     <div className={classes.container}>
       {/* Left: File list + commit */}
-      <div className={classes.fileListPanel}>
+      <div className={classes.fileListPanel} data-tour="git-file-list">
         {/* Branch header */}
         <div className={classes.branchHeader}>
           <Group justify="space-between" wrap="nowrap" gap={0}>
@@ -250,11 +250,13 @@ export function GitPanel() {
           )}
         </div>
 
-        <CommitForm stagedCount={stagedFiles.length} onCommit={commitChanges} />
+        <div data-tour="git-commit">
+          <CommitForm stagedCount={stagedFiles.length} onCommit={commitChanges} />
+        </div>
       </div>
 
       {/* Right: Diff viewer */}
-      <div className={classes.diffPanel}>
+      <div className={classes.diffPanel} data-tour="git-diff">
         {committing ? (
           <div className={classes.centeredText}>
             Committing...

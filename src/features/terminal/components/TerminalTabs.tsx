@@ -185,7 +185,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   );
 
   const layoutToggle = (
-    <div className={classes.layoutToggle} role="group" aria-label="Terminal layout">
+    <div className={classes.layoutToggle} role="group" aria-label="Terminal layout" data-tour="terminal-layout">
       {LAYOUT_OPTIONS.map((option) => (
         <Tooltip key={option.mode} label={option.label} withArrow>
           <ActionIcon
@@ -210,6 +210,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
       aria-label="New session"
       className={classes.actionIcon}
       data-separated
+      data-tour="terminal-new-session"
     >
       <Plus size={12} />
     </ActionIcon>
@@ -239,7 +240,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   );
 
   return (
-    <div className={classes.root}>
+    <div className={classes.root} data-tour="terminal-tabs">
       {tabViewMode === "grouped" ? (
         <GroupedTabs
           sessions={sessions}

@@ -139,7 +139,7 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
         </div>
 
         {/* Provider selection grid */}
-        <div className={classes.providerGrid}>
+        <div className={classes.providerGrid} data-tour="bugs-provider-select">
           {PROVIDERS.map((provider) => {
             const isSelected = selectedProvider?.type === provider.type;
             return (
@@ -181,44 +181,52 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
               )}
             </p>
             <div className={classes.formGrid}>
-              <TextInput
-                label="Client ID"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-                placeholder="OAuth client ID"
-                styles={inputStyles}
-                required
-              />
-              <TextInput
-                label="Client Secret"
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                placeholder="OAuth client secret"
-                type="password"
-                styles={inputStyles}
-                required
-              />
-              <TextInput
-                label={selectedProvider.projectKeyLabel}
-                value={projectKey}
-                onChange={(e) => setProjectKey(e.target.value)}
-                placeholder={selectedProvider.projectKeyPlaceholder}
-                styles={inputStyles}
-                required
-              />
-              {(selectedProvider.requiresBaseUrl || selectedProvider.type !== "github_projects") && (
+              <div data-tour="bugs-client-id">
                 <TextInput
-                  label={`Base URL${selectedProvider.requiresBaseUrl ? "" : " (optional)"}`}
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder={
-                    selectedProvider.type === "youtrack"
-                      ? "https://youtrack.example.com"
-                      : "https://your-domain.atlassian.net"
-                  }
+                  label="Client ID"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                  placeholder="OAuth client ID"
                   styles={inputStyles}
-                  required={selectedProvider.requiresBaseUrl}
+                  required
                 />
+              </div>
+              <div data-tour="bugs-client-secret">
+                <TextInput
+                  label="Client Secret"
+                  value={clientSecret}
+                  onChange={(e) => setClientSecret(e.target.value)}
+                  placeholder="OAuth client secret"
+                  type="password"
+                  styles={inputStyles}
+                  required
+                />
+              </div>
+              <div data-tour="bugs-project-key">
+                <TextInput
+                  label={selectedProvider.projectKeyLabel}
+                  value={projectKey}
+                  onChange={(e) => setProjectKey(e.target.value)}
+                  placeholder={selectedProvider.projectKeyPlaceholder}
+                  styles={inputStyles}
+                  required
+                />
+              </div>
+              {(selectedProvider.requiresBaseUrl || selectedProvider.type !== "github_projects") && (
+                <div data-tour="bugs-base-url">
+                  <TextInput
+                    label={`Base URL${selectedProvider.requiresBaseUrl ? "" : " (optional)"}`}
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder={
+                      selectedProvider.type === "youtrack"
+                        ? "https://youtrack.example.com"
+                        : "https://your-domain.atlassian.net"
+                    }
+                    styles={inputStyles}
+                    required={selectedProvider.requiresBaseUrl}
+                  />
+                </div>
               )}
             </div>
 
