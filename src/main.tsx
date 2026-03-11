@@ -6,6 +6,7 @@ import App from "./App";
 
 import "@mantine/core/styles.css";
 import "./styles/globals.css";
+import "./styles/tour.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

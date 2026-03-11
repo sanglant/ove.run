@@ -1,0 +1,94 @@
+/* Driver.js dark theme overrides using app CSS variables */
+
+.driver-popover {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-bright) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  color: var(--text-primary) !important;
+  max-width: 320px !important;
+  padding: 0 !important;
+}
+
+.driver-popover-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  font-family: inherit !important;
+}
+
+.driver-popover-description {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  line-height: 1.5 !important;
+  font-family: inherit !important;
+}
+
+.driver-popover-progress-text {
+  font-size: 10px !important;
+  color: var(--text-secondary) !important;
+}
+
+.driver-popover-navigation-btns {
+  gap: 6px !important;
+}
+
+.driver-popover-prev-btn,
+.driver-popover-next-btn {
+  font-size: 11px !important;
+  padding: 4px 12px !important;
+  border-radius: 4px !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+  border: none !important;
+}
+
+.driver-popover-prev-btn {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-secondary) !important;
+}
+
+.driver-popover-prev-btn:hover {
+  background-color: var(--border-bright) !important;
+  color: var(--text-primary) !important;
+}
+
+.driver-popover-next-btn,
+.driver-popover-close-btn-inside {
+  background-color: var(--accent) !important;
+  color: var(--bg-primary) !important;
+}
+
+.driver-popover-next-btn:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+.driver-popover-close-btn-inside {
+  font-size: 11px !important;
+  padding: 4px 12px !important;
+  border-radius: 4px !important;
+}
+
+.driver-popover-arrow {
+  border-color: var(--bg-secondary) !important;
+}
+
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--bg-secondary) !important;
+}
+
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--bg-secondary) !important;
+}
+
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--bg-secondary) !important;
+}
+
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--bg-secondary) !important;
+}
+
+.driver-overlay {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
