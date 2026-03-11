@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBar } from "@/components/layout/StatusBar";
@@ -15,6 +15,8 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useTour } from "@/hooks/useTour";
+import { useTourStore } from "@/stores/tourStore";
 import cn from "clsx";
 import classes from "./App.module.css";
 
@@ -26,6 +28,9 @@ export default function App() {
 
   // Initialize global notification listener
   useNotifications();
+
+  const { startHomeTour } = useTour();
+  const { hasSeenHomeTour, setHomeTourSeen } = useTourStore();
 
   useEffect(() => {
     loadProjects();
@@ -40,6 +45,17 @@ export default function App() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
+
+  const hasSeenHomeTourRef = useRef(hasSeenHomeTour);
+  useEffect(() => {
+    if (hasSeenHomeTourRef.current) return;
+
+    const timeout = setTimeout(() => {
+      startHomeTour(setHomeTourSeen);
+    }, 800);
+
+    return () => clearTimeout(timeout);
+  }, [startHomeTour, setHomeTourSeen]);
 
   return (
     <div className={classes.root}>

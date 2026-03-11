@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { TextInput } from "@mantine/core";
+import { CircleHelp } from "lucide-react";
 import { INPUT_STYLES } from "@/constants/styles";
 import { saveBugProviderConfig, startBugOauth, checkBugAuth } from "@/lib/tauri";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import type { BugProviderType, ProviderConfig } from "../types";
 import cn from "clsx";
+import { useTour } from "@/hooks/useTour";
+import {
+  jiraSetupTour,
+  githubSetupTour,
+  youtrackSetupTour,
+  genericSetupTour,
+} from "@/constants/tours";
 import classes from "./ProviderSetup.module.css";
 
 interface ProviderCard {
@@ -62,6 +70,21 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
   const [saved, setSaved] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { startTour } = useTour();
+
+  const handleInstructions = () => {
+    if (!selectedProvider) {
+      startTour(genericSetupTour);
+      return;
+    }
+    const tourMap: Record<string, typeof jiraSetupTour> = {
+      jira: jiraSetupTour,
+      github_projects: githubSetupTour,
+      youtrack: youtrackSetupTour,
+    };
+    startTour(tourMap[selectedProvider.type] ?? genericSetupTour);
+  };
 
   const canSave =
     selectedProvider !== null &&
@@ -136,6 +159,27 @@ export function ProviderSetup({ projectId, onConfigured }: ProviderSetupProps) {
           <p className={classes.subtitle}>
             Choose a provider, enter your OAuth credentials, then authenticate to sync issues.
           </p>
+          <button
+            type="button"
+            onClick={handleInstructions}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 8,
+              fontSize: 12,
+              fontWeight: 500,
+              color: "var(--accent)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              font: "inherit",
+            }}
+          >
+            <CircleHelp size={14} />
+            Instructions
+          </button>
         </div>
 
         {/* Provider selection grid */}
