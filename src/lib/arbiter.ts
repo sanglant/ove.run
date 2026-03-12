@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
-import { useGuardianStore } from "@/stores/guardianStore";
+import { useArbiterStore } from "@/stores/arbiterStore";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { guardianReview, listKnowledge, readKnowledgeContent, createKnowledge, writePty, listAgentTypes } from "@/lib/tauri";
+import { arbiterReview, listKnowledge, readKnowledgeContent, createKnowledge, writePty, listAgentTypes } from "@/lib/tauri";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
@@ -15,20 +15,20 @@ function compactText(text: string, maxLen: number): string {
     .slice(0, maxLen);
 }
 
-export async function guardianAnswer(
+export async function arbiterAnswer(
   item: FeedbackItem,
   projectPath: string,
 ): Promise<void> {
   const { projectId, sessionId, output, parsedOptions, allowFreeInput } = item;
 
   let knowledgeNotes = "";
-  const hasKnowledge = useGuardianStore.getState().guardianInitialized[projectId];
+  const hasKnowledge = useArbiterStore.getState().arbiterInitialized[projectId];
   if (hasKnowledge) {
     try {
       const entries = await listKnowledge(projectId);
-      const guardianEntry = entries.find((e) => e.name === "Guardian Notes");
-      if (guardianEntry) {
-        knowledgeNotes = await readKnowledgeContent(projectId, guardianEntry.id);
+      const arbiterEntry = entries.find((e) => e.name === "Arbiter Notes");
+      if (arbiterEntry) {
+        knowledgeNotes = await readKnowledgeContent(projectId, arbiterEntry.id);
       }
     } catch {
       // proceed without knowledge
@@ -43,7 +43,7 @@ export async function guardianAnswer(
     : "No project notes yet — after answering, also provide brief project notes.";
 
   const prompt =
-    `You are a Guardian agent reviewing an AI coding agent's question on a software project. ` +
+    `You are an Arbiter agent reviewing an AI coding agent's question on a software project. ` +
     `${knowledgeSection} ` +
     `Agent terminal output: ${compactOutput}. ` +
     `Available options: ${optionLabels || "(none)"}. ` +
@@ -57,27 +57,27 @@ export async function guardianAnswer(
     `REASONING: {1-2 sentence explanation}\n` +
     (knowledgeNotes ? "" : `PROJECT_NOTES: {brief project summary, tech stack, key conventions for future reference}\n`);
 
-  // Resolve CLI command and model from global guardian settings
+  // Resolve CLI command and model from global arbiter settings
   const globalSettings = useSettingsStore.getState().settings.global;
-  const guardianProvider = globalSettings.guardian_provider || "claude";
+  const arbiterProvider = globalSettings.arbiter_provider || "claude";
   let cliCommand: string | undefined;
   try {
     const defs = await listAgentTypes();
-    const def = defs.find((d) => d.agent_type === guardianProvider);
+    const def = defs.find((d) => d.agent_type === arbiterProvider);
     if (def) cliCommand = def.command;
   } catch {
     // fall back to default
   }
-  const model = globalSettings.guardian_model || undefined;
+  const model = globalSettings.arbiter_model || undefined;
 
   try {
-    const response = await guardianReview(prompt, projectPath, cliCommand, model);
-    const result = parseGuardianResponse(response, parsedOptions);
+    const response = await arbiterReview(prompt, projectPath, cliCommand, model);
+    const result = parseArbiterResponse(response, parsedOptions);
 
     const isDismiss = result.answer?.toLowerCase() === "dismiss";
 
     if (isDismiss) {
-      // Guardian determined the issue is resolved — dismiss without sending input
+      // Arbiter determined the issue is resolved — dismiss without sending input
       useSessionStore.getState().updateSessionStatus(sessionId, "working");
     } else if (result.answer) {
       const option = matchOption(result.answer, parsedOptions);
@@ -97,8 +97,8 @@ export async function guardianAnswer(
 
     if (result.projectNotes && !knowledgeNotes) {
       try {
-        await createKnowledge(projectId, "Guardian Notes", "notes", result.projectNotes);
-        useGuardianStore.getState().setGuardianInitialized(projectId, true);
+        await createKnowledge(projectId, "Arbiter Notes", "notes", result.projectNotes);
+        useArbiterStore.getState().setArbiterInitialized(projectId, true);
       } catch {
         // non-critical
       }
@@ -108,16 +108,16 @@ export async function guardianAnswer(
     const choiceLabel = isDismiss ? "dismissed (resolved)" : (result.answer || result.answerText || "first option");
     useNotificationStore.getState().addNotification({
       id: uuidv4(),
-      title: "Guardian Answered",
+      title: "Arbiter Answered",
       body: `${session?.label ?? "Session"}: ${choiceLabel} — ${result.reasoning ?? ""}`.slice(0, 300),
       sessionId,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("Guardian answer failed:", err);
+    console.error("Arbiter answer failed:", err);
     useNotificationStore.getState().addNotification({
       id: uuidv4(),
-      title: "Guardian Error",
+      title: "Arbiter Error",
       body: `Failed to auto-answer: ${String(err).slice(0, 200)}`,
       sessionId,
       timestamp: new Date().toISOString(),
@@ -125,7 +125,7 @@ export async function guardianAnswer(
   }
 }
 
-interface GuardianResult {
+interface ArbiterResult {
   answer?: string;
   answerText?: string;
   reasoning?: string;
@@ -133,7 +133,7 @@ interface GuardianResult {
 }
 
 /**
- * Match Guardian's answer to a parsed option using progressively looser strategies:
+ * Match Arbiter's answer to a parsed option using progressively looser strategies:
  * 1. Exact match (case-insensitive)
  * 2. One label contains the other
  * 3. First word match (e.g. "Yes" matches "Yes (default)")
@@ -164,8 +164,8 @@ function matchOption(answer: string, options: ParsedOption[]): ParsedOption | un
   return undefined;
 }
 
-function parseGuardianResponse(response: string, _options: ParsedOption[]): GuardianResult {
-  const result: GuardianResult = {};
+function parseArbiterResponse(response: string, _options: ParsedOption[]): ArbiterResult {
+  const result: ArbiterResult = {};
 
   const answerMatch = response.match(/^ANSWER:\s*(.+)$/m);
   if (answerMatch) result.answer = answerMatch[1].trim();

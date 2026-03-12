@@ -13,9 +13,9 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifications_enabled: true,
     minimize_to_tray: false,
     terminal_scrollback: 10000,
-    guardian_timeout_seconds: 20,
-    guardian_provider: "",
-    guardian_model: "",
+    arbiter_timeout_seconds: 20,
+    arbiter_provider: "",
+    arbiter_model: "",
   },
   agents: {
     claude: {

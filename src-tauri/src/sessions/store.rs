@@ -16,7 +16,7 @@ pub struct PersistedSession {
 fn sessions_path() -> Result<PathBuf, String> {
     let base = dirs::data_dir()
         .ok_or_else(|| "Cannot find data directory".to_string())?;
-    Ok(base.join("com.agentic.app").join("sessions.json"))
+    Ok(base.join("com.overun.app").join("sessions.json"))
 }
 
 pub fn load_sessions() -> Vec<PersistedSession> {

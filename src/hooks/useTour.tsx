@@ -3,7 +3,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { MantineProvider, Button, Group } from "@mantine/core";
 import { driver, type DriveStep, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { agenticTheme, cssResolver } from "@/theme";
+import { open as shellOpen } from "@tauri-apps/plugin-shell";
+import { oveRunTheme, cssResolver } from "@/theme";
+import { BUTTON_STYLES } from "@/constants/styles";
 import { panelTours, homeTour } from "@/constants/tours";
 
 function filterAvailableSteps(steps: DriveStep[]): DriveStep[] {
@@ -41,7 +43,7 @@ export function useTour() {
 
       const instance = driver({
         showProgress: true,
-        animate: true,
+        animate: false,
         smoothScroll: true,
         allowClose: true,
         overlayOpacity: 0.6,
@@ -51,6 +53,34 @@ export function useTour() {
         steps: available,
         onPopoverRender: (popover, { state }) => {
           cleanupPopoverRoot();
+
+          // Wire up external links to open in system browser
+          popover.wrapper
+            .querySelectorAll<HTMLAnchorElement>("a.tour-link")
+            .forEach((a) => {
+              a.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void shellOpen(a.href);
+              });
+            });
+
+          // Wire up copy-on-click code elements
+          popover.wrapper
+            .querySelectorAll<HTMLElement>("code.tour-copy")
+            .forEach((el) => {
+              el.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const text = el.dataset.copy ?? el.textContent ?? "";
+                void navigator.clipboard.writeText(text).then(() => {
+                  const original = el.textContent;
+                  el.textContent = "Copied!";
+                  setTimeout(() => {
+                    el.textContent = original;
+                  }, 1200);
+                });
+              });
+            });
 
           const footerEl = popover.footerButtons;
           if (!footerEl) return;
@@ -68,7 +98,7 @@ export function useTour() {
 
           root.render(
             <MantineProvider
-              theme={agenticTheme}
+              theme={oveRunTheme}
               forceColorScheme="dark"
               cssVariablesResolver={cssResolver}
             >
@@ -76,20 +106,15 @@ export function useTour() {
                 {!isFirst && (
                   <Button
                     variant="subtle"
-                    size="compact-xs"
+                    size="compact-sm"
                     onClick={() => instance.movePrevious()}
-                    styles={{
-                      root: {
-                        color: "var(--text-secondary)",
-                        fontSize: 11,
-                      },
-                    }}
+                    styles={BUTTON_STYLES.subtle}
                   >
                     Previous
                   </Button>
                 )}
                 <Button
-                  size="compact-xs"
+                  size="compact-sm"
                   onClick={() => {
                     if (isLast) {
                       instance.destroy();
@@ -97,16 +122,7 @@ export function useTour() {
                       instance.moveNext();
                     }
                   }}
-                  styles={{
-                    root: {
-                      backgroundColor: "var(--accent)",
-                      color: "var(--bg-primary)",
-                      fontSize: 11,
-                      "&:hover": {
-                        backgroundColor: "var(--accent-hover)",
-                      },
-                    },
-                  }}
+                  styles={BUTTON_STYLES.primary}
                 >
                   {isLast ? "Done" : "Next"}
                 </Button>

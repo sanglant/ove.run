@@ -7,16 +7,16 @@ import {
 /* ── Custom color palettes (10 shades each) ── */
 
 const accent: MantineColorsTuple = [
-  "#eef0fb",
-  "#d4d8f2",
-  "#b8bfe8",
-  "#9ca6de",
-  "#8492e5",
-  "#6c7ee1",
-  "#5b6bcf",
-  "#4a58b8",
-  "#3c48a0",
-  "#2e3888",
+  "#fdf6ee",
+  "#f5e4cc",
+  "#ecd2aa",
+  "#e3bf88",
+  "#dcb06e",
+  "#d4943c",
+  "#c08535",
+  "#a8742e",
+  "#906327",
+  "#785220",
 ];
 
 const danger: MantineColorsTuple = [
@@ -110,7 +110,7 @@ const codex: MantineColorsTuple = [
   "#4e2987",
 ];
 
-const guardian: MantineColorsTuple = [
+const arbiter: MantineColorsTuple = [
   "#e6faf7",  // 0 - lightest
   "#ccf5ef",  // 1
   "#99ebe0",  // 2
@@ -123,7 +123,7 @@ const guardian: MantineColorsTuple = [
   "#007d79",  // 9 - darkest
 ];
 
-export const agenticTheme = createTheme({
+export const oveRunTheme = createTheme({
   colors: {
     dark: [
       "#e8e8f0", // dark[0] — text-primary
@@ -145,7 +145,7 @@ export const agenticTheme = createTheme({
     gemini,
     copilot,
     codex,
-    guardian,
+    arbiter,
   },
   primaryColor: "accent",
   fontFamily: "Geist, sans-serif",
@@ -169,17 +169,17 @@ export const cssResolver: CSSVariablesResolver = () => ({
     "--text-tertiary": "#50505f",
 
     /* Accent */
-    "--accent": "#6c7ee1",
-    "--accent-hover": "#7d8ee8",
-    "--accent-glow": "#8b9cf7",
+    "--accent": "#d4943c",
+    "--accent-hover": "#e0a54e",
+    "--accent-glow": "#eab76a",
 
     /* Agent tones */
     "--claude": "#d4a574",
     "--gemini": "#6bcf8e",
     "--copilot": "#79a9e8",
     "--codex": "#a883d7",
-    "--guardian": "#4ecdc4",
-    "--guardian-glow": "#6ee7de",
+    "--arbiter": "#4ecdc4",
+    "--arbiter-glow": "#6ee7de",
 
     /* Semantic */
     "--danger": "#e5737f",
@@ -203,7 +203,7 @@ export const cssResolver: CSSVariablesResolver = () => ({
       "0 0 0 1px var(--copilot), 0 0 12px 0 color-mix(in srgb, var(--copilot) 35%, transparent)",
     "--glow-codex":
       "0 0 0 1px var(--codex), 0 0 12px 0 color-mix(in srgb, var(--codex) 35%, transparent)",
-    "--glow-guardian":
-      "0 0 0 1px var(--guardian), 0 0 12px 0 color-mix(in srgb, var(--guardian) 35%, transparent)",
+    "--glow-arbiter":
+      "0 0 0 1px var(--arbiter), 0 0 12px 0 color-mix(in srgb, var(--arbiter) 35%, transparent)",
   },
 });

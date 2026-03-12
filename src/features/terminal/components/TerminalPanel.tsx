@@ -59,13 +59,13 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   // Keep lastStatusRef in sync with external status changes (e.g. modal setting "working")
   lastStatusRef.current = session.status;
 
-  // Grace period: suppress guardian auto-answer for resumed sessions on startup.
-  // Terminal may already show a stale needs_input prompt that shouldn't trigger guardian.
-  const guardianSuppressedRef = useRef(session.isResumed);
+  // Grace period: suppress arbiter auto-answer for resumed sessions on startup.
+  // Terminal may already show a stale needs_input prompt that shouldn't trigger arbiter.
+  const arbiterSuppressedRef = useRef(session.isResumed);
   useEffect(() => {
-    if (!guardianSuppressedRef.current) return;
+    if (!arbiterSuppressedRef.current) return;
     const timer = setTimeout(() => {
-      guardianSuppressedRef.current = false;
+      arbiterSuppressedRef.current = false;
     }, 10_000); // 10s grace period after app start
     return () => clearTimeout(timer);
   }, []);
@@ -197,7 +197,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         const detected = detectStatusFromOutput(agentDefRef.current, screenText);
         if (detected && detected !== lastStatusRef.current) {
           const prevStatus = lastStatusRef.current;
-          console.log(`[agentic] status change: ${prevStatus} → ${detected} (session=${session.id})`);
+          console.log(`[ove.run] status change: ${prevStatus} → ${detected} (session=${session.id})`);
           lastStatusRef.current = detected;
           updateStatus(session.id, detected);
 
@@ -233,7 +233,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
               parsedOptions: parsed.options,
               allowFreeInput: parsed.allowFreeInput,
               timestamp: new Date().toISOString(),
-              guardianEnabled: !!project?.guardian_enabled && !guardianSuppressedRef.current,
+              arbiterEnabled: !!project?.arbiter_enabled && !arbiterSuppressedRef.current,
             });
           } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
             useAgentFeedbackStore.getState().enqueue({
@@ -245,7 +245,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
               parsedOptions: [],
               allowFreeInput: false,
               timestamp: new Date().toISOString(),
-              guardianEnabled: false,
+              arbiterEnabled: false,
             });
           }
         }

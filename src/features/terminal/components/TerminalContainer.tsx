@@ -25,7 +25,7 @@ import type {
 } from "@/types";
 import classes from "./TerminalContainer.module.css";
 
-const SESSION_DRAG_MIME = "application/x-agentic-session";
+const SESSION_DRAG_MIME = "application/x-ove-run-session";
 const MAX_GRID_PANES = 8;
 const DROP_EDGE_THRESHOLD = 0.28;
 const MIN_PANE_WIDTH = 180;

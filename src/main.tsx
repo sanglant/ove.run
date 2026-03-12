@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { MantineProvider } from "@mantine/core";
-import { agenticTheme, cssResolver } from "./theme";
+import { oveRunTheme, cssResolver } from "./theme";
 import App from "./App";
 
 import "@mantine/core/styles.css";
@@ -11,7 +11,7 @@ import "./styles/tour.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider
-      theme={agenticTheme}
+      theme={oveRunTheme}
       forceColorScheme="dark"
       cssVariablesResolver={cssResolver}
     >

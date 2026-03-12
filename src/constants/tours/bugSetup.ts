@@ -1,29 +1,14 @@
 import type { DriveStep } from "driver.js";
 
-const providerSelectStep: DriveStep = {
-  element: '[data-tour="bugs-provider-select"]',
-  popover: {
-    title: "Choose Provider",
-    description: "Select your bug tracking provider to get started.",
-    side: "bottom",
-    align: "center",
-  },
-};
+const callbackUrl = '<code class="tour-copy" data-copy="http://127.0.0.1">http://127.0.0.1</code>';
 
 export const jiraSetupTour: DriveStep[] = [
-  {
-    ...providerSelectStep,
-    popover: {
-      ...providerSelectStep.popover,
-      description: "Select Jira as your bug tracker.",
-    },
-  },
   {
     element: '[data-tour="bugs-client-id"]',
     popover: {
       title: "Client ID",
       description:
-        "Go to developer.atlassian.com → Profile icon → Developer console → Create → OAuth 2.0 integration. Then go to Settings in the left menu to find your Client ID.",
+        `Open the <a class="tour-link" href="https://developer.atlassian.com/console/myapps/">Atlassian Developer Console</a>. Create an OAuth 2.0 (3LO) app. In the app's "Authorization" section, configure OAuth 2.0 (3LO) and set callback URL to ${callbackUrl}. Then go to "Settings" in the left menu — your Client ID is displayed there.`,
       side: "bottom",
       align: "start",
     },
@@ -33,7 +18,7 @@ export const jiraSetupTour: DriveStep[] = [
     popover: {
       title: "Client Secret",
       description:
-        "On the same Settings page in your Atlassian Developer Console, copy the Client Secret.",
+        'On the same "Settings" page in your Atlassian Developer Console, copy the Client Secret shown below the Client ID.',
       side: "bottom",
       align: "start",
     },
@@ -43,7 +28,7 @@ export const jiraSetupTour: DriveStep[] = [
     popover: {
       title: "Base URL (optional)",
       description:
-        "Optionally enter your Jira Cloud URL if using a custom domain (e.g., https://yourteam.atlassian.net).",
+        "Your Jira Cloud URL, e.g. https://yourteam.atlassian.net. Leave empty to use the default resolved from your OAuth token.",
       side: "bottom",
       align: "start",
     },
@@ -53,7 +38,7 @@ export const jiraSetupTour: DriveStep[] = [
     popover: {
       title: "Project Key",
       description:
-        "Your project key is the prefix before issue numbers (e.g., PROJ in PROJ-123). Find it under Projects in Jira's top navigation.",
+        "The prefix before issue numbers (e.g. PROJ in PROJ-123). Find it in Jira under Projects in the top navigation — the key is shown next to each project name.",
       side: "bottom",
       align: "start",
     },
@@ -62,18 +47,11 @@ export const jiraSetupTour: DriveStep[] = [
 
 export const githubSetupTour: DriveStep[] = [
   {
-    ...providerSelectStep,
-    popover: {
-      ...providerSelectStep.popover,
-      description: "Select GitHub Issues.",
-    },
-  },
-  {
     element: '[data-tour="bugs-client-id"]',
     popover: {
       title: "Client ID",
       description:
-        "Go to GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. After registering, the Client ID is shown on the app page.",
+        `Go to <a class="tour-link" href="https://github.com/settings/applications/new">GitHub → New OAuth App</a>. Set the Authorization callback URL to ${callbackUrl} and register the app. Your Client ID is shown on the app page after creation.`,
       side: "bottom",
       align: "start",
     },
@@ -83,7 +61,7 @@ export const githubSetupTour: DriveStep[] = [
     popover: {
       title: "Client Secret",
       description:
-        "On your OAuth App page, click 'Generate a new client secret'. Copy it immediately — it won't be shown again.",
+        'On your OAuth App page, click "Generate a new client secret". Copy it immediately — GitHub only shows it once. If lost, you\'ll need to regenerate it.',
       side: "bottom",
       align: "start",
     },
@@ -93,7 +71,7 @@ export const githubSetupTour: DriveStep[] = [
     popover: {
       title: "Repository",
       description:
-        "Enter as owner/repo (e.g., octocat/Hello-World) — read directly from your repository URL: github.com/{owner}/{repo}.",
+        "Enter as owner/repo (e.g. octocat/Hello-World). This matches your GitHub URL: github.com/{owner}/{repo}.",
       side: "bottom",
       align: "start",
     },
@@ -102,18 +80,11 @@ export const githubSetupTour: DriveStep[] = [
 
 export const youtrackSetupTour: DriveStep[] = [
   {
-    ...providerSelectStep,
-    popover: {
-      ...providerSelectStep.popover,
-      description: "Select YouTrack.",
-    },
-  },
-  {
     element: '[data-tour="bugs-base-url"]',
     popover: {
       title: "Base URL",
       description:
-        "Enter your YouTrack instance URL (e.g., https://myteam.youtrack.cloud).",
+        "Your YouTrack instance URL, e.g. https://myteam.youtrack.cloud. This is used for both API calls and OAuth endpoints.",
       side: "bottom",
       align: "start",
     },
@@ -123,7 +94,7 @@ export const youtrackSetupTour: DriveStep[] = [
     popover: {
       title: "Client ID (Service ID)",
       description:
-        "In YouTrack, go to Administration → Server Settings → Services → New service. After creation, find the Service ID (Client ID) on the service's Settings tab.",
+        `In YouTrack, go to Administration → Access Management → Auth Modules. Create a new OAuth 2.0 service and set the redirect URI to ${callbackUrl}. The Service ID shown after creation is your Client ID.`,
       side: "bottom",
       align: "start",
     },
@@ -133,7 +104,7 @@ export const youtrackSetupTour: DriveStep[] = [
     popover: {
       title: "Client Secret",
       description:
-        "On the same Settings tab of your service in Hub, copy the Secret. You can regenerate it with the Change button.",
+        "The Secret is shown when you create the OAuth service. If you need to regenerate it, go to the service settings in Administration → Access Management → Auth Modules.",
       side: "bottom",
       align: "start",
     },
@@ -143,11 +114,21 @@ export const youtrackSetupTour: DriveStep[] = [
     popover: {
       title: "Project Key",
       description:
-        "The project short name appears as a prefix in issue IDs (e.g., XT in XT-123). Find it under Projects in YouTrack.",
+        "The short name prefix in issue IDs (e.g. XT in XT-123). Find it under Projects in the YouTrack main menu — the key is listed next to each project.",
       side: "bottom",
       align: "start",
     },
   },
 ];
 
-export const genericSetupTour: DriveStep[] = [providerSelectStep];
+export const genericSetupTour: DriveStep[] = [
+  {
+    element: '[data-tour="bugs-provider-select"]',
+    popover: {
+      title: "Choose Provider",
+      description: "Select your bug tracking provider to get started.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+];

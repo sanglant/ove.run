@@ -9,7 +9,7 @@ import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
-import { AgentFeedbackModal } from "@/features/guardian/components/AgentFeedbackModal";
+import { AgentFeedbackModal } from "@/features/arbiter/components/AgentFeedbackModal";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";

@@ -13,7 +13,7 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import cn from "clsx";
 import classes from "./TerminalTabs.module.css";
 
-const SESSION_DRAG_MIME = "application/x-agentic-session";
+const SESSION_DRAG_MIME = "application/x-ove-run-session";
 
 interface TerminalTabsProps {
   sessions: AgentSession[];

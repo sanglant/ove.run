@@ -117,7 +117,7 @@ pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<V
         .bearer_auth(&auth.access_token)
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "agentic-app")
+        .header("User-Agent", "overun-app")
         .query(&[("state", "open"), ("per_page", "50")])
         .send()
         .await
@@ -147,7 +147,7 @@ pub async fn get_bug_detail(
         .bearer_auth(&auth.access_token)
         .header("Accept", "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "agentic-app")
+        .header("User-Agent", "overun-app")
         .send()
         .await
         .map_err(|e| format!("Failed to get GitHub issue: {}", e))?

@@ -1,10 +1,10 @@
 [package]
-name = "agentic"
+name = "ove-run"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "agentic_lib"
+name = "ove_run_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
@@ -27,3 +27,4 @@ dirs = "6"
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
 urlencoding = "2"
+tempfile = "3"

@@ -8,7 +8,7 @@ fn knowledge_dir(project_id: &str) -> Result<PathBuf, String> {
     let base = dirs::data_dir()
         .ok_or_else(|| "Cannot find data directory".to_string())?;
     Ok(base
-        .join("com.agentic.app")
+        .join("com.overun.app")
         .join("knowledge")
         .join(project_id))
 }

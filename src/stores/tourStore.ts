@@ -14,6 +14,6 @@ export const useTourStore = create<TourState>()(
       setHomeTourSeen: () => set({ hasSeenHomeTour: true }),
       resetHomeTour: () => set({ hasSeenHomeTour: false }),
     }),
-    { name: "agentic-tour-state" },
+    { name: "ove-run-tour-state" },
   ),
 );

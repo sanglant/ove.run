@@ -5,7 +5,7 @@ use super::provider::{ProviderAuth, ProviderConfig};
 
 pub fn get_bugs_dir(project_id: &str) -> PathBuf {
     let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    base.join("com.agentic.app").join("bugs").join(project_id)
+    base.join("com.overun.app").join("bugs").join(project_id)
 }
 
 pub fn save_provider_config(project_id: &str, config: &ProviderConfig) -> Result<(), String> {

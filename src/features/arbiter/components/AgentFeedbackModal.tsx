@@ -19,7 +19,7 @@ import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { writePty } from "@/lib/tauri";
-import { guardianAnswer } from "@/lib/guardian";
+import { arbiterAnswer } from "@/lib/arbiter";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
@@ -46,10 +46,10 @@ function FeedbackModalContent({
   onDismiss: () => void;
 }) {
   const settings = useSettingsStore((s) => s.settings);
-  const guardianTimeoutMs = settings.global.guardian_timeout_seconds * 1000;
+  const arbiterTimeoutMs = settings.global.arbiter_timeout_seconds * 1000;
 
   const [freeText, setFreeText] = useState("");
-  const [timeLeft, setTimeLeft] = useState(guardianTimeoutMs);
+  const [timeLeft, setTimeLeft] = useState(arbiterTimeoutMs);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggeredRef = useRef(false);
 
@@ -102,20 +102,20 @@ function FeedbackModalContent({
     onDismiss();
   }, [item.sessionId, setActiveSession, onDismiss]);
 
-  // Guardian auto-answer timer
+  // Arbiter auto-answer timer
   useEffect(() => {
     triggeredRef.current = false;
 
-    if (item.type !== "question" || !item.guardianEnabled) {
+    if (item.type !== "question" || !item.arbiterEnabled) {
       return;
     }
 
-    setTimeLeft(guardianTimeoutMs);
+    setTimeLeft(arbiterTimeoutMs);
     const startTime = Date.now();
 
     timerRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, guardianTimeoutMs - elapsed);
+      const remaining = Math.max(0, arbiterTimeoutMs - elapsed);
       setTimeLeft(remaining);
 
       if (remaining <= 0 && !triggeredRef.current) {
@@ -126,7 +126,7 @@ function FeedbackModalContent({
           .getState()
           .projects.find((p) => p.id === item.projectId);
         if (proj) {
-          guardianAnswer(item, proj.path);
+          arbiterAnswer(item, proj.path);
         }
         onDismiss();
       }
@@ -138,10 +138,10 @@ function FeedbackModalContent({
   }, [
     item.id,
     item.type,
-    item.guardianEnabled,
+    item.arbiterEnabled,
     item.sessionId,
     item.projectId,
-    guardianTimeoutMs,
+    arbiterTimeoutMs,
     onDismiss,
   ]);
 
@@ -207,14 +207,14 @@ function FeedbackModalContent({
           />
         </ScrollArea>
 
-        {/* Guardian timer */}
-        {isQuestion && item.guardianEnabled && (
+        {/* Arbiter timer */}
+        {isQuestion && item.arbiterEnabled && (
           <div>
             <Text size="xs" c="var(--text-secondary)" mb={4}>
-              Guardian auto-answer in {Math.ceil(timeLeft / 1000)}s
+              Arbiter auto-answer in {Math.ceil(timeLeft / 1000)}s
             </Text>
             <Progress
-              value={(timeLeft / guardianTimeoutMs) * 100}
+              value={(timeLeft / arbiterTimeoutMs) * 100}
               size="xs"
               color="blue"
               animated

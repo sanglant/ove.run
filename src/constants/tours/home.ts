@@ -59,17 +59,17 @@ export const homeTour: DriveStep[] = [
     element: '[data-tour="sidebar-settings"]',
     popover: {
       title: "Settings",
-      description: "Configure app preferences, guardian provider, and more.",
+      description: "Configure app preferences, Arbiter provider, and more.",
       side: "top",
       align: "center",
     },
   },
   {
-    element: '[data-tour="project-guardian-toggle"]',
+    element: '[data-tour="project-arbiter-toggle"]',
     popover: {
-      title: "Guardian",
+      title: "Arbiter",
       description:
-        "Guardian auto-answers agent questions using AI. Enable per-project from the project list.",
+        "Arbiter auto-answers agent questions using AI. Enable per-project from the project list.",
       side: "right",
       align: "center",
     },
@@ -78,7 +78,7 @@ export const homeTour: DriveStep[] = [
     element: '[data-tour="statusbar-notifications"]',
     popover: {
       title: "Notifications",
-      description: "Get notified about agent activity and guardian decisions.",
+      description: "Get notified about agent activity and Arbiter decisions.",
       side: "top",
       align: "end",
     },

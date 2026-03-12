@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
-  "description": "Main window capabilities for Agentic",
+  "description": "Main window capabilities for ove.run",
   "windows": ["main"],
   "permissions": [
     "core:default",

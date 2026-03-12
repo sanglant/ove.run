@@ -1,5 +1,28 @@
 /* Driver.js dark theme overrides using app CSS variables */
 
+/* Ensure noise overlay doesn't sit above driver.js overlay */
+.driver-active #root::before {
+  z-index: 0 !important;
+}
+
+/* Ensure the SVG overlay renders properly above all app content */
+.driver-active .driver-overlay svg {
+  z-index: 10000 !important;
+}
+
+/* Highlighted element — keep it clean, just z-index lift */
+.driver-active .driver-active-element {
+  z-index: 10001 !important;
+  position: relative !important;
+}
+
+/* Force hidden-by-default elements visible when highlighted by tour */
+.driver-active [data-tour="project-arbiter-toggle"] {
+  opacity: 1 !important;
+}
+
+/* ─── Popover ─────────────────────────────────────────────────────────────── */
+
 .driver-popover {
   background-color: var(--bg-secondary) !important;
   border: 1px solid var(--border-bright) !important;
@@ -7,21 +30,65 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
   color: var(--text-primary) !important;
   max-width: 320px !important;
-  padding: 0 !important;
+  min-width: 250px !important;
+  padding: 16px !important;
 }
+
+.driver-popover * {
+  font-family: "Geist", sans-serif !important;
+}
+
+/* ─── Hide arrow ──────────────────────────────────────────────────────── */
+
+.driver-popover-arrow {
+  display: none !important;
+}
+
+/* ─── Disable fade animation to prevent white flash between steps ─────── */
+
+.driver-fade .driver-popover {
+  animation: none !important;
+}
+
+.driver-fade .driver-overlay {
+  animation: none !important;
+}
+
+/* ─── Title / Description ─────────────────────────────────────────────── */
 
 .driver-popover-title {
   font-size: 13px !important;
   font-weight: 600 !important;
   color: var(--text-primary) !important;
-  font-family: inherit !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.driver-popover-close-btn {
+  color: var(--text-secondary) !important;
+  font-size: 16px !important;
+  width: 28px !important;
+  height: 28px !important;
+  top: 10px !important;
+  right: 8px !important;
+}
+
+.driver-popover-close-btn:hover,
+.driver-popover-close-btn:focus {
+  color: var(--text-primary) !important;
 }
 
 .driver-popover-description {
   font-size: 12px !important;
   color: var(--text-secondary) !important;
   line-height: 1.5 !important;
-  font-family: inherit !important;
+  margin-top: 4px !important;
+}
+
+/* ─── Footer / Navigation ─────────────────────────────────────────────── */
+
+.driver-popover-footer {
+  margin-top: 12px !important;
 }
 
 .driver-popover-progress-text {
@@ -29,66 +96,64 @@
   color: var(--text-secondary) !important;
 }
 
-.driver-popover-navigation-btns {
-  gap: 6px !important;
-}
-
-.driver-popover-prev-btn,
-.driver-popover-next-btn {
-  font-size: 11px !important;
-  padding: 4px 12px !important;
-  border-radius: 4px !important;
-  font-weight: 500 !important;
+/* Override driver.js default button styles that bleed onto Mantine buttons */
+.driver-popover-footer button {
   text-shadow: none !important;
   border: none !important;
-}
-
-.driver-popover-prev-btn {
+  font-size: 13px !important;
   background-color: var(--bg-tertiary) !important;
   color: var(--text-secondary) !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  font-weight: 500 !important;
 }
 
-.driver-popover-prev-btn:hover {
-  background-color: var(--border-bright) !important;
+.driver-popover-footer button:hover,
+.driver-popover-footer button:focus {
+  background-color: var(--bg-elevated) !important;
   color: var(--text-primary) !important;
 }
 
-.driver-popover-next-btn,
-.driver-popover-close-btn-inside {
+/* Primary (Next/Done) button override — applied on top via Mantine styles */
+.driver-popover-next-btn {
   background-color: var(--accent) !important;
   color: var(--bg-primary) !important;
 }
 
-.driver-popover-next-btn:hover {
+.driver-popover-next-btn:hover,
+.driver-popover-next-btn:focus {
   background-color: var(--accent-hover) !important;
+  color: var(--bg-primary) !important;
 }
 
-.driver-popover-close-btn-inside {
+/* ─── Inline links in descriptions ────────────────────────────────────── */
+
+.driver-popover a.tour-link {
+  color: var(--accent) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+  cursor: pointer !important;
+}
+
+.driver-popover a.tour-link:hover {
+  color: var(--accent-hover) !important;
+}
+
+/* ─── Copy-on-click code blocks ───────────────────────────────────────── */
+
+.driver-popover code.tour-copy {
+  display: inline-block !important;
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  font-family: "Geist Mono", monospace !important;
   font-size: 11px !important;
-  padding: 4px 12px !important;
-  border-radius: 4px !important;
+  padding: 1px 6px !important;
+  border-radius: 3px !important;
+  border: 1px solid var(--border-bright) !important;
+  cursor: pointer !important;
+  transition: background-color 150ms !important;
 }
 
-.driver-popover-arrow {
-  border-color: var(--bg-secondary) !important;
-}
-
-.driver-popover-arrow-side-left.driver-popover-arrow {
-  border-left-color: var(--bg-secondary) !important;
-}
-
-.driver-popover-arrow-side-right.driver-popover-arrow {
-  border-right-color: var(--bg-secondary) !important;
-}
-
-.driver-popover-arrow-side-top.driver-popover-arrow {
-  border-top-color: var(--bg-secondary) !important;
-}
-
-.driver-popover-arrow-side-bottom.driver-popover-arrow {
-  border-bottom-color: var(--bg-secondary) !important;
-}
-
-.driver-overlay {
-  background-color: rgba(0, 0, 0, 0.6) !important;
+.driver-popover code.tour-copy:hover {
+  background-color: var(--bg-elevated) !important;
 }

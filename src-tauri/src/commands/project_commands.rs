@@ -8,7 +8,7 @@ use crate::state::{AppState, Project};
 fn projects_path() -> Result<PathBuf, String> {
     let base = dirs::data_dir()
         .ok_or_else(|| "Cannot find data directory".to_string())?;
-    Ok(base.join("com.agentic.app").join("projects.json"))
+    Ok(base.join("com.overun.app").join("projects.json"))
 }
 
 fn load_projects_from_disk() -> Vec<Project> {
@@ -116,6 +116,7 @@ pub fn load_projects_sync() -> Vec<Project> {
 
 /// Run a one-shot guardian review using a CLI agent tool with `-p <prompt>`.
 /// This is non-interactive: the process receives the prompt, responds, and exits.
+/// Runs in a temporary directory so sessions don't pollute the project's resume list.
 /// Returns the full stdout of the process.
 #[tauri::command]
 pub async fn guardian_review(
@@ -126,22 +127,31 @@ pub async fn guardian_review(
 ) -> Result<String, String> {
     let command = cli_command.unwrap_or_else(|| "claude".to_string());
 
+    // Run in a temp directory so the arbiter session won't appear in any
+    // project's resume/session list (most CLI agents scope sessions by cwd).
+    let tmp_dir = tempfile::tempdir()
+        .map_err(|e| format!("Failed to create temp dir for arbiter: {}", e))?;
+
     let mut cmd = tokio::process::Command::new(&command);
-    // Only add --dangerously-skip-permissions for claude
+    // Only add claude-specific flags
     if command == "claude" {
         cmd.arg("--dangerously-skip-permissions");
+        cmd.arg("--no-session-persistence");
     }
     if let Some(ref m) = model {
         if !m.is_empty() {
             cmd.arg("--model").arg(m);
         }
     }
-    cmd.arg("-p").arg(&prompt).current_dir(&project_path);
+    let full_prompt = format!("Project path: {}\n\n{}", project_path, prompt);
+    cmd.arg("-p").arg(&full_prompt).current_dir(tmp_dir.path());
 
     let output = cmd
         .output()
         .await
         .map_err(|e| format!("Failed to run {} for guardian review: {}", command, e))?;
+
+    // tmp_dir is dropped here, cleaning up automatically
 
     if output.status.success() {
         String::from_utf8(output.stdout)

@@ -133,7 +133,7 @@ export async function deleteKnowledge(
   return invoke("delete_knowledge", { projectId, knowledgeId });
 }
 
-export async function guardianReview(
+export async function arbiterReview(
   prompt: string,
   projectPath: string,
   cliCommand?: string,

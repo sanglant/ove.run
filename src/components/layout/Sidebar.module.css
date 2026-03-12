@@ -116,11 +116,11 @@
   align-items: center;
 }
 
-.guardianActive {
-  color: var(--guardian);
+.arbiterActive {
+  color: var(--arbiter);
 }
 
-.guardianLabel {
+.arbiterLabel {
   font-size: 11px;
   line-height: 1;
   font-weight: 700;

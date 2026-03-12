@@ -36,7 +36,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [saving, setSaving] = useState(false);
   const [newEnvKey, setNewEnvKey] = useState("");
   const [newEnvVal, setNewEnvVal] = useState("");
-  const [guardianModelOptions, setGuardianModelOptions] = useState<string[]>([]);
+  const [arbiterModelOptions, setArbiterModelOptions] = useState<string[]>([]);
 
   const providerOptions = [
     { value: "claude", label: "Claude Code" },
@@ -45,13 +45,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     { value: "codex", label: "Codex CLI" },
   ];
 
-  // Load available models when guardian provider changes
-  const guardianProvider = draft.global.guardian_provider || "claude";
+  // Load available models when arbiter provider changes
+  const arbiterProvider = draft.global.arbiter_provider || "claude";
   useEffect(() => {
-    listCliModels(guardianProvider)
-      .then(setGuardianModelOptions)
-      .catch(() => setGuardianModelOptions([]));
-  }, [guardianProvider]);
+    listCliModels(arbiterProvider)
+      .then(setArbiterModelOptions)
+      .catch(() => setArbiterModelOptions([]));
+  }, [arbiterProvider]);
 
   const handleGlobalChange = <K extends keyof AppSettings["global"]>(
     key: K,
@@ -233,23 +233,23 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </Group>
 
-            {/* Guardian timeout */}
+            {/* Arbiter timeout */}
             <Group justify="space-between" align="center">
               <div>
                 <Text size="sm" className={classes.settingLabel}>
-                  Guardian Timeout
+                  Arbiter Timeout
                 </Text>
                 <Text size="xs" className={classes.settingHint}>
-                  Seconds before guardian auto-answers
+                  Seconds before Arbiter auto-answers
                 </Text>
               </div>
               <NumberInput
                 min={5}
                 max={120}
-                value={draft.global.guardian_timeout_seconds}
+                value={draft.global.arbiter_timeout_seconds}
                 onChange={(val) =>
                   handleGlobalChange(
-                    "guardian_timeout_seconds",
+                    "arbiter_timeout_seconds",
                     typeof val === "number" ? val : parseInt(String(val), 10),
                   )
                 }
@@ -258,23 +258,23 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </Group>
 
-            {/* Guardian provider */}
+            {/* Arbiter provider */}
             <Group justify="space-between" align="center">
               <div>
                 <Text size="sm" className={classes.settingLabel}>
-                  Guardian Provider
+                  Arbiter Provider
                 </Text>
                 <Text size="xs" className={classes.settingHint}>
-                  CLI agent tool used by Guardian
+                  CLI agent tool used by Arbiter
                 </Text>
               </div>
               <Select
                 data={providerOptions}
-                value={draft.global.guardian_provider || "claude"}
+                value={draft.global.arbiter_provider || "claude"}
                 onChange={(val) => {
-                  handleGlobalChange("guardian_provider", val ?? "claude");
+                  handleGlobalChange("arbiter_provider", val ?? "claude");
                   // Reset model when provider changes
-                  handleGlobalChange("guardian_model", "");
+                  handleGlobalChange("arbiter_model", "");
                 }}
                 allowDeselect={false}
                 className={classes.inputWidth208}
@@ -297,24 +297,24 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               />
             </Group>
 
-            {/* Guardian model — only shown when provider has model aliases */}
-            {guardianModelOptions.length > 0 && (
+            {/* Arbiter model — only shown when provider has model aliases */}
+            {arbiterModelOptions.length > 0 && (
               <Group justify="space-between" align="center">
                 <div>
                   <Text size="sm" className={classes.settingLabel}>
-                    Guardian Model
+                    Arbiter Model
                   </Text>
                   <Text size="xs" className={classes.settingHint}>
-                    Model alias for guardian decisions
+                    Model alias for Arbiter decisions
                   </Text>
                 </div>
                 <Select
                   data={[
                     { value: "", label: "Default" },
-                    ...guardianModelOptions.map((m) => ({ value: m, label: m })),
+                    ...arbiterModelOptions.map((m) => ({ value: m, label: m })),
                   ]}
-                  value={draft.global.guardian_model || ""}
-                  onChange={(val) => handleGlobalChange("guardian_model", val ?? "")}
+                  value={draft.global.arbiter_model || ""}
+                  onChange={(val) => handleGlobalChange("arbiter_model", val ?? "")}
                   allowDeselect={false}
                   className={classes.inputWidth208}
                   styles={{

@@ -103,14 +103,14 @@ export function Sidebar() {
 
   const handleSessionDragStart = (event: DragEvent<HTMLButtonElement>, sessionId: string) => {
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-agentic-session", sessionId);
+    event.dataTransfer.setData("application/x-ove-run-session", sessionId);
     event.dataTransfer.setData("text/plain", sessionId);
   };
 
-  const handleGuardianToggle = async (e: React.MouseEvent, project: Project) => {
+  const handleArbiterToggle = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
-    const newEnabled = !project.guardian_enabled;
-    await updateProject({ ...project, guardian_enabled: newEnabled });
+    const newEnabled = !project.arbiter_enabled;
+    await updateProject({ ...project, arbiter_enabled: newEnabled });
   };
 
   const navItems = [
@@ -163,8 +163,8 @@ export function Sidebar() {
       {/* App title */}
       <div className={classes.header}>
         <h1 className={classes.title}>
-          <span className={classes.titleAccent}>Ag</span>
-          <span className={classes.titleText}>entic</span>
+          <span className={classes.titleAccent}>ove</span>
+          <span className={classes.titleText}>.run</span>
         </h1>
       </div>
 
@@ -245,19 +245,19 @@ export function Sidebar() {
                     </span>
                   )}
 
-                  {/* Guardian toggle button */}
+                  {/* Arbiter toggle button */}
                   {(() => {
-                    const guardianActive = project.guardian_enabled;
+                    const arbiterActive = project.arbiter_enabled;
                     return (
                       <button
-                        onClick={(e) => handleGuardianToggle(e, project)}
-                        aria-label={guardianActive ? `Disable guardian for ${project.name}` : `Enable guardian for ${project.name}`}
-                        aria-pressed={guardianActive}
-                        className={cn(classes.iconButton, guardianActive ? classes.guardianActive : classes.revealOnHover)}
-                        {...(isActiveProject ? { "data-tour": "project-guardian-toggle" } : {})}
+                        onClick={(e) => handleArbiterToggle(e, project)}
+                        aria-label={arbiterActive ? `Disable arbiter for ${project.name}` : `Enable arbiter for ${project.name}`}
+                        aria-pressed={arbiterActive}
+                        className={cn(classes.iconButton, arbiterActive ? classes.arbiterActive : classes.revealOnHover)}
+                        {...(isActiveProject ? { "data-tour": "project-arbiter-toggle" } : {})}
                       >
-                        <span className={cn(classes.guardianLabel, guardianActive && classes.guardianActive)}>
-                          G
+                        <span className={cn(classes.arbiterLabel, arbiterActive && classes.arbiterActive)}>
+                          A
                         </span>
                       </button>
                     );

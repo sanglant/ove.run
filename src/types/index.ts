@@ -17,8 +17,8 @@ export interface Project {
   path: string;
   created_at: string;
   git_enabled: boolean;
-  guardian_enabled: boolean;
-  guardian_agent_type?: AgentType;
+  arbiter_enabled: boolean;
+  arbiter_agent_type?: AgentType;
 }
 
 export interface AgentSession {
@@ -104,9 +104,9 @@ export interface GlobalSettings {
   notifications_enabled: boolean;
   minimize_to_tray: boolean;
   terminal_scrollback: number;
-  guardian_timeout_seconds: number;
-  guardian_provider: string;
-  guardian_model: string;
+  arbiter_timeout_seconds: number;
+  arbiter_provider: string;
+  arbiter_model: string;
 }
 
 export interface AgentSettings {
@@ -157,5 +157,5 @@ export interface FeedbackItem {
   parsedOptions: ParsedOption[];
   allowFreeInput: boolean;
   timestamp: string;
-  guardianEnabled: boolean;
+  arbiterEnabled: boolean;
 }
