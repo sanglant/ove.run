@@ -1,3 +1,4 @@
+pub mod arbiter_commands;
 pub mod agent_commands;
 pub mod bugs_commands;
 pub mod context_commands;

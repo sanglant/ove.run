@@ -3,6 +3,7 @@ use tauri::{Manager, WindowEvent};
 use tokio::sync::RwLock;
 
 pub mod agents;
+pub mod arbiter;
 pub mod bugs;
 pub mod bundled;
 pub mod commands;
@@ -36,6 +37,10 @@ use commands::git_commands::{
 use commands::notes_commands::{
     create_note, delete_note, list_notes, read_note_content, update_note,
     set_note_context_toggle,
+};
+use commands::arbiter_commands::{
+    get_arbiter_state, set_trust_level, decompose_request,
+    list_stories, update_story, delete_story, reorder_stories,
 };
 use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
@@ -193,6 +198,14 @@ pub fn run() {
             list_consolidations,
             extract_memories,
             check_consolidation,
+            // Arbiter commands
+            get_arbiter_state,
+            set_trust_level,
+            decompose_request,
+            list_stories,
+            update_story,
+            delete_story,
+            reorder_stories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
