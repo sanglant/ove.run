@@ -196,3 +196,36 @@ export interface Consolidation {
   insight: string;
   created_at: string;
 }
+
+export type TrustLevel = 1 | 2 | 3;
+export type LoopStatus = "idle" | "planning" | "running" | "paused" | "completed" | "failed";
+export type StoryStatus = "pending" | "in_progress" | "completed" | "failed" | "skipped";
+
+export interface ArbiterState {
+  project_id: string;
+  trust_level: TrustLevel;
+  loop_status: LoopStatus;
+  current_story_id: string | null;
+  iteration_count: number;
+  max_iterations: number;
+  last_activity_at: string | null;
+}
+
+export interface Story {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  acceptance_criteria: string | null;
+  priority: number;
+  status: StoryStatus;
+  depends_on_json: string;
+  iteration_attempts: number;
+  created_at: string;
+}
+
+export const TRUST_LEVEL_LABELS: Record<TrustLevel, { name: string; description: string }> = {
+  1: { name: "Supervised", description: "I'll approve each step" },
+  2: { name: "Autonomous", description: "Run it, ask me when stuck" },
+  3: { name: "Full Auto", description: "Handle everything" },
+};
