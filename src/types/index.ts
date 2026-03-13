@@ -173,3 +173,26 @@ export interface ContextAssignment {
   session_id: string;
   assigned_at: string;
 }
+
+export interface Memory {
+  id: string;
+  project_id: string;
+  session_id: string | null;
+  visibility: "private" | "public";
+  content: string;
+  summary: string | null;
+  entities_json: string;
+  topics_json: string;
+  importance: number;
+  consolidated: boolean;
+  created_at: string;
+}
+
+export interface Consolidation {
+  id: string;
+  project_id: string;
+  source_ids_json: string;
+  summary: string;
+  insight: string;
+  created_at: string;
+}

@@ -8,6 +8,8 @@ import type {
   GitStatus,
   PersistedSession,
   ContextUnit,
+  Memory,
+  Consolidation,
 } from "@/types";
 import type { BugItem, ProviderConfig } from "../features/bugs/types";
 
@@ -228,4 +230,26 @@ export async function listProjectDefaultContext(projectId: string): Promise<Cont
 }
 export async function generateContextSummary(unitId: string, projectPath: string): Promise<void> {
   return invoke("generate_context_summary", { unitId, projectPath });
+}
+
+export async function listMemories(projectId: string, sessionId?: string): Promise<Memory[]> {
+  return invoke("list_memories", { projectId, sessionId: sessionId ?? null });
+}
+export async function searchMemories(query: string, projectId: string, sessionId?: string, limit?: number): Promise<Memory[]> {
+  return invoke("search_memories", { query, projectId, sessionId: sessionId ?? null, limit: limit ?? 10 });
+}
+export async function toggleMemoryVisibility(id: string, visibility: string): Promise<void> {
+  return invoke("toggle_memory_visibility", { id, visibility });
+}
+export async function deleteMemory(id: string): Promise<void> {
+  return invoke("delete_memory", { id });
+}
+export async function listConsolidations(projectId: string): Promise<Consolidation[]> {
+  return invoke("list_consolidations", { projectId });
+}
+export async function extractMemories(projectId: string, sessionId: string, terminalOutput: string, projectPath: string): Promise<Memory[]> {
+  return invoke("extract_memories", { projectId, sessionId, terminalOutput, projectPath });
+}
+export async function checkConsolidation(projectId: string, projectPath: string): Promise<void> {
+  return invoke("check_consolidation", { projectId, projectPath });
 }
