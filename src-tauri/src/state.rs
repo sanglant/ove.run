@@ -18,9 +18,9 @@ pub struct Project {
     pub created_at: String,
     pub git_enabled: bool,
     #[serde(default)]
-    pub guardian_enabled: bool,
+    pub arbiter_enabled: bool,
     #[serde(default)]
-    pub guardian_agent_type: Option<String>,
+    pub arbiter_agent_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,12 +93,12 @@ pub struct GlobalSettings {
     pub notifications_enabled: bool,
     pub minimize_to_tray: bool,
     pub terminal_scrollback: u32,
-    #[serde(default = "default_guardian_timeout")]
-    pub guardian_timeout_seconds: u32,
+    #[serde(default = "default_arbiter_timeout")]
+    pub arbiter_timeout_seconds: u32,
     #[serde(default)]
-    pub guardian_provider: String,
+    pub arbiter_provider: String,
     #[serde(default)]
-    pub guardian_model: String,
+    pub arbiter_model: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,7 +108,7 @@ pub struct AgentSettings {
     pub env_vars: HashMap<String, String>,
 }
 
-fn default_guardian_timeout() -> u32 {
+fn default_arbiter_timeout() -> u32 {
     20
 }
 
@@ -122,9 +122,9 @@ impl Default for AppSettings {
                 notifications_enabled: true,
                 minimize_to_tray: false,
                 terminal_scrollback: 10000,
-                guardian_timeout_seconds: 20,
-                guardian_provider: String::new(),
-                guardian_model: String::new(),
+                arbiter_timeout_seconds: 20,
+                arbiter_provider: String::new(),
+                arbiter_model: String::new(),
             },
             agents: HashMap::new(),
         }
