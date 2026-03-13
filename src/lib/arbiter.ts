@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { arbiterReview, writePty, listAgentTypes } from "@/lib/tauri";
+import { arbiterReview, writePty, listAgentTypes, searchMemories, extractMemories, checkConsolidation } from "@/lib/tauri";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
@@ -23,9 +23,19 @@ export async function arbiterAnswer(
   const compactOutput = compactText(output, 1500);
   const optionLabels = parsedOptions.map((o) => o.label).join(", ");
 
+  let memoryContext = "";
+  try {
+    const memories = await searchMemories(compactText(output, 500), item.projectId, sessionId, 5);
+    if (memories.length > 0) {
+      memoryContext = "Relevant project memories:\n" + memories.map(m => `- ${m.content}`).join("\n");
+    }
+  } catch {
+    // proceed without memories
+  }
+
   const prompt =
     `You are an Arbiter agent reviewing an AI coding agent's question on a software project. ` +
-    `No project context available yet. ` +
+    `${memoryContext || "No project context available yet."} ` +
     `Agent terminal output: ${compactOutput}. ` +
     `Available options: ${optionLabels || "(none)"}. ` +
     `Free text input allowed: ${allowFreeInput ? "yes" : "no"}. ` +
@@ -84,6 +94,9 @@ export async function arbiterAnswer(
       sessionId,
       timestamp: new Date().toISOString(),
     });
+
+    extractMemories(item.projectId, sessionId, output, projectPath).catch(() => {});
+    checkConsolidation(item.projectId, projectPath).catch(() => {});
   } catch (err) {
     console.error("Arbiter answer failed:", err);
     useNotificationStore.getState().addNotification({
