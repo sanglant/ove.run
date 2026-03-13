@@ -82,6 +82,44 @@ pub async fn update_project(
     Ok(())
 }
 
+/// Core arbiter CLI subprocess call — usable without Tauri State.
+/// Runs the CLI tool with `-p <prompt>` in a temp directory.
+pub async fn run_arbiter_cli(
+    prompt: &str,
+    project_path: &str,
+    cli_command: &str,
+    model: Option<&str>,
+) -> Result<String, String> {
+    let tmp_dir = tempfile::tempdir()
+        .map_err(|e| format!("Failed to create temp dir for arbiter: {}", e))?;
+
+    let mut cmd = tokio::process::Command::new(cli_command);
+    if cli_command == "claude" {
+        cmd.arg("--dangerously-skip-permissions");
+        cmd.arg("--no-session-persistence");
+    }
+    if let Some(m) = model {
+        if !m.is_empty() {
+            cmd.arg("--model").arg(m);
+        }
+    }
+    let full_prompt = format!("Project path: {}\n\n{}", project_path, prompt);
+    cmd.arg("-p").arg(&full_prompt).current_dir(tmp_dir.path());
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run {} for arbiter review: {}", cli_command, e))?;
+
+    if output.status.success() {
+        String::from_utf8(output.stdout)
+            .map_err(|e| format!("Invalid UTF-8 in arbiter output: {}", e))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("Arbiter review process failed: {}", stderr))
+    }
+}
+
 /// Run a one-shot arbiter review using a CLI agent tool with `-p <prompt>`.
 /// This is non-interactive: the process receives the prompt, responds, and exits.
 /// Runs in a temporary directory so sessions don't pollute the project's resume list.
@@ -94,40 +132,7 @@ pub async fn arbiter_review(
     model: Option<String>,
 ) -> Result<String, String> {
     let command = cli_command.unwrap_or_else(|| "claude".to_string());
-
-    // Run in a temp directory so the arbiter session won't appear in any
-    // project's resume/session list (most CLI agents scope sessions by cwd).
-    let tmp_dir = tempfile::tempdir()
-        .map_err(|e| format!("Failed to create temp dir for arbiter: {}", e))?;
-
-    let mut cmd = tokio::process::Command::new(&command);
-    // Only add claude-specific flags
-    if command == "claude" {
-        cmd.arg("--dangerously-skip-permissions");
-        cmd.arg("--no-session-persistence");
-    }
-    if let Some(ref m) = model {
-        if !m.is_empty() {
-            cmd.arg("--model").arg(m);
-        }
-    }
-    let full_prompt = format!("Project path: {}\n\n{}", project_path, prompt);
-    cmd.arg("-p").arg(&full_prompt).current_dir(tmp_dir.path());
-
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run {} for arbiter review: {}", command, e))?;
-
-    // tmp_dir is dropped here, cleaning up automatically
-
-    if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map_err(|e| format!("Invalid UTF-8 in arbiter output: {}", e))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Arbiter review process failed: {}", stderr))
-    }
+    run_arbiter_cli(&prompt, &project_path, &command, model.as_deref()).await
 }
 
 /// Return known model aliases and IDs for a given CLI agent tool.

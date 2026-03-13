@@ -26,6 +26,10 @@ use commands::context_commands::{
     set_project_default_context, remove_project_default_context, list_project_default_context,
     generate_context_summary,
 };
+use commands::memory_commands::{
+    list_memories, search_memories, toggle_memory_visibility, delete_memory,
+    list_consolidations, extract_memories, check_consolidation,
+};
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
 };
@@ -181,6 +185,14 @@ pub fn run() {
             remove_project_default_context,
             list_project_default_context,
             generate_context_summary,
+            // Memory commands
+            list_memories,
+            search_memories,
+            toggle_memory_visibility,
+            delete_memory,
+            list_consolidations,
+            extract_memories,
+            check_consolidation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
