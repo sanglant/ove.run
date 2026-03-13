@@ -90,6 +90,22 @@ pub struct AgentSettings {
     pub env_vars: HashMap<String, String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextUnit {
+    pub id: String,
+    pub project_id: Option<String>,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub unit_type: String,
+    pub scope: String,
+    pub tags_json: String,
+    pub l0_summary: Option<String>,
+    pub l1_overview: Option<String>,
+    pub l2_content: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 fn default_arbiter_timeout() -> u32 {
     20
 }
