@@ -1,0 +1,294 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-secondary) 60%, transparent), transparent 24%);
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.header {
+  flex-shrink: 0;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-secondary) 94%, transparent),
+    color-mix(in srgb, var(--bg-primary) 98%, transparent)
+  );
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerIcon {
+  color: var(--accent);
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent-glow);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── List ────────────────────────────────────────────────── */
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statsLine {
+  font-size: 11px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.listMessage,
+.listEmpty {
+  padding: 36px 14px;
+  border-radius: 18px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--bg-tertiary) 58%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--border) 92%, transparent);
+}
+
+.listEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.listEmpty p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.emptyListIcon {
+  opacity: 0.35;
+}
+
+/* ── Card ────────────────────────────────────────────────── */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, transparent);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.card:hover .cardActions {
+  opacity: 1;
+}
+
+.consolidatedBadge {
+  display: inline-flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.consolidationSourceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ── Visibility button ───────────────────────────────────── */
+.visibilityButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.visibilityPublic {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent-glow);
+}
+
+.visibilityPublic:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.visibilityPrivate {
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  color: var(--text-secondary);
+}
+
+.visibilityPrivate:hover {
+  background: color-mix(in srgb, var(--bg-elevated) 100%, transparent);
+  color: var(--text-primary);
+}
+
+/* ── Card content ────────────────────────────────────────── */
+.cardContent {
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tagEntity,
+.tagTopic {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.tagEntity {
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--text-secondary);
+}
+
+.tagTopic {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-glow) 80%, transparent);
+}
+
+.cardTimestamp {
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* ── Consolidation insight block ─────────────────────────── */
+.insightBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.insightLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-glow);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.insightText {
+  font-size: 12px;
+  line-height: 1.55;
+  font-style: italic;
+}
+
+/* ── Empty state (no project selected) ──────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+.emptyState p {
+  margin: 0;
+  max-width: 30ch;
+  line-height: 1.6;
+}
+
+.emptyIcon {
+  opacity: 0.35;
+}
