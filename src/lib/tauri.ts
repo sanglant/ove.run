@@ -7,6 +7,7 @@ import type {
   Note,
   GitStatus,
   PersistedSession,
+  ContextUnit,
 } from "@/types";
 import type { BugItem, ProviderConfig } from "../features/bugs/types";
 
@@ -190,4 +191,41 @@ export async function getBugDetail(projectId: string, bugId: string): Promise<Bu
 
 export async function disconnectBugProvider(projectId: string): Promise<void> {
   return invoke("disconnect_bug_provider", { projectId });
+}
+
+export async function listContextUnits(projectId?: string): Promise<ContextUnit[]> {
+  return invoke("list_context_units", { projectId: projectId ?? null });
+}
+export async function createContextUnit(unit: ContextUnit): Promise<void> {
+  return invoke("create_context_unit", { unit });
+}
+export async function updateContextUnit(unit: ContextUnit): Promise<void> {
+  return invoke("update_context_unit", { unit });
+}
+export async function deleteContextUnit(id: string): Promise<void> {
+  return invoke("delete_context_unit", { id });
+}
+export async function searchContextUnits(query: string, projectId?: string): Promise<ContextUnit[]> {
+  return invoke("search_context_units", { query, projectId: projectId ?? null });
+}
+export async function assignContext(unitId: string, sessionId: string): Promise<void> {
+  return invoke("assign_context", { unitId, sessionId });
+}
+export async function unassignContext(unitId: string, sessionId: string): Promise<void> {
+  return invoke("unassign_context", { unitId, sessionId });
+}
+export async function listSessionContext(sessionId: string): Promise<ContextUnit[]> {
+  return invoke("list_session_context", { sessionId });
+}
+export async function setProjectDefaultContext(unitId: string, projectId: string): Promise<void> {
+  return invoke("set_project_default_context", { unitId, projectId });
+}
+export async function removeProjectDefaultContext(unitId: string, projectId: string): Promise<void> {
+  return invoke("remove_project_default_context", { unitId, projectId });
+}
+export async function listProjectDefaultContext(projectId: string): Promise<ContextUnit[]> {
+  return invoke("list_project_default_context", { projectId });
+}
+export async function generateContextSummary(unitId: string, projectPath: string): Promise<void> {
+  return invoke("generate_context_summary", { unitId, projectPath });
 }
