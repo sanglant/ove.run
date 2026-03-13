@@ -4,7 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { StatusBar } from "@/components/layout/StatusBar";
 import { TerminalContainer } from "@/features/terminal/components/TerminalContainer";
 import { GitPanel } from "@/features/git/components/GitPanel";
-import { KnowledgePanel } from "@/features/knowledge/components/KnowledgePanel";
+import { ContextPanel } from "@/features/context/components/ContextPanel";
 import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
@@ -87,10 +87,10 @@ export default function App() {
             </div>
           )}
 
-          {/* Knowledge panel */}
-          {activePanel === "knowledge" && (
+          {/* Context panel */}
+          {activePanel === "context" && (
             <div className={classes.panelContainer}>
-              <KnowledgePanel />
+              <ContextPanel />
             </div>
           )}
 

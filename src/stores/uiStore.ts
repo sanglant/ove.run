@@ -3,7 +3,7 @@ import { create } from "zustand";
 type ActivePanel =
   | "terminal"
   | "git"
-  | "knowledge"
+  | "context"
   | "notes"
   | "bugs"
   | "settings"

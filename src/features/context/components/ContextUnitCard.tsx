@@ -1,0 +1,155 @@
+import { useState } from "react";
+import { Badge, ActionIcon, Collapse, Text, Tooltip } from "@mantine/core";
+import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import type { ContextUnit, ContextUnitType } from "@/types";
+import classes from "./ContextPanel.module.css";
+
+const TYPE_COLORS: Record<ContextUnitType, string> = {
+  persona: "blue",
+  skill: "green",
+  knowledge: "yellow",
+  reference: "gray",
+};
+
+const TYPE_LABELS: Record<ContextUnitType, string> = {
+  persona: "Persona",
+  skill: "Skill",
+  knowledge: "Knowledge",
+  reference: "Reference",
+};
+
+interface ContextUnitCardProps {
+  unit: ContextUnit;
+  onEdit: (unit: ContextUnit) => void;
+  onDelete: (unit: ContextUnit) => void;
+  onGenerateSummary: (unit: ContextUnit) => void;
+}
+
+export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary }: ContextUnitCardProps) {
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [contentOpen, setContentOpen] = useState(false);
+
+  const tags: string[] = (() => {
+    try {
+      return JSON.parse(unit.tags_json) as string[];
+    } catch {
+      return [];
+    }
+  })();
+
+  return (
+    <div className={classes.card}>
+      <div className={classes.cardHeader}>
+        <div className={classes.cardTitleRow}>
+          <span className={classes.cardName}>{unit.name}</span>
+          <div className={classes.cardBadges}>
+            <Badge
+              size="xs"
+              color={TYPE_COLORS[unit.type]}
+              variant="light"
+              styles={{ root: { textTransform: "none", fontWeight: 600 } }}
+            >
+              {TYPE_LABELS[unit.type]}
+            </Badge>
+            <Badge
+              size="xs"
+              color={unit.scope === "global" ? "violet" : "cyan"}
+              variant="outline"
+              styles={{ root: { textTransform: "none" } }}
+            >
+              {unit.scope}
+            </Badge>
+          </div>
+        </div>
+
+        <div className={classes.cardActions}>
+          {!unit.l0_summary && (
+            <Tooltip label="Generate summary" position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => onGenerateSummary(unit)}
+                aria-label="Generate summary"
+                styles={{ root: { color: "var(--text-secondary)" } }}
+              >
+                <Sparkles size={13} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Tooltip label="Edit" position="top" withArrow>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => onEdit(unit)}
+              aria-label={`Edit ${unit.name}`}
+              styles={{ root: { color: "var(--text-secondary)" } }}
+            >
+              <Pencil size={13} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Delete" position="top" withArrow>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => onDelete(unit)}
+              aria-label={`Delete ${unit.name}`}
+              styles={{ root: { color: "var(--danger)" } }}
+            >
+              <Trash2 size={13} />
+            </ActionIcon>
+          </Tooltip>
+        </div>
+      </div>
+
+      {tags.length > 0 && (
+        <div className={classes.cardTags}>
+          {tags.map((tag) => (
+            <span key={tag} className={classes.tag}>{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {unit.l0_summary && (
+        <Text size="xs" c="var(--text-secondary)" className={classes.cardSummary}>
+          {unit.l0_summary}
+        </Text>
+      )}
+
+      {unit.l1_overview && (
+        <div className={classes.cardSection}>
+          <button
+            type="button"
+            className={classes.sectionToggle}
+            onClick={() => setOverviewOpen((v) => !v)}
+            aria-expanded={overviewOpen}
+          >
+            {overviewOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            <span>Overview</span>
+          </button>
+          <Collapse in={overviewOpen}>
+            <Text size="xs" c="var(--text-secondary)" className={classes.sectionContent}>
+              {unit.l1_overview}
+            </Text>
+          </Collapse>
+        </div>
+      )}
+
+      {unit.l2_content && (
+        <div className={classes.cardSection}>
+          <button
+            type="button"
+            className={classes.sectionToggle}
+            onClick={() => setContentOpen((v) => !v)}
+            aria-expanded={contentOpen}
+          >
+            {contentOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            <span>Full content</span>
+          </button>
+          <Collapse in={contentOpen}>
+            <pre className={classes.sectionPre}>{unit.l2_content}</pre>
+          </Collapse>
+        </div>
+      )}
+    </div>
+  );
+}

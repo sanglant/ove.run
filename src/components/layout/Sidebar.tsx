@@ -127,9 +127,9 @@ export function Sidebar() {
       tourId: "sidebar-git",
     },
     {
-      id: "knowledge" as const,
+      id: "context" as const,
       icon: <BookOpen size={16} />,
-      label: "Knowledge",
+      label: "Context",
       tourId: "sidebar-knowledge",
     },
     {
