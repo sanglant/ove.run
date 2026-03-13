@@ -28,5 +28,10 @@ vite.config.js
 vite.config.d.ts
 src-tauri/gen/schemas/
 
+# SQLite database (contains personal data)
+*.db
+*.db-wal
+*.db-shm
+
 # Worktrees
 .worktrees/
