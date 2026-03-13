@@ -132,6 +132,49 @@ pub struct Consolidation {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[repr(u8)]
+pub enum TrustLevel {
+    Supervised = 1,
+    Autonomous = 2,
+    FullAuto = 3,
+}
+
+impl TrustLevel {
+    pub fn from_i32(v: i32) -> Self {
+        match v {
+            1 => TrustLevel::Supervised,
+            3 => TrustLevel::FullAuto,
+            _ => TrustLevel::Autonomous,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ArbiterStateRow {
+    pub project_id: String,
+    pub trust_level: TrustLevel,
+    pub loop_status: String,
+    pub current_story_id: Option<String>,
+    pub iteration_count: i32,
+    pub max_iterations: i32,
+    pub last_activity_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Story {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub description: String,
+    pub acceptance_criteria: Option<String>,
+    pub priority: i32,
+    pub status: String,
+    pub depends_on_json: String,
+    pub iteration_attempts: i32,
+    pub created_at: String,
+}
+
 fn default_arbiter_timeout() -> u32 {
     20
 }
