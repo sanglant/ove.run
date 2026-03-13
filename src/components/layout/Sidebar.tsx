@@ -19,6 +19,7 @@ import {
   Button,
   Group,
   Indicator,
+  Modal,
   Text,
   UnstyledButton,
 } from "@mantine/core";
@@ -26,11 +27,14 @@ import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useArbiterStore } from "@/stores/arbiterStore";
 import { NewProjectDialog } from "@/features/projects/components/NewProjectDialog";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
-import type { Project } from "@/types";
+import { TrustLevelSelector } from "@/features/arbiter/components/TrustLevelSelector";
+import type { Project, TrustLevel } from "@/types";
 import { getAgentMeta } from "@/constants/agents";
 import { StatusDot } from "@/components/ui/StatusDot";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
 import cn from "clsx";
 import classes from "./Sidebar.module.css";
 
@@ -45,6 +49,9 @@ export function Sidebar() {
   );
   const [showNewProject, setShowNewProject] = useState(false);
   const [newAgentProjectId, setNewAgentProjectId] = useState<string | null>(null);
+  const [trustLevelProject, setTrustLevelProject] = useState<Project | null>(null);
+  const [pendingTrustLevel, setPendingTrustLevel] = useState<TrustLevel>(2);
+  const { setTrustLevel: saveTrustLevel } = useArbiterStore();
 
   // Auto-expand projects that have sessions
   const prevSessionCountRef = useRef<Record<string, number>>({});
@@ -111,8 +118,21 @@ export function Sidebar() {
 
   const handleArbiterToggle = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation();
-    const newEnabled = !project.arbiter_enabled;
-    await updateProject({ ...project, arbiter_enabled: newEnabled });
+    if (project.arbiter_enabled) {
+      // Disabling — just toggle off
+      await updateProject({ ...project, arbiter_enabled: false });
+    } else {
+      // Enabling — ask for trust level first
+      setPendingTrustLevel(2);
+      setTrustLevelProject(project);
+    }
+  };
+
+  const handleConfirmTrustLevel = async () => {
+    if (!trustLevelProject) return;
+    await saveTrustLevel(trustLevelProject.id, pendingTrustLevel);
+    await updateProject({ ...trustLevelProject, arbiter_enabled: true });
+    setTrustLevelProject(null);
   };
 
   const navItems = [
@@ -411,6 +431,50 @@ export function Sidebar() {
           onClose={() => setNewAgentProjectId(null)}
         />
       )}
+
+      <Modal
+        opened={!!trustLevelProject}
+        onClose={() => setTrustLevelProject(null)}
+        title="Select trust level"
+        centered
+        size="sm"
+        overlayProps={MODAL_OVERLAY_PROPS}
+        styles={{
+          ...MODAL_STYLES,
+          body: { ...MODAL_STYLES.body, padding: 20 },
+        }}
+      >
+        <Text size="xs" c="var(--text-secondary)" mb="md">
+          How much autonomy should the Arbiter have for{" "}
+          <strong>{trustLevelProject?.name}</strong>?
+        </Text>
+        <TrustLevelSelector
+          value={pendingTrustLevel}
+          onChange={setPendingTrustLevel}
+        />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={() => setTrustLevelProject(null)}
+            styles={{ root: { color: "var(--text-secondary)" } }}
+          >
+            Cancel
+          </Button>
+          <Button
+            size="xs"
+            onClick={() => void handleConfirmTrustLevel()}
+            styles={{
+              root: {
+                backgroundColor: "var(--accent)",
+                color: "var(--bg-primary)",
+              },
+            }}
+          >
+            Enable Arbiter
+          </Button>
+        </div>
+      </Modal>
     </aside>
   );
 }
