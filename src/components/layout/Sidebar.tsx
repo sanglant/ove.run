@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Folder,
   Brain,
+  RotateCw,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -149,6 +150,11 @@ export function Sidebar() {
       id: "memory" as const,
       icon: <Brain size={16} />,
       label: "Memory",
+    },
+    {
+      id: "loop" as const,
+      icon: <RotateCw size={16} />,
+      label: "Loop",
     },
     {
       id: "settings" as const,

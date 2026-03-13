@@ -8,6 +8,7 @@ import { ContextPanel } from "@/features/context/components/ContextPanel";
 import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
+import { LoopPanel } from "@/features/loop/components/LoopPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackModal } from "@/features/arbiter/components/AgentFeedbackModal";
@@ -18,6 +19,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTour } from "@/hooks/useTour";
 import { useTourStore } from "@/stores/tourStore";
+import { initLoopListener } from "@/stores/loopStore";
 import cn from "clsx";
 import classes from "./App.module.css";
 
@@ -29,6 +31,11 @@ export default function App() {
 
   // Initialize global notification listener
   useNotifications();
+
+  useEffect(() => {
+    const cleanup = initLoopListener();
+    return cleanup;
+  }, []);
 
   const { startHomeTour } = useTour();
   const { hasSeenHomeTour, setHomeTourSeen } = useTourStore();
@@ -113,6 +120,13 @@ export default function App() {
           {activePanel === "memory" && (
             <div className={classes.panelContainer}>
               <MemoryPanel />
+            </div>
+          )}
+
+          {/* Loop panel */}
+          {activePanel === "loop" && (
+            <div className={classes.panelContainer}>
+              <LoopPanel />
             </div>
           )}
 
