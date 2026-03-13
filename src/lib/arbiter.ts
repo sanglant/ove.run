@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { arbiterReview, writePty, listAgentTypes, searchMemories, extractMemories, checkConsolidation } from "@/lib/tauri";
+import { arbiterReview, writePty, listAgentTypes, searchMemories, extractMemories, checkConsolidation, listSessionContext } from "@/lib/tauri";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
@@ -33,9 +33,24 @@ export async function arbiterAnswer(
     // proceed without memories
   }
 
+  let contextSection = "";
+  try {
+    const sessionContext = await listSessionContext(sessionId);
+    if (sessionContext.length > 0) {
+      contextSection = "Project context:\n" + sessionContext
+        .filter(u => u.l1_overview)
+        .map(u => `[${u.type}: ${u.name}] ${u.l1_overview}`)
+        .join("\n");
+    }
+  } catch {
+    // proceed without context
+  }
+
+  const contextBlock = [memoryContext, contextSection].filter(Boolean).join("\n") || "No project context available yet.";
+
   const prompt =
     `You are an Arbiter agent reviewing an AI coding agent's question on a software project. ` +
-    `${memoryContext || "No project context available yet."} ` +
+    `${contextBlock} ` +
     `Agent terminal output: ${compactOutput}. ` +
     `Available options: ${optionLabels || "(none)"}. ` +
     `Free text input allowed: ${allowFreeInput ? "yes" : "no"}. ` +
