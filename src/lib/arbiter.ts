@@ -100,7 +100,6 @@ interface ArbiterResult {
   answer?: string;
   answerText?: string;
   reasoning?: string;
-  projectNotes?: string;
 }
 
 /**
@@ -146,9 +145,6 @@ function parseArbiterResponse(response: string, _options: ParsedOption[]): Arbit
 
   const reasoningMatch = response.match(/^REASONING:\s*(.+)$/m);
   if (reasoningMatch) result.reasoning = reasoningMatch[1].trim();
-
-  const notesMatch = response.match(/^PROJECT_NOTES:\s*([\s\S]+?)(?=\n[A-Z_]+:|$)/m);
-  if (notesMatch) result.projectNotes = notesMatch[1].trim();
 
   return result;
 }
