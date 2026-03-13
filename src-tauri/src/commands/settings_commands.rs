@@ -1,5 +1,4 @@
 use tauri::State;
-use crate::settings::store;
 use crate::state::{AppSettings, AppState};
 
 #[tauri::command]
@@ -13,7 +12,11 @@ pub async fn update_settings(
     state: State<'_, AppState>,
     settings: AppSettings,
 ) -> Result<(), String> {
-    store::save_settings(&settings)?;
+    {
+        let conn = state.db.lock().map_err(|e| e.to_string())?;
+        crate::db::settings::save_app_settings(&conn, &settings)
+            .map_err(|e| e.to_string())?;
+    }
     let mut current = state.settings.write().await;
     *current = settings;
     Ok(())
