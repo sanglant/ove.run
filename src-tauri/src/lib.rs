@@ -29,7 +29,7 @@ use commands::knowledge_commands::{
 use commands::notes_commands::{
     create_note, delete_note, list_notes, read_note_content, update_note,
 };
-use commands::project_commands::{add_project, guardian_review, list_cli_models, list_projects, remove_project, update_project};
+use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::settings_commands::{get_settings, update_settings};
@@ -113,7 +113,7 @@ pub fn run() {
             add_project,
             remove_project,
             update_project,
-            guardian_review,
+            arbiter_review,
             list_cli_models,
             // Knowledge commands
             list_knowledge,

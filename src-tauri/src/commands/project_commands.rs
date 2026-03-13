@@ -65,8 +65,8 @@ pub async fn add_project(
         path,
         created_at: Utc::now().to_rfc3339(),
         git_enabled,
-        guardian_enabled: false,
-        guardian_agent_type: None,
+        arbiter_enabled: false,
+        arbiter_agent_type: None,
     };
 
     let mut projects = state.projects.write().await;
@@ -114,12 +114,12 @@ pub fn load_projects_sync() -> Vec<Project> {
     load_projects_from_disk()
 }
 
-/// Run a one-shot guardian review using a CLI agent tool with `-p <prompt>`.
+/// Run a one-shot arbiter review using a CLI agent tool with `-p <prompt>`.
 /// This is non-interactive: the process receives the prompt, responds, and exits.
 /// Runs in a temporary directory so sessions don't pollute the project's resume list.
 /// Returns the full stdout of the process.
 #[tauri::command]
-pub async fn guardian_review(
+pub async fn arbiter_review(
     prompt: String,
     project_path: String,
     cli_command: Option<String>,
@@ -149,16 +149,16 @@ pub async fn guardian_review(
     let output = cmd
         .output()
         .await
-        .map_err(|e| format!("Failed to run {} for guardian review: {}", command, e))?;
+        .map_err(|e| format!("Failed to run {} for arbiter review: {}", command, e))?;
 
     // tmp_dir is dropped here, cleaning up automatically
 
     if output.status.success() {
         String::from_utf8(output.stdout)
-            .map_err(|e| format!("Invalid UTF-8 in guardian output: {}", e))
+            .map_err(|e| format!("Invalid UTF-8 in arbiter output: {}", e))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Guardian review process failed: {}", stderr))
+        Err(format!("Arbiter review process failed: {}", stderr))
     }
 }
 
