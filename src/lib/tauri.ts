@@ -12,6 +12,7 @@ import type {
   Consolidation,
   ArbiterState,
   Story,
+  QualityGateConfig,
 } from "@/types";
 import type { BugItem, ProviderConfig } from "../features/bugs/types";
 
@@ -276,4 +277,29 @@ export async function deleteStory(id: string): Promise<void> {
 }
 export async function reorderStories(projectId: string, storyIds: string[]): Promise<void> {
   return invoke("reorder_stories", { projectId, storyIds });
+}
+
+export async function startLoop(projectId: string, projectPath: string, userRequest?: string): Promise<void> {
+  return invoke("start_loop", { projectId, projectPath, userRequest: userRequest ?? null });
+}
+export async function pauseLoop(): Promise<void> {
+  return invoke("pause_loop");
+}
+export async function resumeLoop(): Promise<void> {
+  return invoke("resume_loop");
+}
+export async function cancelLoop(): Promise<void> {
+  return invoke("cancel_loop");
+}
+export async function getLoopState(projectId: string): Promise<{ arbiter_state: ArbiterState | null; stories: Story[] }> {
+  return invoke("get_loop_state", { projectId });
+}
+export async function setQualityGates(projectId: string, config: QualityGateConfig): Promise<void> {
+  return invoke("set_quality_gates", { projectId, config });
+}
+export async function getQualityGates(projectId: string): Promise<QualityGateConfig> {
+  return invoke("get_quality_gates", { projectId });
+}
+export async function setMaxIterations(projectId: string, max: number): Promise<void> {
+  return invoke("set_max_iterations", { projectId, max });
 }

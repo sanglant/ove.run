@@ -229,3 +229,29 @@ export const TRUST_LEVEL_LABELS: Record<TrustLevel, { name: string; description:
   2: { name: "Autonomous", description: "Run it, ask me when stuck" },
   3: { name: "Full Auto", description: "Handle everything" },
 };
+
+export interface QualityGateConfig {
+  build_command: string | null;
+  lint_command: string | null;
+  typecheck_command: string | null;
+  test_command: string | null;
+  arbiter_judge: boolean;
+}
+
+export interface GateResult {
+  name: string;
+  passed: boolean;
+  output: string;
+}
+
+export type LoopEventType =
+  | { type: "StatusChanged"; status: LoopStatus }
+  | { type: "StoryStarted"; story_id: string }
+  | { type: "StoryCompleted"; story_id: string }
+  | { type: "StoryFailed"; story_id: string; reason: string }
+  | { type: "IterationCompleted"; count: number; max: number }
+  | { type: "GateResult"; story_id: string; gate: string; passed: boolean; output: string }
+  | { type: "CircuitBreakerTriggered"; reason: string }
+  | { type: "LoopCompleted" }
+  | { type: "LoopFailed"; reason: string }
+  | { type: "ReasoningEntry"; action: string; reasoning: string };
