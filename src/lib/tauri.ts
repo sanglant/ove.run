@@ -10,6 +10,8 @@ import type {
   ContextUnit,
   Memory,
   Consolidation,
+  ArbiterState,
+  Story,
 } from "@/types";
 import type { BugItem, ProviderConfig } from "../features/bugs/types";
 
@@ -252,4 +254,26 @@ export async function extractMemories(projectId: string, sessionId: string, term
 }
 export async function checkConsolidation(projectId: string, projectPath: string): Promise<void> {
   return invoke("check_consolidation", { projectId, projectPath });
+}
+
+export async function getArbiterState(projectId: string): Promise<ArbiterState | null> {
+  return invoke("get_arbiter_state", { projectId });
+}
+export async function setTrustLevel(projectId: string, level: number): Promise<void> {
+  return invoke("set_trust_level", { projectId, level });
+}
+export async function decomposeRequest(projectId: string, projectPath: string, userRequest: string): Promise<Story[]> {
+  return invoke("decompose_request", { projectId, projectPath, userRequest });
+}
+export async function listStories(projectId: string): Promise<Story[]> {
+  return invoke("list_stories", { projectId });
+}
+export async function updateStory(story: Story): Promise<void> {
+  return invoke("update_story", { story });
+}
+export async function deleteStory(id: string): Promise<void> {
+  return invoke("delete_story", { id });
+}
+export async function reorderStories(projectId: string, storyIds: string[]): Promise<void> {
+  return invoke("reorder_stories", { projectId, storyIds });
 }
