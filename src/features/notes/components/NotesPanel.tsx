@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
-import { Modal, TextInput, Text } from "@mantine/core";
+import { Modal, TextInput, Text, Switch } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
 import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
 import { useProjectStore } from "@/stores/projectStore";
@@ -10,6 +10,7 @@ import {
   readNoteContent,
   updateNote,
   deleteNote,
+  setNoteContextToggle,
 } from "@/lib/tauri";
 import type { Note } from "@/types";
 import cn from "clsx";
@@ -349,6 +350,33 @@ export function NotesPanel() {
                     <span className={classes.cardDescription}>
                       Last touched {formatAbsoluteDate(note.updated_at)}
                     </span>
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      <Switch
+                        size="xs"
+                        label="Include in context"
+                        checked={note.include_in_context}
+                        onChange={(e) => {
+                          const include = e.currentTarget.checked;
+                          setNoteContextToggle(activeProjectId!, note.id, include).then(() => {
+                            setNotes((prev) =>
+                              prev.map((n) =>
+                                n.id === note.id ? { ...n, include_in_context: include } : n,
+                              ),
+                            );
+                          }).catch((err) => {
+                            console.error("Failed to toggle note context:", err);
+                          });
+                        }}
+                        styles={{
+                          label: { color: "var(--text-secondary)", fontSize: 10 },
+                          track: { backgroundColor: note.include_in_context ? undefined : "var(--bg-tertiary)", borderColor: "var(--bg-tertiary)" },
+                        }}
+                      />
+                    </div>
                   </div>
                   <button
                     type="button"
