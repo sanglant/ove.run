@@ -7,12 +7,8 @@ pub mod bugs;
 pub mod commands;
 pub mod db;
 pub mod git;
-pub mod knowledge;
-pub mod notes;
 pub mod notifications;
 pub mod pty;
-pub mod sessions;
-pub mod settings;
 pub mod state;
 pub mod tray;
 
@@ -24,9 +20,6 @@ use commands::bugs_commands::{
 };
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
-};
-use commands::knowledge_commands::{
-    create_knowledge, delete_knowledge, list_knowledge, read_knowledge_content, update_knowledge,
 };
 use commands::notes_commands::{
     create_note, delete_note, list_notes, read_note_content, update_note,
@@ -129,12 +122,6 @@ pub fn run() {
             update_project,
             arbiter_review,
             list_cli_models,
-            // Knowledge commands
-            list_knowledge,
-            create_knowledge,
-            read_knowledge_content,
-            update_knowledge,
-            delete_knowledge,
             // Notes commands
             list_notes,
             create_note,
