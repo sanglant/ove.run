@@ -1,0 +1,143 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+  font-size: 12px;
+  position: relative;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ── Row layout ─────────────────────────────────────────── */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.label {
+  flex-shrink: 0;
+  width: 82px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.value {
+  color: var(--text-primary);
+}
+
+.timestamp {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.storyId {
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Trust badge & popover ──────────────────────────────── */
+.trustWrap {
+  position: relative;
+}
+
+.trustBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent-glow);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.trustBadge:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.trustBadge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.trustCaret {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.trustPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: var(--bg-elevated);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 40%, transparent);
+}
+
+/* ── Status dot ─────────────────────────────────────────── */
+.statusWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusText {
+  color: var(--text-primary);
+  text-transform: lowercase;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dotGray {
+  background: color-mix(in srgb, var(--text-secondary) 60%, transparent);
+}
+
+.dotBlue {
+  background: #3b82f6;
+  box-shadow: 0 0 5px #3b82f640;
+}
+
+.dotGreen {
+  background: #22c55e;
+  box-shadow: 0 0 5px #22c55e40;
+}
+
+.dotYellow {
+  background: #eab308;
+  box-shadow: 0 0 5px #eab30840;
+}
+
+.dotRed {
+  background: #ef4444;
+  box-shadow: 0 0 5px #ef444440;
+}
