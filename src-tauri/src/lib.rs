@@ -18,6 +18,12 @@ use commands::bugs_commands::{
     check_bug_auth, disconnect_bug_provider, get_bug_detail, get_bug_provider_config, list_bugs,
     save_bug_provider_config, start_bug_oauth,
 };
+use commands::context_commands::{
+    list_context_units, create_context_unit, update_context_unit, delete_context_unit,
+    search_context_units, assign_context, unassign_context, list_session_context,
+    set_project_default_context, remove_project_default_context, list_project_default_context,
+    generate_context_summary,
+};
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
 };
@@ -146,6 +152,19 @@ pub fn run() {
             list_bugs,
             get_bug_detail,
             disconnect_bug_provider,
+            // Context commands
+            list_context_units,
+            create_context_unit,
+            update_context_unit,
+            delete_context_unit,
+            search_context_units,
+            assign_context,
+            unassign_context,
+            list_session_context,
+            set_project_default_context,
+            remove_project_default_context,
+            list_project_default_context,
+            generate_context_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

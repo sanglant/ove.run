@@ -1,5 +1,6 @@
 pub mod agent_commands;
 pub mod bugs_commands;
+pub mod context_commands;
 pub mod git_commands;
 pub mod notes_commands;
 pub mod project_commands;
