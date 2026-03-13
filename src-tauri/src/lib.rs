@@ -8,6 +8,7 @@ pub mod bundled;
 pub mod commands;
 pub mod db;
 pub mod git;
+pub mod memory_worker;
 pub mod notifications;
 pub mod pty;
 pub mod state;
@@ -51,6 +52,10 @@ pub fn run() {
             let (notification_tx, notification_rx) =
                 tokio::sync::mpsc::channel::<NotificationEvent>(64);
 
+            // Create the memory worker channel
+            let (memory_tx, memory_rx) =
+                tokio::sync::mpsc::channel::<memory_worker::MemoryWorkerEvent>(32);
+
             // Initialize SQLite database
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             let db = init_db(&app_data_dir)?;
@@ -78,6 +83,7 @@ pub fn run() {
                 projects: Arc::new(RwLock::new(loaded_projects)),
                 settings: Arc::new(RwLock::new(loaded_settings)),
                 notification_tx,
+                memory_worker_tx: memory_tx,
             };
 
             let app_handle = app.handle().clone();
@@ -87,6 +93,9 @@ pub fn run() {
 
             // Spawn the notification loop
             tauri::async_runtime::spawn(run_notification_loop(app_handle.clone(), notification_rx));
+
+            // Spawn the memory consolidation worker
+            tauri::async_runtime::spawn(memory_worker::run_memory_worker(db.clone(), memory_rx));
 
             // Setup system tray
             tray::setup::create_tray(&app_handle)?;

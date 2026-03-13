@@ -11,6 +11,7 @@ pub struct AppState {
     pub projects: Arc<RwLock<Vec<Project>>>,
     pub settings: Arc<RwLock<AppSettings>>,
     pub notification_tx: tokio::sync::mpsc::Sender<crate::notifications::notifier::NotificationEvent>,
+    pub memory_worker_tx: tokio::sync::mpsc::Sender<crate::memory_worker::MemoryWorkerEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +105,31 @@ pub struct ContextUnit {
     pub l2_content: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Memory {
+    pub id: String,
+    pub project_id: String,
+    pub session_id: Option<String>,
+    pub visibility: String,
+    pub content: String,
+    pub summary: Option<String>,
+    pub entities_json: String,
+    pub topics_json: String,
+    pub importance: f64,
+    pub consolidated: bool,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Consolidation {
+    pub id: String,
+    pub project_id: String,
+    pub source_ids_json: String,
+    pub summary: String,
+    pub insight: String,
+    pub created_at: String,
 }
 
 fn default_arbiter_timeout() -> u32 {
