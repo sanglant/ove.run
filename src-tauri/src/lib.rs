@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 use tokio::sync::RwLock;
 
 pub mod agents;
@@ -43,6 +43,10 @@ use commands::arbiter_commands::{
     get_arbiter_state, set_trust_level, decompose_request,
     list_stories, update_story, delete_story, reorder_stories,
 };
+use commands::loop_commands::{
+    start_loop, pause_loop, resume_loop, cancel_loop,
+    get_loop_state, set_quality_gates, get_quality_gates, set_max_iterations,
+};
 use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
@@ -66,6 +70,12 @@ pub fn run() {
             let (memory_tx, memory_rx) =
                 tokio::sync::mpsc::channel::<memory_worker::MemoryWorkerEvent>(32);
 
+            // Create the loop engine channels
+            let (loop_cmd_tx, loop_cmd_rx) =
+                tokio::sync::mpsc::channel::<loop_engine::engine::LoopCommand>(16);
+            let (loop_event_tx, mut loop_event_rx) =
+                tokio::sync::mpsc::channel::<loop_engine::engine::LoopEvent>(64);
+
             // Initialize SQLite database
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             let db = init_db(&app_data_dir)?;
@@ -87,13 +97,15 @@ pub fn run() {
             };
 
             // Build AppState with pre-loaded data
+            let pty_manager = Arc::new(RwLock::new(pty::manager::PtyManager::new()));
             let app_state = AppState {
                 db: db.clone(),
-                pty_manager: Arc::new(RwLock::new(pty::manager::PtyManager::new())),
+                pty_manager: pty_manager.clone(),
                 projects: Arc::new(RwLock::new(loaded_projects)),
                 settings: Arc::new(RwLock::new(loaded_settings)),
                 notification_tx,
-                memory_worker_tx: memory_tx,
+                memory_worker_tx: memory_tx.clone(),
+                loop_cmd_tx,
             };
 
             let app_handle = app.handle().clone();
@@ -106,6 +118,37 @@ pub fn run() {
 
             // Spawn the memory consolidation worker
             tauri::async_runtime::spawn(memory_worker::run_memory_worker(db.clone(), memory_rx));
+
+            // Spawn the loop engine on a dedicated thread; the engine holds
+            // MutexGuard across await points which makes the future !Send.
+            {
+                let db_loop = db.clone();
+                let pty_loop = pty_manager.clone();
+                let ah_loop = app_handle.clone();
+                let mtx_loop = memory_tx.clone();
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("loop engine runtime");
+                    rt.block_on(loop_engine::engine::run_loop(
+                        db_loop,
+                        pty_loop,
+                        ah_loop,
+                        loop_cmd_rx,
+                        loop_event_tx,
+                        mtx_loop,
+                    ));
+                });
+            }
+
+            // Spawn the loop event forwarder
+            let app_handle_loop = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                while let Some(event) = loop_event_rx.recv().await {
+                    let _ = app_handle_loop.emit("loop-event", &event);
+                }
+            });
 
             // Setup system tray
             tray::setup::create_tray(&app_handle)?;
@@ -207,6 +250,15 @@ pub fn run() {
             update_story,
             delete_story,
             reorder_stories,
+            // Loop Engine commands
+            start_loop,
+            pause_loop,
+            resume_loop,
+            cancel_loop,
+            get_loop_state,
+            set_quality_gates,
+            get_quality_gates,
+            set_max_iterations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

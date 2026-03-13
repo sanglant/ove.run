@@ -12,6 +12,7 @@ pub struct AppState {
     pub settings: Arc<RwLock<AppSettings>>,
     pub notification_tx: tokio::sync::mpsc::Sender<crate::notifications::notifier::NotificationEvent>,
     pub memory_worker_tx: tokio::sync::mpsc::Sender<crate::memory_worker::MemoryWorkerEvent>,
+    pub loop_cmd_tx: tokio::sync::mpsc::Sender<crate::loop_engine::engine::LoopCommand>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
