@@ -3,7 +3,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
 
+use crate::db::init::DbPool;
+
 pub struct AppState {
+    pub db: DbPool,
     pub pty_manager: Arc<RwLock<crate::pty::manager::PtyManager>>,
     pub projects: Arc<RwLock<Vec<Project>>>,
     pub settings: Arc<RwLock<AppSettings>>,

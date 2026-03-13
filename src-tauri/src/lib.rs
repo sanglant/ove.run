@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 pub mod agents;
 pub mod bugs;
 pub mod commands;
+pub mod db;
 pub mod git;
 pub mod knowledge;
 pub mod notes;
@@ -15,6 +16,7 @@ pub mod settings;
 pub mod state;
 pub mod tray;
 
+use crate::db::init::init_db;
 use commands::agent_commands::list_agent_types;
 use commands::bugs_commands::{
     check_bug_auth, disconnect_bug_provider, get_bug_detail, get_bug_provider_config, list_bugs,
@@ -28,6 +30,7 @@ use commands::knowledge_commands::{
 };
 use commands::notes_commands::{
     create_note, delete_note, list_notes, read_note_content, update_note,
+    set_note_context_toggle,
 };
 use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
@@ -48,12 +51,23 @@ pub fn run() {
             let (notification_tx, notification_rx) =
                 tokio::sync::mpsc::channel::<NotificationEvent>(64);
 
-            // Load persisted data synchronously before building state
-            let loaded_projects = commands::project_commands::load_projects_sync();
-            let loaded_settings = settings::store::load_settings();
+            // Initialize SQLite database
+            let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+            let db = init_db(&app_data_dir)?;
+
+            // Load persisted data from SQLite
+            let loaded_projects = {
+                let conn = db.lock().unwrap();
+                crate::db::projects::load_projects_sync(&conn)
+            };
+            let loaded_settings = {
+                let conn = db.lock().unwrap();
+                crate::db::settings::load_app_settings(&conn)
+            };
 
             // Build AppState with pre-loaded data
             let app_state = AppState {
+                db: db.clone(),
                 pty_manager: Arc::new(RwLock::new(pty::manager::PtyManager::new())),
                 projects: Arc::new(RwLock::new(loaded_projects)),
                 settings: Arc::new(RwLock::new(loaded_settings)),
@@ -127,6 +141,7 @@ pub fn run() {
             read_note_content,
             update_note,
             delete_note,
+            set_note_context_toggle,
             // Settings commands
             get_settings,
             update_settings,
