@@ -6,6 +6,7 @@ type ActivePanel =
   | "context"
   | "notes"
   | "bugs"
+  | "memory"
   | "settings"
   | "notifications";
 export type TabViewMode = "grouped" | "flat";

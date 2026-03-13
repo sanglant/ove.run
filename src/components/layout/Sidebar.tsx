@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronDown,
   Folder,
+  Brain,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -143,6 +144,11 @@ export function Sidebar() {
       icon: <Bug size={16} />,
       label: "Bugs",
       tourId: "sidebar-bugs",
+    },
+    {
+      id: "memory" as const,
+      icon: <Brain size={16} />,
+      label: "Memory",
     },
     {
       id: "settings" as const,

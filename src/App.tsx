@@ -7,6 +7,7 @@ import { GitPanel } from "@/features/git/components/GitPanel";
 import { ContextPanel } from "@/features/context/components/ContextPanel";
 import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
+import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackModal } from "@/features/arbiter/components/AgentFeedbackModal";
@@ -105,6 +106,13 @@ export default function App() {
           {activePanel === "bugs" && (
             <div className={classes.panelContainer}>
               <BugsPanel />
+            </div>
+          )}
+
+          {/* Memory panel */}
+          {activePanel === "memory" && (
+            <div className={classes.panelContainer}>
+              <MemoryPanel />
             </div>
           )}
 
