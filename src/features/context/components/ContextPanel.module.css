@@ -320,6 +320,48 @@
   gap: 8px;
 }
 
+/* ── Session assignments section ────────────────────────── */
+.assignmentsSection {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-tertiary) 30%, transparent);
+}
+
+.assignmentsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.assignmentsLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.assignedList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assignedItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
 /* ── Empty state (no project selected) ──────────────────── */
 .emptyState {
   display: flex;
