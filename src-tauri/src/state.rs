@@ -48,6 +48,13 @@ pub enum AgentStatus {
     Error,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PromptDelivery {
+    CliFlag(String),
+    PositionalArg,
+    InteractiveInput,
+}
+
 #[derive(Debug, Clone)]
 pub struct AgentDefinition {
     pub agent_type: AgentType,
@@ -60,6 +67,7 @@ pub struct AgentDefinition {
     pub detect_input_pattern: String,
     pub detect_finished_pattern: String,
     pub icon: String,
+    pub prompt_delivery: Option<PromptDelivery>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

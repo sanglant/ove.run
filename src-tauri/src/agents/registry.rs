@@ -1,4 +1,4 @@
-use crate::state::{AgentDefinition, AgentType};
+use crate::state::{AgentDefinition, AgentType, PromptDelivery};
 
 pub fn get_agent_definitions() -> Vec<AgentDefinition> {
     vec![
@@ -16,6 +16,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             // Claude signals task completion
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed)".to_string(),
             icon: "claude".to_string(),
+            prompt_delivery: Some(PromptDelivery::InteractiveInput),
         },
         AgentDefinition {
             agent_type: AgentType::Gemini,
@@ -31,6 +32,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             // Gemini signals task completion
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
             icon: "gemini".to_string(),
+            prompt_delivery: Some(PromptDelivery::InteractiveInput),
         },
         AgentDefinition {
             agent_type: AgentType::Copilot,
@@ -43,6 +45,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|allow)".to_string(),
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
             icon: "copilot".to_string(),
+            prompt_delivery: Some(PromptDelivery::InteractiveInput),
         },
         AgentDefinition {
             agent_type: AgentType::Codex,
@@ -55,6 +58,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             detect_input_pattern: r"(?i)(do you want to|shall i|would you like|please confirm|y/n|yes/no|\[y\]|\[n\]|approve|deny|apply changes)".to_string(),
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed|done\.)".to_string(),
             icon: "codex".to_string(),
+            prompt_delivery: Some(PromptDelivery::PositionalArg),
         },
         AgentDefinition {
             agent_type: AgentType::Terminal,
@@ -67,6 +71,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             detect_input_pattern: String::new(),
             detect_finished_pattern: String::new(),
             icon: "terminal".to_string(),
+            prompt_delivery: None,
         },
     ]
 }
