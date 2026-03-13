@@ -4,6 +4,7 @@ use tokio::sync::RwLock;
 
 pub mod agents;
 pub mod bugs;
+pub mod bundled;
 pub mod commands;
 pub mod db;
 pub mod git;
@@ -53,6 +54,12 @@ pub fn run() {
             // Initialize SQLite database
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
             let db = init_db(&app_data_dir)?;
+
+            // Seed bundled content on first run
+            {
+                let conn = db.lock().unwrap();
+                crate::bundled::seed::seed_bundled_content(&conn).ok();
+            }
 
             // Load persisted data from SQLite
             let loaded_projects = {
