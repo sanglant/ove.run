@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
-import { useArbiterStore } from "@/stores/arbiterStore";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { arbiterReview, listKnowledge, readKnowledgeContent, createKnowledge, writePty, listAgentTypes } from "@/lib/tauri";
+import { arbiterReview, writePty, listAgentTypes } from "@/lib/tauri";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
@@ -19,32 +18,14 @@ export async function arbiterAnswer(
   item: FeedbackItem,
   projectPath: string,
 ): Promise<void> {
-  const { projectId, sessionId, output, parsedOptions, allowFreeInput } = item;
-
-  let knowledgeNotes = "";
-  const hasKnowledge = useArbiterStore.getState().arbiterInitialized[projectId];
-  if (hasKnowledge) {
-    try {
-      const entries = await listKnowledge(projectId);
-      const arbiterEntry = entries.find((e) => e.name === "Arbiter Notes");
-      if (arbiterEntry) {
-        knowledgeNotes = await readKnowledgeContent(projectId, arbiterEntry.id);
-      }
-    } catch {
-      // proceed without knowledge
-    }
-  }
+  const { sessionId, output, parsedOptions, allowFreeInput } = item;
 
   const compactOutput = compactText(output, 1500);
   const optionLabels = parsedOptions.map((o) => o.label).join(", ");
 
-  const knowledgeSection = knowledgeNotes
-    ? `Project knowledge: ${compactText(knowledgeNotes, 800)}`
-    : "No project notes yet — after answering, also provide brief project notes.";
-
   const prompt =
     `You are an Arbiter agent reviewing an AI coding agent's question on a software project. ` +
-    `${knowledgeSection} ` +
+    `No project context available yet. ` +
     `Agent terminal output: ${compactOutput}. ` +
     `Available options: ${optionLabels || "(none)"}. ` +
     `Free text input allowed: ${allowFreeInput ? "yes" : "no"}. ` +
@@ -54,8 +35,7 @@ export async function arbiterAnswer(
     `ANSWER: {exact option label} (or ANSWER: DISMISS to skip)\n` +
     `or if free text is needed:\n` +
     `ANSWER_TEXT: {your response}\n` +
-    `REASONING: {1-2 sentence explanation}\n` +
-    (knowledgeNotes ? "" : `PROJECT_NOTES: {brief project summary, tech stack, key conventions for future reference}\n`);
+    `REASONING: {1-2 sentence explanation}\n`;
 
   // Resolve CLI command and model from global arbiter settings
   const globalSettings = useSettingsStore.getState().settings.global;
@@ -93,15 +73,6 @@ export async function arbiterAnswer(
     } else if (parsedOptions.length > 0) {
       await sendKeys(sessionId, parsedOptions[0].keys);
       useSessionStore.getState().updateSessionStatus(sessionId, "working");
-    }
-
-    if (result.projectNotes && !knowledgeNotes) {
-      try {
-        await createKnowledge(projectId, "Arbiter Notes", "notes", result.projectNotes);
-        useArbiterStore.getState().setArbiterInitialized(projectId, true);
-      } catch {
-        // non-critical
-      }
     }
 
     const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId);

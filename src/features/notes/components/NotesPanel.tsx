@@ -11,7 +11,7 @@ import {
   updateNote,
   deleteNote,
 } from "@/lib/tauri";
-import type { ProjectNote } from "@/types";
+import type { Note } from "@/types";
 import cn from "clsx";
 import classes from "./NotesPanel.module.css";
 
@@ -39,8 +39,8 @@ function formatAbsoluteDate(iso: string): string {
 export function NotesPanel() {
   const { activeProjectId } = useProjectStore();
 
-  const [notes, setNotes] = useState<ProjectNote[]>([]);
-  const [selectedNote, setSelectedNote] = useState<ProjectNote | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
   const [editorContent, setEditorContent] = useState("");
@@ -48,7 +48,7 @@ export function NotesPanel() {
   const [editorTitle, setEditorTitle] = useState("");
   const [savedTitle, setSavedTitle] = useState("");
   const [saving, setSaving] = useState(false);
-  const [pendingDeleteNote, setPendingDeleteNote] = useState<ProjectNote | null>(null);
+  const [pendingDeleteNote, setPendingDeleteNote] = useState<Note | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -100,7 +100,7 @@ export function NotesPanel() {
     void loadNotes();
   }, [activeProjectId, loadNotes, resetEditorState]);
 
-  const handleSelectNote = async (note: ProjectNote) => {
+  const handleSelectNote = async (note: Note) => {
     if (!activeProjectId) return;
 
     const token = note.id;
