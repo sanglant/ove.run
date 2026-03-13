@@ -6,7 +6,6 @@ export type AgentStatus =
   | "needs_input"
   | "finished"
   | "error";
-export type KnowledgeType = "system_prompt" | "context_file" | "notes";
 export type TerminalLayoutMode = "single" | "grid";
 export type TerminalSplitFlow = "row" | "column";
 export type TerminalPaneDropZone = "center" | "top" | "right" | "bottom" | "left";
@@ -76,23 +75,15 @@ export interface PersistedSession {
   yolo_mode: boolean;
   label: string;
   created_at: string;
+  initial_prompt?: string;
 }
 
-export interface KnowledgeEntry {
-  id: string;
-  project_id: string;
-  name: string;
-  file_path: string;
-  content_type: KnowledgeType;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProjectNote {
+export interface Note {
   id: string;
   project_id: string;
   title: string;
-  file_path: string;
+  content: string;
+  include_in_context: boolean;
   created_at: string;
   updated_at: string;
 }

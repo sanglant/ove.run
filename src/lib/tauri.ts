@@ -4,10 +4,8 @@ import type {
   Project,
   AppSettings,
   AgentDefinition,
-  KnowledgeEntry,
-  ProjectNote,
+  Note,
   GitStatus,
-  KnowledgeType,
   PersistedSession,
 } from "@/types";
 import type { BugItem, ProviderConfig } from "../features/bugs/types";
@@ -98,41 +96,6 @@ export async function listAgentTypes(): Promise<AgentDefinition[]> {
   return invoke("list_agent_types");
 }
 
-export async function listKnowledge(projectId: string): Promise<KnowledgeEntry[]> {
-  return invoke("list_knowledge", { projectId });
-}
-
-export async function createKnowledge(
-  projectId: string,
-  name: string,
-  contentType: KnowledgeType,
-  content: string,
-): Promise<KnowledgeEntry> {
-  return invoke("create_knowledge", { projectId, name, contentType, content });
-}
-
-export async function readKnowledgeContent(
-  projectId: string,
-  knowledgeId: string,
-): Promise<string> {
-  return invoke("read_knowledge_content", { projectId, knowledgeId });
-}
-
-export async function updateKnowledge(
-  projectId: string,
-  knowledgeId: string,
-  content: string,
-): Promise<void> {
-  return invoke("update_knowledge", { projectId, knowledgeId, content });
-}
-
-export async function deleteKnowledge(
-  projectId: string,
-  knowledgeId: string,
-): Promise<void> {
-  return invoke("delete_knowledge", { projectId, knowledgeId });
-}
-
 export async function arbiterReview(
   prompt: string,
   projectPath: string,
@@ -158,7 +121,7 @@ export async function sendDesktopNotification(title: string, body: string): Prom
   return invoke("send_desktop_notification", { title, body });
 }
 
-export async function listNotes(projectId: string): Promise<ProjectNote[]> {
+export async function listNotes(projectId: string): Promise<Note[]> {
   return invoke("list_notes", { projectId });
 }
 
@@ -166,7 +129,7 @@ export async function createNote(
   projectId: string,
   title: string,
   content: string,
-): Promise<ProjectNote> {
+): Promise<Note> {
   return invoke("create_note", { projectId, title, content });
 }
 
@@ -191,6 +154,14 @@ export async function deleteNote(
   noteId: string,
 ): Promise<void> {
   return invoke("delete_note", { projectId, noteId });
+}
+
+export async function setNoteContextToggle(
+  projectId: string,
+  noteId: string,
+  include: boolean,
+): Promise<void> {
+  return invoke("set_note_context_toggle", { projectId, noteId, include });
 }
 
 export async function getBugProviderConfig(projectId: string): Promise<ProviderConfig | null> {
