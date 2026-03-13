@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, ActionIcon, Collapse, Text, Tooltip } from "@mantine/core";
-import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, Star } from "lucide-react";
 import type { ContextUnit, ContextUnitType } from "@/types";
 import classes from "./ContextPanel.module.css";
 
@@ -23,9 +23,12 @@ interface ContextUnitCardProps {
   onEdit: (unit: ContextUnit) => void;
   onDelete: (unit: ContextUnit) => void;
   onGenerateSummary: (unit: ContextUnit) => void;
+  isDefault?: boolean;
+  onSetDefault?: (unit: ContextUnit) => void;
+  onRemoveDefault?: (unit: ContextUnit) => void;
 }
 
-export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary }: ContextUnitCardProps) {
+export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isDefault, onSetDefault, onRemoveDefault }: ContextUnitCardProps) {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
 
@@ -63,6 +66,19 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary }: C
         </div>
 
         <div className={classes.cardActions}>
+          {(onSetDefault ?? onRemoveDefault) && (
+            <Tooltip label={isDefault ? "Remove project default" : "Set as project default"} position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => isDefault ? onRemoveDefault?.(unit) : onSetDefault?.(unit)}
+                aria-label={isDefault ? "Remove project default" : "Set as project default"}
+                styles={{ root: { color: isDefault ? "var(--accent)" : "var(--text-secondary)" } }}
+              >
+                <Star size={13} fill={isDefault ? "currentColor" : "none"} />
+              </ActionIcon>
+            </Tooltip>
+          )}
           {!unit.l0_summary && (
             <Tooltip label="Generate summary" position="top" withArrow>
               <ActionIcon
