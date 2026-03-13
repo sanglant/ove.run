@@ -3,10 +3,17 @@ import { BookOpen, Plus, Search } from "lucide-react";
 import { SegmentedControl, TextInput, Modal, Text } from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
-import { generateContextSummary } from "@/lib/tauri";
+import { useSessionStore } from "@/stores/sessionStore";
+import {
+  generateContextSummary,
+  setProjectDefaultContext,
+  removeProjectDefaultContext,
+  listProjectDefaultContext,
+} from "@/lib/tauri";
 import type { ContextUnit, ContextUnitType } from "@/types";
 import { ContextUnitCard } from "./ContextUnitCard";
 import { ContextUnitEditor } from "./ContextUnitEditor";
+import { ContextAssignments } from "./ContextAssignments";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
 import classes from "./ContextPanel.module.css";
 
@@ -21,17 +28,38 @@ const FILTER_OPTIONS = [
 export function ContextPanel() {
   const { activeProjectId, projects } = useProjectStore();
   const { units, loading, filter, searchQuery, setFilter, setSearchQuery, loadUnits, addUnit, editUnit, removeUnit } = useContextStore();
+  const { sessions, activeSessionId } = useSessionStore();
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ContextUnit | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ContextUnit | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [defaultUnitIds, setDefaultUnitIds] = useState<Set<string>>(new Set());
 
   const activeProject = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
+
+  // Active session scoped to the active project
+  const activeSession = useMemo(() => {
+    if (!activeSessionId || !activeProjectId) return null;
+    const s = sessions.find((s) => s.id === activeSessionId);
+    return s?.projectId === activeProjectId ? s : null;
+  }, [sessions, activeSessionId, activeProjectId]);
 
   useEffect(() => {
     void loadUnits(activeProjectId ?? undefined);
   }, [activeProjectId, loadUnits]);
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setDefaultUnitIds(new Set());
+      return;
+    }
+    listProjectDefaultContext(activeProjectId).then((defaults) => {
+      setDefaultUnitIds(new Set(defaults.map((d) => d.id)));
+    }).catch((err) => {
+      console.error("Failed to load project defaults:", err);
+    });
+  }, [activeProjectId, units]);
 
   const visibleUnits = useMemo(() => {
     let result = units;
@@ -81,6 +109,28 @@ export function ContextPanel() {
     }
   };
 
+  const handleSetDefault = (unit: ContextUnit) => {
+    if (!activeProjectId) return;
+    setProjectDefaultContext(unit.id, activeProjectId).then(() => {
+      setDefaultUnitIds((prev) => new Set([...prev, unit.id]));
+    }).catch((err) => {
+      console.error("Failed to set project default:", err);
+    });
+  };
+
+  const handleRemoveDefault = (unit: ContextUnit) => {
+    if (!activeProjectId) return;
+    removeProjectDefaultContext(unit.id, activeProjectId).then(() => {
+      setDefaultUnitIds((prev) => {
+        const next = new Set(prev);
+        next.delete(unit.id);
+        return next;
+      });
+    }).catch((err) => {
+      console.error("Failed to remove project default:", err);
+    });
+  };
+
   const handleGenerateSummary = (unit: ContextUnit) => {
     if (!activeProject) return;
     void generateContextSummary(unit.id, activeProject.path).catch((err) => {
@@ -99,6 +149,13 @@ export function ContextPanel() {
 
   return (
     <div className={classes.root}>
+      {activeSession && activeProjectId && (
+        <ContextAssignments
+          sessionId={activeSession.id}
+          projectId={activeProjectId}
+          allUnits={units}
+        />
+      )}
       <div className={classes.header}>
         <div className={classes.headerTop}>
           <div className={classes.headerTitle}>
@@ -173,6 +230,9 @@ export function ContextPanel() {
               onEdit={handleOpenEdit}
               onDelete={setPendingDelete}
               onGenerateSummary={handleGenerateSummary}
+              isDefault={defaultUnitIds.has(unit.id)}
+              onSetDefault={handleSetDefault}
+              onRemoveDefault={handleRemoveDefault}
             />
           ))
         )}
