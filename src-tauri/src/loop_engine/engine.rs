@@ -1,0 +1,1 @@
+// Loop engine core — stub

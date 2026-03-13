@@ -4,6 +4,7 @@ use tokio::sync::RwLock;
 
 pub mod agents;
 pub mod arbiter;
+pub mod loop_engine;
 pub mod bugs;
 pub mod bundled;
 pub mod commands;
