@@ -183,6 +183,27 @@ pub struct Story {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QualityGateConfig {
+    pub build_command: Option<String>,
+    pub lint_command: Option<String>,
+    pub typecheck_command: Option<String>,
+    pub test_command: Option<String>,
+    pub arbiter_judge: bool,
+}
+
+impl Default for QualityGateConfig {
+    fn default() -> Self {
+        Self {
+            build_command: None,
+            lint_command: None,
+            typecheck_command: None,
+            test_command: None,
+            arbiter_judge: true,
+        }
+    }
+}
+
 fn default_arbiter_timeout() -> u32 {
     20
 }
