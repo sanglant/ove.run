@@ -139,7 +139,7 @@ export async function arbiterReview(
   cliCommand?: string,
   model?: string,
 ): Promise<string> {
-  return invoke("guardian_review", { prompt, projectPath, cliCommand, model });
+  return invoke("arbiter_review", { prompt, projectPath, cliCommand, model });
 }
 
 export async function listCliModels(cliCommand: string): Promise<string[]> {
