@@ -150,3 +150,26 @@ export interface FeedbackItem {
   timestamp: string;
   arbiterEnabled: boolean;
 }
+
+export type ContextUnitType = "persona" | "skill" | "knowledge" | "reference";
+export type ContextScope = "global" | "project";
+
+export interface ContextUnit {
+  id: string;
+  project_id: string | null;
+  name: string;
+  type: ContextUnitType;
+  scope: ContextScope;
+  tags_json: string;
+  l0_summary: string | null;
+  l1_overview: string | null;
+  l2_content: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContextAssignment {
+  context_unit_id: string;
+  session_id: string;
+  assigned_at: string;
+}
