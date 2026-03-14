@@ -220,3 +220,58 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TEXT NOT NULL
 );
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn in_memory_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        conn
+    }
+
+    #[test]
+    fn schema_creates_all_tables() {
+        let conn = in_memory_db();
+        let tables: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+
+        assert!(tables.contains(&"projects".to_string()));
+        assert!(tables.contains(&"sessions".to_string()));
+        assert!(tables.contains(&"stories".to_string()));
+        assert!(tables.contains(&"arbiter_state".to_string()));
+        assert!(tables.contains(&"memories".to_string()));
+        assert!(tables.contains(&"schema_migrations".to_string()));
+    }
+
+    #[test]
+    fn migrations_run_idempotently() {
+        let conn = in_memory_db();
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+
+        let count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, MIGRATIONS.len() as i32);
+    }
+
+    #[test]
+    fn migration_version_tracks_correctly() {
+        let conn = in_memory_db();
+        run_migrations(&conn).unwrap();
+
+        let max_version: i32 = conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(max_version, MIGRATIONS.last().map(|m| m.version).unwrap_or(0));
+    }
+}

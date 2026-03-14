@@ -241,3 +241,41 @@ impl Default for AppSettings {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trust_level_from_valid_values() {
+        assert_eq!(TrustLevel::from_i32(1), TrustLevel::Supervised);
+        assert_eq!(TrustLevel::from_i32(2), TrustLevel::Autonomous);
+        assert_eq!(TrustLevel::from_i32(3), TrustLevel::FullAuto);
+    }
+
+    #[test]
+    fn trust_level_from_invalid_defaults_to_autonomous() {
+        assert_eq!(TrustLevel::from_i32(0), TrustLevel::Autonomous);
+        assert_eq!(TrustLevel::from_i32(99), TrustLevel::Autonomous);
+        assert_eq!(TrustLevel::from_i32(-1), TrustLevel::Autonomous);
+    }
+
+    #[test]
+    fn app_settings_default_values() {
+        let settings = AppSettings::default();
+        assert_eq!(settings.global.font_size, 14);
+        assert!(settings.global.notifications_enabled);
+        assert!(settings.global.minimize_to_tray);
+        assert_eq!(settings.global.terminal_scrollback, 10000);
+        assert_eq!(settings.global.arbiter_timeout_seconds, 20);
+    }
+
+    #[test]
+    fn quality_gate_config_default() {
+        let config = QualityGateConfig::default();
+        assert!(config.build_command.is_none());
+        assert!(config.lint_command.is_none());
+        assert!(config.test_command.is_none());
+        assert!(config.arbiter_judge);
+    }
+}
