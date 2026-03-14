@@ -26,8 +26,14 @@ export async function spawnPty(
   env: Record<string, string>,
   cols: number,
   rows: number,
+  sandboxEnabled?: boolean,
+  trustLevel?: number,
 ): Promise<void> {
-  return invoke("spawn_pty", { sessionId, command, args, cwd, env, cols, rows });
+  return invoke("spawn_pty", {
+    sessionId, command, args, cwd, env, cols, rows,
+    sandboxEnabled: sandboxEnabled ?? false,
+    trustLevel: trustLevel ?? 2,
+  });
 }
 
 export async function writePty(sessionId: string, data: number[]): Promise<void> {
@@ -302,4 +308,19 @@ export async function getQualityGates(projectId: string): Promise<QualityGateCon
 }
 export async function setMaxIterations(projectId: string, max: number): Promise<void> {
   return invoke("set_max_iterations", { projectId, max });
+}
+
+export interface SandboxCapabilities {
+  platform: string;
+  available: boolean;
+  backend: string | null;
+  detail: string;
+}
+
+export async function getSandboxCapabilities(): Promise<SandboxCapabilities> {
+  return invoke("get_sandbox_capabilities");
+}
+
+export async function resetDatabase(): Promise<void> {
+  return invoke("reset_database");
 }

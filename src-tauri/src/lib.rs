@@ -53,7 +53,7 @@ use commands::project_commands::{add_project, arbiter_review, list_cli_models, l
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::sandbox_commands::get_sandbox_capabilities;
-use commands::settings_commands::{get_settings, update_settings};
+use commands::settings_commands::{get_settings, update_settings, reset_database};
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
 
@@ -222,6 +222,7 @@ pub fn run() {
             // Settings commands
             get_settings,
             update_settings,
+            reset_database,
             // Agent commands
             list_agent_types,
             // Session commands

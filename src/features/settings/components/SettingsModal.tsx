@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { listCliModels } from "@/lib/tauri";
+import { listCliModels, resetDatabase } from "@/lib/tauri";
 import type { AppSettings, AgentType } from "@/types";
 import {
   Modal,
@@ -17,6 +17,7 @@ import {
   Text,
   Stack,
   Select,
+  Divider,
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
 import { SectionTitle } from "@/components/ui/SectionTitle";
@@ -508,6 +509,27 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </Tabs.Panel>
             ))}
           </Tabs>
+        </section>
+
+        {/* Data section */}
+        <section>
+          <Divider my="md" color="var(--border)" />
+          <Text size="sm" fw={600} c="var(--text-primary)" mb="xs">Data</Text>
+          <Text size="xs" c="var(--text-secondary)" mb="sm">
+            Reset the database to start fresh. This deletes all projects, sessions, memories, and context.
+          </Text>
+          <Button
+            variant="outline"
+            color="red"
+            size="xs"
+            onClick={() => {
+              if (window.confirm("This will delete all data and restart the app. This cannot be undone. Continue?")) {
+                resetDatabase();
+              }
+            }}
+          >
+            Reset database
+          </Button>
         </section>
       </Stack>
 

@@ -21,3 +21,15 @@ pub async fn update_settings(
     *current = settings;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn reset_database(app: tauri::AppHandle) -> Result<(), AppError> {
+    use tauri::Manager;
+    let app_data_dir = app.path().app_data_dir().map_err(|e| AppError::Other(e.to_string()))?;
+    let db_path = crate::db::init::db_path(&app_data_dir);
+    if db_path.exists() {
+        std::fs::remove_file(&db_path)?;
+    }
+    app.restart();
+    Ok(())
+}
