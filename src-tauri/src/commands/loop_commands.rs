@@ -10,8 +10,9 @@ pub async fn start_loop(
     project_id: String,
     project_path: String,
     user_request: Option<String>,
+    session_id: Option<String>,
 ) -> Result<(), AppError> {
-    state.loop_cmd_tx.send(LoopCommand::Start { project_id, project_path, user_request })
+    state.loop_cmd_tx.send(LoopCommand::Start { project_id, project_path, user_request, session_id })
         .await
         .map_err(|e| AppError::Channel(format!("Failed to send start: {}", e)))
 }

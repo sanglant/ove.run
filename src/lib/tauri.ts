@@ -285,8 +285,18 @@ export async function reorderStories(projectId: string, storyIds: string[]): Pro
   return invoke("reorder_stories", { projectId, storyIds });
 }
 
-export async function startLoop(projectId: string, projectPath: string, userRequest?: string): Promise<void> {
-  return invoke("start_loop", { projectId, projectPath, userRequest: userRequest ?? null });
+export async function startLoop(
+  projectId: string,
+  projectPath: string,
+  userRequest?: string,
+  sessionId?: string,
+): Promise<void> {
+  return invoke("start_loop", {
+    projectId,
+    projectPath,
+    userRequest: userRequest ?? null,
+    sessionId: sessionId ?? null,
+  });
 }
 export async function pauseLoop(): Promise<void> {
   return invoke("pause_loop");

@@ -150,7 +150,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
         const project = projects.find((p) => p.id === projectId);
         if (project) {
           await setMaxIterationsFn(projectId, maxIterations);
-          await startLoop(projectId, project.path, initialPromptText.trim());
+          await startLoop(projectId, project.path, initialPromptText.trim(), session.id);
         }
       } catch (err) {
         console.error("Failed to start arbiter loop:", err);

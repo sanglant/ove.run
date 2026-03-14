@@ -29,6 +29,7 @@ pub enum LoopCommand {
         project_id: String,
         project_path: String,
         user_request: Option<String>,
+        session_id: Option<String>,
     },
     Pause,
     Resume,
@@ -65,7 +66,7 @@ pub async fn run_loop(
 ) {
     while let Some(cmd) = cmd_rx.recv().await {
         match cmd {
-            LoopCommand::Start { project_id, project_path, user_request } => {
+            LoopCommand::Start { project_id, project_path, user_request, session_id } => {
                 run_loop_lifecycle(
                     &db,
                     &pty_manager,
@@ -76,6 +77,7 @@ pub async fn run_loop(
                     &project_id,
                     &project_path,
                     user_request.as_deref(),
+                    session_id,
                 )
                 .await;
             }
@@ -205,6 +207,7 @@ async fn run_loop_lifecycle(
     project_id: &str,
     project_path: &str,
     user_request: Option<&str>,
+    session_id: Option<String>,
 ) {
     // -----------------------------------------------------------------------
     // Phase: Planning — decompose user_request into stories if provided
@@ -526,8 +529,18 @@ async fn run_loop_lifecycle(
         // InteractiveInput the args do not include the prompt)
         let spawn_args = build_spawn_args(agent_def, &prompt, yolo_mode);
 
-        // Spawn PTY session for this story
-        let session_id = format!("loop-{}-{}", project_id, story.id);
+        // Resolve PTY session ID: reuse the caller-provided session when
+        // available, otherwise generate a unique ID per story.
+        let pty_session_id = match &session_id {
+            Some(sid) => sid.clone(),
+            None => format!("loop-{}-{}", project_id, story.id),
+        };
+
+        // Kill previous agent in this session before respawning for next story
+        if session_id.is_some() {
+            let mut pm = pty_manager.write().await;
+            let _ = pm.kill(&pty_session_id);
+        }
 
         let agent_env = match lock_db(db) {
             Ok(conn) => {
@@ -547,7 +560,7 @@ async fn run_loop_lifecycle(
         {
             let mut pm = pty_manager.write().await;
             if let Err(e) = pm.spawn(
-                session_id.clone(),
+                pty_session_id.clone(),
                 agent_def.command.clone(),
                 spawn_args,
                 project_path.to_string(),
@@ -566,7 +579,7 @@ async fn run_loop_lifecycle(
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 let bytes = crate::loop_engine::prompt_delivery::deliver_interactive_prompt(&prompt);
                 let mut pm2 = pty_manager.write().await;
-                let _ = pm2.write(&session_id, bytes);
+                let _ = pm2.write(&pty_session_id, bytes);
             }
         }
 
@@ -574,7 +587,7 @@ async fn run_loop_lifecycle(
         // process exit without waiting for the full timeout.
         let exit_rx = {
             let mut pm = pty_manager.write().await;
-            pm.take_exit_rx(&session_id)
+            pm.take_exit_rx(&pty_session_id)
         };
 
         // Wait for: (a) agent process exit, (b) a loop command, or (c) timeout
@@ -587,7 +600,7 @@ async fn run_loop_lifecycle(
                     false
                 }
                 cmd = cmd_rx.recv() => {
-                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &session_id, project_id, cmd_rx).await
+                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
                 _ = tokio::time::sleep(agent_timeout) => {
                     // Timeout — proceed to quality gates
@@ -598,7 +611,7 @@ async fn run_loop_lifecycle(
             // exit_rx unavailable (already taken or spawn failed) — fall back to timeout only
             tokio::select! {
                 cmd = cmd_rx.recv() => {
-                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &session_id, project_id, cmd_rx).await
+                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
                 _ = tokio::time::sleep(agent_timeout) => {
                     false
@@ -613,7 +626,7 @@ async fn run_loop_lifecycle(
         // Cleanup session if still alive
         {
             let mut pm = pty_manager.write().await;
-            let _ = pm.kill(&session_id);
+            let _ = pm.kill(&pty_session_id);
         }
 
         // -------------------------------------------------------------------
