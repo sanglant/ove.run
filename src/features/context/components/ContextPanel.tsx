@@ -27,7 +27,7 @@ const FILTER_OPTIONS = [
 
 export function ContextPanel() {
   const { activeProjectId, projects } = useProjectStore();
-  const { units, loading, filter, searchQuery, setFilter, setSearchQuery, loadUnits, addUnit, editUnit, removeUnit } = useContextStore();
+  const { units, loading, filter, searchQuery, setFilter, setSearchQuery, loadUnits, addUnit, editUnit, removeUnit, duplicateUnit } = useContextStore();
   const { sessions, activeSessionId } = useSessionStore();
 
   const [editorOpen, setEditorOpen] = useState(false);
@@ -144,6 +144,10 @@ export function ContextPanel() {
     });
   };
 
+  const handleDuplicate = async (unit: ContextUnit) => {
+    await duplicateUnit(unit);
+  };
+
   const handleGenerateSummary = (unit: ContextUnit) => {
     if (!activeProject) return;
     void generateContextSummary(unit.id, activeProject.path).catch((err) => {
@@ -243,6 +247,7 @@ export function ContextPanel() {
               onEdit={handleOpenEdit}
               onDelete={setPendingDelete}
               onGenerateSummary={handleGenerateSummary}
+              onDuplicate={handleDuplicate}
               isDefault={defaultUnitIds.has(unit.id)}
               isGlobalDefault={unit.scope === "global"}
               onSetDefault={handleSetDefault}

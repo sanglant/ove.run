@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, ActionIcon, Collapse, Text, Tooltip, Switch } from "@mantine/core";
-import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, Star } from "lucide-react";
+import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, Star, Copy } from "lucide-react";
 import type { ContextUnit, ContextUnitType } from "@/types";
 import classes from "./ContextPanel.module.css";
 
@@ -23,13 +23,14 @@ interface ContextUnitCardProps {
   onEdit: (unit: ContextUnit) => void;
   onDelete: (unit: ContextUnit) => void;
   onGenerateSummary: (unit: ContextUnit) => void;
+  onDuplicate?: (unit: ContextUnit) => void;
   isDefault?: boolean;
   isGlobalDefault?: boolean;
   onSetDefault?: (unit: ContextUnit) => void;
   onRemoveDefault?: (unit: ContextUnit) => void;
 }
 
-export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isDefault, isGlobalDefault, onSetDefault, onRemoveDefault }: ContextUnitCardProps) {
+export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, onDuplicate, isDefault, isGlobalDefault, onSetDefault, onRemoveDefault }: ContextUnitCardProps) {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
 
@@ -63,6 +64,16 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
             >
               {unit.scope}
             </Badge>
+            {unit.is_bundled && (
+              <Badge
+                size="xs"
+                color="gray"
+                variant="filled"
+                styles={{ root: { textTransform: "none" } }}
+              >
+                Built-in
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -92,7 +103,7 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
               </ActionIcon>
             </Tooltip>
           ) : null}
-          {!unit.l0_summary && (
+          {!unit.is_bundled && !unit.l0_summary && (
             <Tooltip label="Generate summary" position="top" withArrow>
               <ActionIcon
                 variant="subtle"
@@ -105,18 +116,32 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
               </ActionIcon>
             </Tooltip>
           )}
-          <Tooltip label="Edit" position="top" withArrow>
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={() => onEdit(unit)}
-              aria-label={`Edit ${unit.name}`}
-              styles={{ root: { color: "var(--text-secondary)" } }}
-            >
-              <Pencil size={13} />
-            </ActionIcon>
-          </Tooltip>
-          {!isGlobalDefault && (
+          {unit.is_bundled ? (
+            <Tooltip label="Duplicate to customize" position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => onDuplicate?.(unit)}
+                aria-label={`Duplicate ${unit.name}`}
+                styles={{ root: { color: "var(--text-secondary)" } }}
+              >
+                <Copy size={13} />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <Tooltip label="Edit" position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => onEdit(unit)}
+                aria-label={`Edit ${unit.name}`}
+                styles={{ root: { color: "var(--text-secondary)" } }}
+              >
+                <Pencil size={13} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {!unit.is_bundled && !isGlobalDefault && (
             <Tooltip label="Delete" position="top" withArrow>
               <ActionIcon
                 variant="subtle"

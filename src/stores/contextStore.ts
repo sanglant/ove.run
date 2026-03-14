@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { v4 as uuid } from "uuid";
 import type { ContextUnit, ContextUnitType } from "@/types";
 import {
   listContextUnits,
@@ -21,6 +22,7 @@ interface ContextState {
   editUnit: (unit: ContextUnit) => Promise<void>;
   removeUnit: (id: string) => Promise<void>;
   search: (query: string, projectId?: string) => Promise<void>;
+  duplicateUnit: (unit: ContextUnit) => Promise<void>;
 }
 
 export const useContextStore = create<ContextState>((set) => ({
@@ -69,6 +71,24 @@ export const useContextStore = create<ContextState>((set) => ({
     } catch (err) {
       console.error("Failed to delete context unit:", err);
       useNotificationStore.getState().showToast("error", "Failed to delete context unit", String(err));
+      throw err;
+    }
+  },
+
+  duplicateUnit: async (unit) => {
+    const newUnit: ContextUnit = {
+      ...unit,
+      id: uuid(),
+      name: `Custom — ${unit.name}`,
+      is_bundled: false,
+      bundled_slug: null,
+    };
+    try {
+      await apiCreateContextUnit(newUnit);
+      set((s) => ({ units: [newUnit, ...s.units] }));
+    } catch (err) {
+      console.error("Failed to duplicate context unit:", err);
+      useNotificationStore.getState().showToast("error", "Failed to duplicate context unit", String(err));
       throw err;
     }
   },
