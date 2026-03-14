@@ -144,14 +144,27 @@ pub async fn generate_context_summary(
         prompt, project_path, None, None
     ).await?;
 
-    // 4. Parse response
+    // 4. Parse response — line-by-line to handle multi-line L1 content
     let l0 = response.lines()
         .find(|l| l.starts_with("L0_SUMMARY:"))
         .map(|l| l.trim_start_matches("L0_SUMMARY:").trim().to_string());
-    let l1_start = response.find("L1_OVERVIEW:");
-    let l1 = l1_start.map(|start| {
-        response[start + "L1_OVERVIEW:".len()..].trim().to_string()
-    });
+
+    let l1 = {
+        let mut found = false;
+        let mut lines: Vec<&str> = Vec::new();
+        for line in response.lines() {
+            if line.starts_with("L1_OVERVIEW:") {
+                found = true;
+                let rest = line.trim_start_matches("L1_OVERVIEW:").trim();
+                if !rest.is_empty() {
+                    lines.push(rest);
+                }
+            } else if found {
+                lines.push(line);
+            }
+        }
+        if found { Some(lines.join("\n").trim().to_string()) } else { None }
+    };
 
     // 5. Update the unit
     let mut updated = unit;

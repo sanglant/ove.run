@@ -110,8 +110,11 @@ pub async fn run_arbiter_cli(
         .map_err(|e| AppError::Other(format!("Failed to run {} for arbiter review: {}", cli_command, e)))?;
 
     if output.status.success() {
-        String::from_utf8(output.stdout)
-            .map_err(|e| AppError::Other(format!("Invalid UTF-8 in arbiter output: {}", e)))
+        let raw = String::from_utf8(output.stdout)
+            .map_err(|e| AppError::Other(format!("Invalid UTF-8 in arbiter output: {}", e)))?;
+        // Strip ANSI escape codes from CLI tool output before parsing
+        let clean = strip_ansi_escapes::strip(raw.as_bytes());
+        Ok(String::from_utf8_lossy(&clean).to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(AppError::Other(format!("Arbiter review process failed: {}", stderr)))
