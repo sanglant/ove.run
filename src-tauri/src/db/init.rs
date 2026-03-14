@@ -29,12 +29,44 @@ fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
+struct Migration {
+    version: i32,
+    description: &'static str,
+    sql: &'static str,
+}
+
+const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        description: "reduce default max_iterations from 50 to 10",
+        sql: "UPDATE arbiter_state SET max_iterations = 10 WHERE max_iterations = 50",
+    },
+];
+
 fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
-    // Migration: reduce old default of 50 max_iterations to 10 for existing projects
-    conn.execute(
-        "UPDATE arbiter_state SET max_iterations = 10 WHERE max_iterations = 50",
-        [],
-    )?;
+    let current_version: i32 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    for migration in MIGRATIONS {
+        if migration.version <= current_version {
+            continue;
+        }
+        conn.execute_batch(migration.sql)?;
+        conn.execute(
+            "INSERT INTO schema_migrations (version, description, applied_at) VALUES (?1, ?2, ?3)",
+            rusqlite::params![
+                migration.version,
+                migration.description,
+                chrono::Utc::now().to_rfc3339(),
+            ],
+        )?;
+    }
+
     Ok(())
 }
 
@@ -180,5 +212,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
 CREATE VIRTUAL TABLE IF NOT EXISTS consolidations_fts USING fts5(
     summary, insight,
     content=consolidations
+);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    description TEXT NOT NULL,
+    applied_at TEXT NOT NULL
 );
 "#;
