@@ -89,6 +89,16 @@ pub async fn set_max_iterations(
         arb.max_iterations = max;
         crate::db::arbiter_state::upsert_arbiter_state(&conn, &arb).map_err(Into::into)
     } else {
-        Err(AppError::NotFound("Arbiter state not found".to_string()))
+        // Create arbiter state if it doesn't exist yet (e.g. after database reset)
+        let arb = crate::state::ArbiterStateRow {
+            project_id,
+            trust_level: crate::state::TrustLevel::Autonomous,
+            loop_status: "idle".to_string(),
+            current_story_id: None,
+            iteration_count: 0,
+            max_iterations: max,
+            last_activity_at: None,
+        };
+        crate::db::arbiter_state::upsert_arbiter_state(&conn, &arb).map_err(Into::into)
     }
 }
