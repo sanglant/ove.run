@@ -206,7 +206,7 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
 pub fn list_l0_summaries(conn: &Connection, project_id: &str) -> Result<Vec<(String, String, String)>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, name, l0_summary FROM context_units \
-         WHERE (project_id = ?1 OR project_id IS NULL) AND l0_summary IS NOT NULL \
+         WHERE (project_id = ?1 OR (project_id IS NULL AND is_bundled = 0)) AND l0_summary IS NOT NULL \
          ORDER BY updated_at DESC"
     )?;
     let rows = stmt.query_map(params![project_id], |row| {

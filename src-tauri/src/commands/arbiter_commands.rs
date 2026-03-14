@@ -47,10 +47,13 @@ pub async fn decompose_request(
     project_path: String,
     user_request: String,
 ) -> Result<Vec<Story>, AppError> {
-    // 1. Load context units and relevant memories
+    // 1. Load project-specific context units (exclude bundled globals to avoid
+    //    over-decomposition — bundled personas/skills cause the arbiter to
+    //    generate irrelevant stories like "add ESLint" for a "hello world" task).
     let (context_units, memories_list) = {
         let conn = state.db.lock().map_err(lock_err)?;
-        let ctx = context::list_context_units(&conn, Some(&project_id))?;
+        let all_ctx = context::list_context_units(&conn, Some(&project_id))?;
+        let ctx: Vec<_> = all_ctx.into_iter().filter(|u| !u.is_bundled).collect();
         let mems = memory::search_memories(&conn, &user_request, &project_id, None, 10)?;
         (ctx, mems)
     };

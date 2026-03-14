@@ -6,7 +6,8 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { listAgentTypes, setMaxIterations as setMaxIterationsFn, startLoop } from "@/lib/tauri";
-import type { AgentType, AgentDefinition, AgentSession } from "@/types";
+import type { AgentType, AgentDefinition, AgentSession, TrustLevel } from "@/types";
+import { TRUST_LEVEL_LABELS } from "@/types";
 import {
   Modal,
   TextInput,
@@ -43,6 +44,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
   const [loading, setLoading] = useState(false);
   const [sandboxed, setSandboxed] = useState(false);
   const [arbiterEnabled, setArbiterEnabled] = useState(false);
+  const [trustLevel, setTrustLevel] = useState<TrustLevel>(2);
   const [maxIterations, setMaxIterations] = useState(10);
   const [initialPromptText, setInitialPromptText] = useState(initialPrompt ?? "");
 
@@ -54,7 +56,6 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
     listAgentTypes()
       .then(setAgentDefs)
       .catch(() => {
-        // Use fallback definitions
         setAgentDefs([
           {
             agent_type: "claude",
@@ -116,6 +117,9 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
     }
   }, [agentType, settings.agents]);
 
+  // Arbiter requires YOLO mode — force it on
+  const effectiveYoloMode = arbiterEnabled ? true : yoloMode;
+
   const handleStart = async () => {
     if (!projectId) return;
     if (arbiterEnabled && !initialPromptText.trim()) return;
@@ -131,7 +135,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       projectId,
       agentType,
       status: "starting",
-      yoloMode,
+      yoloMode: effectiveYoloMode,
       createdAt: new Date().toISOString(),
       label: sessionLabel,
       isResumed: false,
@@ -172,6 +176,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       styles={{
         ...MODAL_STYLES,
         content: { ...MODAL_STYLES.content, width: "420px" },
+        body: { maxHeight: "calc(100vh - 160px)", overflowY: "auto" },
       }}
     >
       {/* Body */}
@@ -240,12 +245,12 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           placeholder="e.g. Feature branch, Bug fix..."
           styles={INPUT_STYLES}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleStart();
+            if (e.key === "Enter" && !arbiterEnabled) handleStart();
           }}
         />
 
-        {/* YOLO mode toggle — hidden for plain terminal */}
-        {agentType !== "terminal" && (
+        {/* YOLO mode toggle — hidden for terminal and when arbiter forces it */}
+        {agentType !== "terminal" && !arbiterEnabled && (
         <Stack gap="xs">
           <Group justify="space-between">
             <SectionTitle mb={0}>YOLO Mode</SectionTitle>
@@ -321,7 +326,46 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
             </Group>
 
             {arbiterEnabled && (
-              <Stack gap="xs" pl="xs" style={{ borderLeft: "2px solid var(--border)" }}>
+              <Stack gap="sm" pl="xs" style={{ borderLeft: "2px solid var(--border)" }}>
+                {/* Trust level selector */}
+                <div>
+                  <Text size="xs" c="var(--text-secondary)" mb={4}>Trust level</Text>
+                  <Stack gap={4}>
+                    {([1, 2, 3] as TrustLevel[]).map((level) => {
+                      const meta = TRUST_LEVEL_LABELS[level];
+                      const isSelected = trustLevel === level;
+                      return (
+                        <Paper
+                          key={level}
+                          withBorder
+                          px="sm"
+                          py={6}
+                          className={classes.agentCard}
+                          styles={{
+                            root: {
+                              backgroundColor: isSelected
+                                ? "color-mix(in srgb, #4ecdc4 8%, transparent)"
+                                : "var(--bg-tertiary)",
+                              borderColor: isSelected ? "#4ecdc4" : "var(--border)",
+                            },
+                          }}
+                          onClick={() => setTrustLevel(level)}
+                        >
+                          <Group gap="xs">
+                            <Text size="xs" fw={600} c={isSelected ? "#4ecdc4" : "var(--text-primary)"}>
+                              {meta.name}
+                            </Text>
+                            <Text size="xs" c="var(--text-tertiary)">
+                              {meta.description}
+                            </Text>
+                          </Group>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </div>
+
+                {/* Max loops */}
                 <Group justify="space-between" align="center">
                   <Text size="xs" c="var(--text-secondary)">Max loops</Text>
                   <Group gap="xs" align="center">
@@ -331,7 +375,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
                       min={1}
                       max={50}
                       step={1}
-                      style={{ width: 120 }}
+                      style={{ width: 140 }}
                       color="cyan"
                       size="xs"
                       styles={{
@@ -352,8 +396,10 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
                   </Group>
                 </Group>
                 <Text size="xs" c="var(--text-tertiary)">
-                  Each loop iteration uses one CLI session. Higher values increase token usage.
+                  Each iteration spawns a fresh agent. Higher values increase token usage.
                 </Text>
+
+                {/* Initial prompt */}
                 <Textarea
                   label={
                     <Text size="xs" c="var(--text-secondary)" fw={500}>
@@ -368,6 +414,11 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
                   autosize
                   styles={INPUT_STYLES}
                 />
+
+                {/* YOLO forced note */}
+                <Text size="xs" c="var(--text-tertiary)">
+                  YOLO mode is enabled automatically for arbiter sessions.
+                </Text>
               </Stack>
             )}
           </Stack>
@@ -380,7 +431,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           Cancel
         </Button>
         <Button onClick={handleStart} disabled={loading || !projectId || (arbiterEnabled && !initialPromptText.trim())} styles={BUTTON_STYLES.primary}>
-          {loading ? "Starting..." : "Start Session"}
+          {loading ? "Starting..." : arbiterEnabled ? "Start Loop" : "Start Session"}
         </Button>
       </ModalFooter>
     </Modal>
