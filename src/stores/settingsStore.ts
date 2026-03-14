@@ -3,6 +3,7 @@ import type { AppSettings } from "@/types";
 import {
   getSettings as apiGetSettings,
   updateSettings as apiUpdateSettings,
+  getSandboxCapabilities,
 } from "@/lib/tauri";
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -34,13 +35,18 @@ const DEFAULT_SETTINGS: AppSettings = {
 interface SettingsState {
   settings: AppSettings;
   loading: boolean;
+  sandboxAvailable: boolean;
+  sandboxPlatform: string;
   loadSettings: () => Promise<void>;
   updateSettings: (settings: AppSettings) => Promise<void>;
+  loadSandboxCapabilities: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   settings: DEFAULT_SETTINGS,
   loading: false,
+  sandboxAvailable: false,
+  sandboxPlatform: "",
 
   loadSettings: async () => {
     set({ loading: true });
@@ -61,6 +67,15 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     } catch (err) {
       console.error("Failed to update settings:", err);
       throw err;
+    }
+  },
+
+  loadSandboxCapabilities: async () => {
+    try {
+      const caps = await getSandboxCapabilities();
+      set({ sandboxAvailable: caps.available, sandboxPlatform: caps.platform });
+    } catch {
+      set({ sandboxAvailable: false, sandboxPlatform: "" });
     }
   },
 }));

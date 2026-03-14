@@ -28,7 +28,7 @@ import classes from "./App.module.css";
 
 export default function App() {
   const { loadProjects } = useProjectStore();
-  const { loadSettings } = useSettingsStore();
+  const { loadSettings, loadSandboxCapabilities } = useSettingsStore();
   const { activePanel, setActivePanel, sidebarCollapsed } = useUiStore();
   const { loadPersistedSessions } = useSessionStore();
 
@@ -47,7 +47,8 @@ export default function App() {
     loadProjects();
     loadSettings();
     loadPersistedSessions();
-  }, [loadProjects, loadSettings, loadPersistedSessions]);
+    loadSandboxCapabilities();
+  }, [loadProjects, loadSettings, loadPersistedSessions, loadSandboxCapabilities]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {

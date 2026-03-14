@@ -31,6 +31,9 @@ export interface AgentSession {
   label: string;
   isResumed: boolean;
   initialPrompt?: string;
+  sandboxed?: boolean;
+  arbiterEnabled?: boolean;
+  maxIterations?: number;
 }
 
 export interface TerminalPaneLayoutNode {
