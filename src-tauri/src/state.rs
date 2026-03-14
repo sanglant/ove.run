@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
+use ts_rs::TS;
 
 use crate::db::init::DbPool;
 
@@ -15,7 +16,8 @@ pub struct AppState {
     pub loop_cmd_tx: tokio::sync::mpsc::Sender<crate::loop_engine::engine::LoopCommand>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Project {
     pub id: String,
     pub name: String,
@@ -28,7 +30,8 @@ pub struct Project {
     pub arbiter_agent_type: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentType {
     Claude,
@@ -38,7 +41,8 @@ pub enum AgentType {
     Terminal,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentStatus {
     Starting,
@@ -71,13 +75,15 @@ pub struct AgentDefinition {
     pub prompt_delivery: Option<PromptDelivery>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AppSettings {
     pub global: GlobalSettings,
     pub agents: HashMap<String, AgentSettings>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct GlobalSettings {
     pub theme: String,
     pub font_family: String,
@@ -93,14 +99,16 @@ pub struct GlobalSettings {
     pub arbiter_model: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AgentSettings {
     pub default_yolo_mode: bool,
     pub custom_args: Vec<String>,
     pub env_vars: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ContextUnit {
     pub id: String,
     pub project_id: Option<String>,
@@ -116,7 +124,8 @@ pub struct ContextUnit {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Memory {
     pub id: String,
     pub project_id: String,
@@ -131,7 +140,8 @@ pub struct Memory {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Consolidation {
     pub id: String,
     pub project_id: String,
@@ -141,7 +151,8 @@ pub struct Consolidation {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export)]
 #[repr(u8)]
 pub enum TrustLevel {
     Supervised = 1,
@@ -159,7 +170,8 @@ impl TrustLevel {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ArbiterStateRow {
     pub project_id: String,
     pub trust_level: TrustLevel,
@@ -170,7 +182,8 @@ pub struct ArbiterStateRow {
     pub last_activity_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Story {
     pub id: String,
     pub project_id: String,
@@ -184,7 +197,8 @@ pub struct Story {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct QualityGateConfig {
     pub build_command: Option<String>,
     pub lint_command: Option<String>,
