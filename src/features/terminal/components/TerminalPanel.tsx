@@ -105,6 +105,13 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         // Trust level defaults to 2 (Autonomous); read from arbiter state if available
         const trustLevel = 2;
 
+        // For arbiter sessions, the loop engine manages PTY spawning — don't spawn here.
+        // The terminal will connect to PTY output once the engine spawns the first story agent.
+        if (session.arbiterEnabled) {
+          updateStatus(session.id, "idle");
+          return;
+        }
+
         await spawnPty(session.id, command, args, projectPath, envVars, cols, rows, sandboxEnabled, trustLevel);
         updateStatus(session.id, "idle");
 
