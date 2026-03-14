@@ -13,6 +13,7 @@ import { Stack, Text, Button } from "@mantine/core";
 import cn from "clsx";
 import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
+import { ArtifactsPane } from "./ArtifactsPane";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -41,6 +42,7 @@ interface LayoutRect {
 interface RenderedPane {
   paneId: string;
   sessionId: string | null;
+  paneType: "terminal" | "artifacts" | undefined;
   rect: LayoutRect;
 }
 
@@ -127,6 +129,7 @@ function buildGridRenderData(
     panes.push({
       paneId: node.id,
       sessionId: node.sessionId,
+      paneType: node.paneType,
       rect: bounds,
     });
     return;
@@ -210,6 +213,7 @@ function buildRenderData(layout: TerminalProjectLayout): {
             {
               paneId: activePane.id,
               sessionId: activePane.sessionId,
+              paneType: activePane.paneType,
               rect: { top: 0, left: 0, width: 1, height: 1 },
             },
           ]
@@ -534,7 +538,8 @@ export function TerminalContainer() {
         <div className={classes.workspaceSurface}>
           {renderedLayout.panes.map((pane) => {
             const isFocused = pane.paneId === layout.activePaneId;
-            const isEmpty = !pane.sessionId;
+            const isArtifacts = pane.paneType === "artifacts";
+            const isEmpty = !pane.sessionId && !isArtifacts;
 
             return (
               <div
@@ -549,7 +554,9 @@ export function TerminalContainer() {
                 onDrop={(event) => handlePaneDrop(event, pane.paneId)}
                 onDragLeave={(event) => handlePaneDragLeave(event, pane.paneId)}
               >
-                {isEmpty && (
+                {isArtifacts ? (
+                  <ArtifactsPane />
+                ) : isEmpty ? (
                   <div className={classes.emptyPaneContent}>
                     <div className={classes.emptyPaneCard}>
                       <span className={classes.emptyPaneTitle}>Drop terminal here</span>
@@ -558,7 +565,7 @@ export function TerminalContainer() {
                       </span>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })}
