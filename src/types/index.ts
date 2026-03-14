@@ -40,6 +40,7 @@ export interface TerminalPaneLayoutNode {
   type: "pane";
   id: string;
   sessionId: string | null;
+  paneType?: "terminal" | "artifacts";
 }
 
 export interface TerminalSplitLayoutNode {
