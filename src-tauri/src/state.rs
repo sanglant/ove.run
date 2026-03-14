@@ -217,7 +217,7 @@ impl Default for QualityGateConfig {
             lint_command: None,
             typecheck_command: None,
             test_command: None,
-            arbiter_judge: true,
+            arbiter_judge: false,
         }
     }
 }
@@ -279,6 +279,6 @@ mod tests {
         assert!(config.build_command.is_none());
         assert!(config.lint_command.is_none());
         assert!(config.test_command.is_none());
-        assert!(config.arbiter_judge);
+        assert!(!config.arbiter_judge);
     }
 }
