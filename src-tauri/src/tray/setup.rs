@@ -5,12 +5,14 @@ use tauri::{
 };
 
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), tauri::Error> {
-    let show_item = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
+    let show_item = MenuItem::with_id(app, "show", "Show ove.run", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
-    let mut builder = TrayIconBuilder::new().menu(&menu);
+    let mut builder = TrayIconBuilder::new()
+        .menu(&menu)
+        .tooltip("ove.run");
 
     // Use the app's default window icon if available
     if let Some(icon) = app.default_window_icon() {
@@ -44,6 +46,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), tauri::Error> {
 
 fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }

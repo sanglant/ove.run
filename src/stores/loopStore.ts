@@ -17,6 +17,9 @@ export interface ReasoningEntry {
   timestamp: string;
 }
 
+/** Phases the loop walks through for each story */
+export type LoopPhase = "idle" | "planning" | "agent" | "gates" | "judging" | "done";
+
 interface LoopStoreState {
   status: LoopStatus;
   stories: Story[];
@@ -27,6 +30,12 @@ interface LoopStoreState {
   maxIterations: number;
   qualityGates: QualityGateConfig | null;
   loading: boolean;
+  /** Human-readable description of what the loop is currently doing */
+  activityMessage: string | null;
+  /** Current high-level phase */
+  phase: LoopPhase;
+  /** Session ID of the active loop PTY (for console preview) */
+  activeSessionId: string | null;
 
   loadState: (projectId: string) => Promise<void>;
   loadQualityGates: (projectId: string) => Promise<void>;
@@ -48,6 +57,9 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
   maxIterations: 10,
   qualityGates: null,
   loading: false,
+  activityMessage: null,
+  phase: "idle",
+  activeSessionId: null,
 
   loadState: async (projectId) => {
     set({ loading: true });
@@ -87,10 +99,12 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
 
   startLoop: async (projectId, projectPath, request) => {
     try {
+      // Clear previous run data; status will be updated via backend events
+      set({ stories: [], reasoningLog: [], gateResults: {}, activityMessage: "Starting loop…", phase: "planning", activeSessionId: null });
       await apiStartLoop(projectId, projectPath, request);
-      set({ status: "running" });
     } catch (err) {
       console.error("Failed to start loop:", err);
+      set({ status: "idle", activityMessage: null, phase: "idle" });
     }
   },
 
@@ -115,41 +129,91 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
   cancelLoop: async () => {
     try {
       await apiCancelLoop();
-      set({ status: "idle" });
+      set({ status: "idle", activityMessage: null, phase: "idle", activeSessionId: null });
     } catch (err) {
       console.error("Failed to cancel loop:", err);
     }
   },
 
   handleEvent: (event) => {
-    const { stories } = get();
     switch (event.type) {
-      case "StatusChanged":
-        set({ status: event.status });
-        break;
-      case "StoryStarted":
+      case "StatusChanged": {
+        const statusMessages: Record<string, string> = {
+          planning: "Decomposing request into stories…",
+          running: "Executing stories…",
+          paused: "Loop paused",
+          idle: "Loop idle",
+        };
+        const phaseMap: Record<string, LoopPhase> = {
+          planning: "planning",
+          running: "agent",
+          paused: "idle",
+          idle: "idle",
+          completed: "done",
+          failed: "done",
+        };
         set({
-          stories: stories.map((s) =>
-            s.id === event.story_id ? { ...s, status: "in_progress" } : s,
-          ),
+          status: event.status,
+          activityMessage: statusMessages[event.status] ?? null,
+          phase: phaseMap[event.status] ?? "idle",
         });
         break;
-      case "StoryCompleted":
-        set({
-          stories: stories.map((s) =>
-            s.id === event.story_id ? { ...s, status: "completed" } : s,
-          ),
+      }
+      case "StoriesUpdated": {
+        // Reload full state from DB to pick up newly created stories
+        void get().loadState(event.project_id);
+        set({ activityMessage: "Stories created, starting execution…" });
+        break;
+      }
+      case "StoryStarted": {
+        // Use functional update to always read latest stories (avoids stale closure)
+        set((state) => {
+          const story = state.stories.find((s) => s.id === event.story_id);
+          const projectId = story?.project_id ?? state.arbiterState?.project_id;
+          const sessionId = projectId ? `loop-${projectId}-${event.story_id}` : null;
+          return {
+            stories: state.stories.map((s) =>
+              s.id === event.story_id ? { ...s, status: "in_progress" as const } : s,
+            ),
+            activityMessage: story ? `Working on: ${story.title}` : "Starting story…",
+            phase: "agent" as const,
+            activeSessionId: sessionId,
+          };
         });
         break;
-      case "StoryFailed":
-        set({
-          stories: stories.map((s) =>
-            s.id === event.story_id ? { ...s, status: "failed" } : s,
-          ),
+      }
+      case "StoryCompleted": {
+        set((state) => {
+          const story = state.stories.find((s) => s.id === event.story_id);
+          return {
+            stories: state.stories.map((s) =>
+              s.id === event.story_id ? { ...s, status: "completed" as const } : s,
+            ),
+            activityMessage: story ? `Completed: ${story.title}` : "Story completed",
+            activeSessionId: null,
+          };
         });
         break;
+      }
+      case "StoryFailed": {
+        set((state) => {
+          const story = state.stories.find((s) => s.id === event.story_id);
+          return {
+            stories: state.stories.map((s) =>
+              s.id === event.story_id ? { ...s, status: "failed" as const } : s,
+            ),
+            activityMessage: story ? `Failed: ${story.title} — ${event.reason}` : `Story failed: ${event.reason}`,
+            activeSessionId: null,
+          };
+        });
+        break;
+      }
       case "IterationCompleted":
-        set({ iterationCount: event.count, maxIterations: event.max });
+        set({
+          iterationCount: event.count,
+          maxIterations: event.max,
+          activityMessage: `Iteration ${event.count} of ${event.max} completed`,
+        });
         break;
       case "GateResult":
         set((state) => ({
@@ -160,16 +224,18 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
               { name: event.gate, passed: event.passed, output: event.output },
             ],
           },
+          activityMessage: `Gate "${event.gate}" ${event.passed ? "passed" : "failed"}`,
+          phase: "gates" as const,
         }));
         break;
       case "CircuitBreakerTriggered":
-        set({ status: "paused" });
+        set({ status: "paused", activityMessage: `Circuit breaker: ${event.reason}` });
         break;
       case "LoopCompleted":
-        set({ status: "completed" });
+        set({ status: "completed", activityMessage: "All stories completed", phase: "done", activeSessionId: null });
         break;
       case "LoopFailed":
-        set({ status: "failed" });
+        set({ status: "failed", activityMessage: `Loop failed: ${event.reason}`, phase: "done", activeSessionId: null });
         break;
       case "ReasoningEntry":
         set((state) => ({
@@ -181,6 +247,8 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
               timestamp: new Date().toISOString(),
             },
           ],
+          activityMessage: `Arbiter: ${event.action}`,
+          phase: event.action === "JudgeCompletion" ? "judging" as const : state.phase,
         }));
         break;
     }

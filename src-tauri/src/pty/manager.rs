@@ -10,6 +10,8 @@ pub struct PtySession {
     /// Keep the child alive; dropping it on some platforms signals the process.
     _child: Box<dyn portable_pty::Child + Send + Sync>,
     shutdown_tx: std::sync::mpsc::Sender<()>,
+    /// Fires once when the PTY reader thread detects process exit (EOF or error).
+    exit_rx: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 pub struct PtyManager {
@@ -87,6 +89,7 @@ impl PtyManager {
         let writer = Arc::new(Mutex::new(writer));
 
         let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel::<()>();
+        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();
 
         let sid = session_id.clone();
         let app = app_handle.clone();
@@ -102,6 +105,7 @@ impl PtyManager {
                     Ok(0) => {
                         // EOF - child process exited
                         let _ = app.emit(&format!("pty-exit-{}", sid), 0i32);
+                        let _ = exit_tx.send(());
                         break;
                     }
                     Ok(n) => {
@@ -110,6 +114,7 @@ impl PtyManager {
                     }
                     Err(_) => {
                         let _ = app.emit(&format!("pty-exit-{}", sid), 1i32);
+                        let _ = exit_tx.send(());
                         break;
                     }
                 }
@@ -121,6 +126,7 @@ impl PtyManager {
             master,
             _child: child,
             shutdown_tx,
+            exit_rx: Some(exit_rx),
         };
 
         self.sessions.insert(session_id, session);
@@ -170,6 +176,12 @@ impl PtyManager {
             .map_err(|e| format!("Resize error: {}", e))?;
 
         Ok(())
+    }
+
+    /// Take the oneshot receiver that fires when the PTY process exits.
+    /// Can only be called once per session; returns None if already taken or session not found.
+    pub fn take_exit_rx(&mut self, session_id: &str) -> Option<tokio::sync::oneshot::Receiver<()>> {
+        self.sessions.get_mut(session_id)?.exit_rx.take()
     }
 
     pub fn kill(&mut self, session_id: &str) -> Result<(), String> {

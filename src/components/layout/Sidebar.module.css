@@ -24,14 +24,13 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 0;
+  line-height: 0;
 }
 
-.titleAccent {
-  color: var(--accent-glow);
-}
-
-.titleText {
-  color: var(--text-primary);
+.logo {
+  height: 18px;
+  width: auto;
+  filter: invert(1);
 }
 
 .projectsScroll {

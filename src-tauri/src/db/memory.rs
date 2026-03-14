@@ -298,11 +298,20 @@ pub fn prune_decayed_memories(conn: &Connection, project_id: &str) -> Result<usi
     };
 
     let count = to_prune.len();
-    for (rid, memory) in &to_prune {
-        sync_memory_fts_delete(conn, *rid, memory)?;
-        conn.execute("DELETE FROM memories WHERE id = ?1", params![memory.id])?;
+    if count == 0 {
+        return Ok(0);
     }
 
+    // SAFETY: unchecked_transaction does not require &mut Connection.
+    // The transaction is rolled back automatically on drop if commit() is not called.
+    let tx = conn.unchecked_transaction()?;
+
+    for (rid, memory) in &to_prune {
+        sync_memory_fts_delete(&tx, *rid, memory)?;
+        tx.execute("DELETE FROM memories WHERE id = ?1", params![memory.id])?;
+    }
+
+    tx.commit()?;
     Ok(count)
 }
 

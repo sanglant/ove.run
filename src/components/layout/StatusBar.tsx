@@ -1,4 +1,4 @@
-import { Bell, CircleHelp } from "lucide-react";
+import { BarChart3, Bell, CircleHelp } from "lucide-react";
 import { Group, Text, ActionIcon } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
@@ -34,8 +34,9 @@ export function StatusBar() {
 
   return (
     <footer className={classes.footer}>
-      {/* Left: Session summary */}
+      {/* Left: Version + session summary */}
       <Group gap={12} className={classes.sessionSummary}>
+        <Text span fz={10} c="var(--text-tertiary)" fw={600}>v{__APP_VERSION__}</Text>
         {totalSessions === 0 ? (
           <Text span fz={10}>No sessions</Text>
         ) : (
@@ -79,6 +80,20 @@ export function StatusBar() {
             <CircleHelp size={12} />
           </ActionIcon>
         )}
+        <ActionIcon
+          variant="subtle"
+          size="xs"
+          onClick={() => setActivePanel("stats")}
+          aria-label="Project stats"
+          title="Stats"
+          styles={{
+            root: {
+              color: activePanel === "stats" ? "var(--accent-glow)" : "var(--text-secondary)",
+            },
+          }}
+        >
+          <BarChart3 size={12} />
+        </ActionIcon>
         <button
           onClick={() => setActivePanel("notifications")}
           aria-label={`${unreadCount} unread notifications`}

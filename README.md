@@ -1,8 +1,8 @@
 # ove.run
 
-**A terminal-first desktop environment for AI coding agents.**
+**An intelligent desktop orchestrator for AI coding agents.**
 
-Run agents, supervise output, preserve context, and stay in control — without babysitting interrupts. Built with Tauri, React, TypeScript, and Rust.
+Run multiple agents side by side, give them shared context and memory, let an AI arbiter handle interrupts, and loop through stories autonomously — all from a single native app. Built with Tauri, React, TypeScript, and Rust.
 
 > If you find the project useful, you can support it here: [Buy Me a Coffee](https://buymeacoffee.com/)
 
@@ -10,14 +10,62 @@ Run agents, supervise output, preserve context, and stay in control — without 
 
 ## What's Inside
 
-Terminal, git, notes, knowledge, bugs, notifications, and settings — unified in a single native desktop shell.
-
 | Layer | Tech |
 |-------|------|
 | Runtime | Tauri v2 |
 | Frontend | React 19, TypeScript, Vite |
-| Backend | Rust |
+| Backend | Rust, SQLite (FTS5) |
 | Package manager | pnpm |
+
+---
+
+## Features
+
+### Multi-Agent Terminal
+
+Run Claude Code, Gemini CLI, GitHub Copilot, Codex, or any CLI agent in parallel terminal panes. Each session tracks status in real time (idle, working, needs input, finished, error) and sends desktop notifications when attention is needed. Sessions can be paused, resumed, and persisted across restarts. YOLO mode lets agents run without pausing for confirmation.
+
+### Context Store
+
+A structured library of reusable knowledge that agents can draw from. Create four types of context units — **Personas**, **Skills**, **Knowledge blocks**, and **References** — each with tiered detail levels (one-line summary, overview, full content). Assign context units to individual sessions or set project-wide defaults that auto-load. Ships with 12 built-in personas (Backend Dev, Security Auditor, Code Reviewer, etc.) and 8 skill packs (Testing Best Practices, Git Workflow, API Design, etc.). Full-text search powered by FTS5.
+
+### Agent Memory
+
+The system automatically extracts facts, decisions, and patterns from agent output into a searchable memory store. Each memory carries importance scoring, entity/topic tags, and public/private visibility. A background worker consolidates clusters of related memories into higher-level insights. Decayed memories are pruned over time so the store stays relevant. Memories and consolidations are injected into arbiter prompts for informed decision-making.
+
+### Arbiter
+
+An AI-powered decision engine that reviews agent questions and provides answers on your behalf. When an agent pauses for input, the Arbiter reads the question, pulls in relevant context units and memories, and responds — or dismisses stale prompts that resolved themselves. Three trust levels control autonomy:
+
+- **Supervised** — you approve each step
+- **Autonomous** — it runs, asks you when stuck
+- **Full Auto** — handles everything
+
+Configurable per project. Works with any CLI agent as the backing model.
+
+### Loop Engine
+
+Break down a high-level request into stories with acceptance criteria, dependencies, and priorities, then execute them in automated iterations. The engine runs quality gates (build, lint, typecheck, test) after each story, tracks iteration count against configurable limits, and applies circuit breakers to pause on repeated failures. An optional arbiter judge reviews each story's output before proceeding. Pause, resume, or cancel at any point.
+
+### Git Integration
+
+View branch status, stage/unstage files, inspect diffs, and commit — all inline. Real-time ahead/behind tracking and file-level status indicators (modified, added, deleted, renamed).
+
+### Notes
+
+A per-project markdown editor (TipTap-based) with floating toolbar, task lists, and a toggle to include notes directly in agent context. Useful for keeping specs, checklists, and design notes alongside the agents that consume them.
+
+### Bug Tracking
+
+Connect to Jira, GitHub Issues, Linear, or other providers via OAuth. Browse issues, view details, and spin up agent sessions to work on specific bugs — all without leaving the app.
+
+### Notifications
+
+Desktop and in-app alerts when agents finish, need input, or encounter errors. Notification history with unread badge and timestamp.
+
+### Settings
+
+Global preferences (theme, font, terminal scrollback, tray behavior) plus per-agent configuration (default YOLO mode, custom CLI args, environment variables, arbiter provider and model selection).
 
 ---
 

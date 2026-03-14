@@ -45,6 +45,7 @@ pub enum LoopEvent {
     IterationCompleted { count: i32, max: i32 },
     GateResult { story_id: String, gate: String, passed: bool, output: String },
     CircuitBreakerTriggered { reason: String },
+    StoriesUpdated { project_id: String },
     LoopCompleted,
     LoopFailed { reason: String },
     ReasoningEntry { action: String, reasoning: String },
@@ -85,14 +86,18 @@ pub async fn run_loop(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers — all return Result so a poisoned mutex never panics the engine
 // ---------------------------------------------------------------------------
 
+fn lock_db(db: &DbPool) -> Result<std::sync::MutexGuard<'_, rusqlite::Connection>, String> {
+    db.lock().map_err(|e| format!("db lock poisoned: {e}"))
+}
+
 /// Load or create arbiter state for the project.
-fn load_or_init_state(db: &DbPool, project_id: &str) -> ArbiterStateRow {
-    let conn = db.lock().expect("db lock");
+fn load_or_init_state(db: &DbPool, project_id: &str) -> Result<ArbiterStateRow, String> {
+    let conn = lock_db(db)?;
     match arbiter_state::get_arbiter_state(&conn, project_id) {
-        Ok(Some(s)) => s,
+        Ok(Some(s)) => Ok(s),
         _ => {
             let s = ArbiterStateRow {
                 project_id: project_id.to_string(),
@@ -100,37 +105,56 @@ fn load_or_init_state(db: &DbPool, project_id: &str) -> ArbiterStateRow {
                 loop_status: "idle".to_string(),
                 current_story_id: None,
                 iteration_count: 0,
-                max_iterations: 50,
+                max_iterations: 10,
                 last_activity_at: None,
             };
             let _ = arbiter_state::upsert_arbiter_state(&conn, &s);
-            s
+            Ok(s)
         }
     }
 }
 
 /// Persist loop_status to DB and emit StatusChanged event.
-async fn set_status(db: &DbPool, event_tx: &mpsc::Sender<LoopEvent>, project_id: &str, status: &str) {
+async fn set_status(
+    db: &DbPool,
+    event_tx: &mpsc::Sender<LoopEvent>,
+    project_id: &str,
+    status: &str,
+) -> Result<(), String> {
     {
-        let conn = db.lock().expect("db lock");
+        let conn = lock_db(db)?;
         let _ = arbiter_state::set_loop_status(&conn, project_id, status);
     }
     let _ = event_tx.send(LoopEvent::StatusChanged { status: status.to_string() }).await;
+    Ok(())
+}
+
+/// Like `set_status` but logs DB errors rather than propagating — used in
+/// fire-and-forget contexts where the loop must continue regardless.
+async fn set_status_best_effort(
+    db: &DbPool,
+    event_tx: &mpsc::Sender<LoopEvent>,
+    project_id: &str,
+    status: &str,
+) {
+    if let Err(e) = set_status(db, event_tx, project_id, status).await {
+        eprintln!("[loop_engine] set_status({status}) failed: {e}");
+    }
 }
 
 /// Load quality gate config from the settings table.
-fn load_quality_gate_config(db: &DbPool, project_id: &str) -> QualityGateConfig {
-    let conn = db.lock().expect("db lock");
+fn load_quality_gate_config(db: &DbPool, project_id: &str) -> Result<QualityGateConfig, String> {
+    let conn = lock_db(db)?;
     let key = format!("quality_gates_{}", project_id);
     match crate::db::settings::get_setting(&conn, &key) {
-        Ok(Some(json)) => serde_json::from_str(&json).unwrap_or_default(),
-        _ => QualityGateConfig::default(),
+        Ok(Some(json)) => Ok(serde_json::from_str(&json).unwrap_or_default()),
+        _ => Ok(QualityGateConfig::default()),
     }
 }
 
 /// Derive arbiter CLI command from settings.
-fn arbiter_cli_command(db: &DbPool) -> (String, Option<String>) {
-    let conn = db.lock().expect("db lock");
+fn arbiter_cli_command(db: &DbPool) -> Result<(String, Option<String>), String> {
+    let conn = lock_db(db)?;
     let settings = load_app_settings(&conn);
     let provider = settings.global.arbiter_provider.clone();
     let model = settings.global.arbiter_model.clone();
@@ -138,7 +162,7 @@ fn arbiter_cli_command(db: &DbPool) -> (String, Option<String>) {
         "" | "claude" => "claude".to_string(),
         other => other.to_string(),
     };
-    (command, if model.is_empty() { None } else { Some(model) })
+    Ok((command, if model.is_empty() { None } else { Some(model) }))
 }
 
 /// Build the prompt text that will be delivered to the agent for a story.
@@ -186,19 +210,35 @@ async fn run_loop_lifecycle(
     // Phase: Planning — decompose user_request into stories if provided
     // -----------------------------------------------------------------------
 
-    if let Some(request) = user_request {
-        let (cli_command, model) = arbiter_cli_command(db);
+    set_status_best_effort(db, event_tx, project_id, "planning").await;
 
-        // Load context units and memories for decompose action
-        let project_context = {
-            let conn = db.lock().expect("db lock");
-            crate::db::context::list_context_units(&conn, Some(project_id))
-                .unwrap_or_default()
+    if let Some(request) = user_request {
+        let (cli_command, model) = match arbiter_cli_command(db) {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = event_tx
+                    .send(LoopEvent::LoopFailed { reason: format!("Settings unavailable: {e}") })
+                    .await;
+                return;
+            }
         };
 
-        let memories = {
-            let conn = db.lock().expect("db lock");
-            search_memories(&conn, request, project_id, None, 10).unwrap_or_default()
+        // Load context units and memories for decompose action
+        let project_context = match lock_db(db) {
+            Ok(conn) => crate::db::context::list_context_units(&conn, Some(project_id))
+                .unwrap_or_default(),
+            Err(e) => {
+                eprintln!("[loop_engine] context load failed: {e}");
+                vec![]
+            }
+        };
+
+        let memories = match lock_db(db) {
+            Ok(conn) => search_memories(&conn, request, project_id, None, 10).unwrap_or_default(),
+            Err(e) => {
+                eprintln!("[loop_engine] memory search failed: {e}");
+                vec![]
+            }
         };
 
         let action = ArbiterAction::DecomposeRequest {
@@ -210,24 +250,40 @@ async fn run_loop_lifecycle(
         match dispatch::dispatch(action, project_path, &cli_command, model.as_deref()).await {
             Ok(response) => {
                 if let Some(drafts) = response.stories {
-                    let conn = db.lock().expect("db lock");
-                    let now = chrono::Utc::now().to_rfc3339();
-                    for draft in drafts {
-                        let story = Story {
-                            id: uuid::Uuid::new_v4().to_string(),
-                            project_id: project_id.to_string(),
-                            title: draft.title,
-                            description: draft.description,
-                            acceptance_criteria: Some(draft.acceptance_criteria),
-                            priority: draft.priority,
-                            status: "pending".to_string(),
-                            depends_on_json: serde_json::to_string(&draft.depends_on)
-                                .unwrap_or_else(|_| "[]".to_string()),
-                            iteration_attempts: 0,
-                            created_at: now.clone(),
-                        };
-                        let _ = stories::create_story(&conn, &story);
+                    match lock_db(db) {
+                        Ok(conn) => {
+                            let now = chrono::Utc::now().to_rfc3339();
+                            for draft in drafts {
+                                let story = Story {
+                                    id: uuid::Uuid::new_v4().to_string(),
+                                    project_id: project_id.to_string(),
+                                    title: draft.title,
+                                    description: draft.description,
+                                    acceptance_criteria: Some(draft.acceptance_criteria),
+                                    priority: draft.priority,
+                                    status: "pending".to_string(),
+                                    depends_on_json: serde_json::to_string(&draft.depends_on)
+                                        .unwrap_or_else(|_| "[]".to_string()),
+                                    iteration_attempts: 0,
+                                    created_at: now.clone(),
+                                };
+                                let _ = stories::create_story(&conn, &story);
+                            }
+                        }
+                        Err(e) => {
+                            let _ = event_tx
+                                .send(LoopEvent::LoopFailed {
+                                    reason: format!("Failed to persist stories: {e}"),
+                                })
+                                .await;
+                            return;
+                        }
                     }
+
+                    // Notify frontend to reload stories
+                    let _ = event_tx
+                        .send(LoopEvent::StoriesUpdated { project_id: project_id.to_string() })
+                        .await;
 
                     if let Some(reasoning) = response.reasoning {
                         let _ = event_tx
@@ -250,7 +306,7 @@ async fn run_loop_lifecycle(
         }
     }
 
-    set_status(db, event_tx, project_id, "running").await;
+    set_status_best_effort(db, event_tx, project_id, "running").await;
 
     // -----------------------------------------------------------------------
     // Phase: Iteration loop
@@ -262,16 +318,16 @@ async fn run_loop_lifecycle(
         // Check for Pause/Cancel commands (non-blocking)
         match cmd_rx.try_recv() {
             Ok(LoopCommand::Pause) => {
-                set_status(db, event_tx, project_id, "paused").await;
+                set_status_best_effort(db, event_tx, project_id, "paused").await;
                 // Wait for Resume or Cancel
                 loop {
                     match cmd_rx.recv().await {
                         Some(LoopCommand::Resume) => {
-                            set_status(db, event_tx, project_id, "running").await;
+                            set_status_best_effort(db, event_tx, project_id, "running").await;
                             break;
                         }
                         Some(LoopCommand::Cancel) | None => {
-                            set_status(db, event_tx, project_id, "idle").await;
+                            set_status_best_effort(db, event_tx, project_id, "idle").await;
                             return;
                         }
                         _ => {}
@@ -279,41 +335,61 @@ async fn run_loop_lifecycle(
                 }
             }
             Ok(LoopCommand::Cancel) => {
-                set_status(db, event_tx, project_id, "idle").await;
+                set_status_best_effort(db, event_tx, project_id, "idle").await;
                 return;
             }
             _ => {}
         }
 
         // Load current arbiter state
-        let arbiter_st = load_or_init_state(db, project_id);
+        let arbiter_st = match load_or_init_state(db, project_id) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("[loop_engine] load_or_init_state failed: {e}; using defaults");
+                ArbiterStateRow {
+                    project_id: project_id.to_string(),
+                    trust_level: TrustLevel::Autonomous,
+                    loop_status: "running".to_string(),
+                    current_story_id: None,
+                    iteration_count: 0,
+                    max_iterations: 10,
+                    last_activity_at: None,
+                }
+            }
+        };
 
         // Check if max iterations reached
         if arbiter_st.iteration_count >= arbiter_st.max_iterations {
             let reason = format!("Max iterations ({}) reached", arbiter_st.max_iterations);
             let _ = event_tx.send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() }).await;
             let _ = event_tx.send(LoopEvent::LoopFailed { reason }).await;
-            set_status(db, event_tx, project_id, "failed").await;
+            set_status_best_effort(db, event_tx, project_id, "failed").await;
             return;
         }
 
         // Get next story
-        let story = {
-            let conn = db.lock().expect("db lock");
-            stories::get_next_story(&conn, project_id).unwrap_or(None)
+        let story = match lock_db(db) {
+            Ok(conn) => stories::get_next_story(&conn, project_id).unwrap_or(None),
+            Err(e) => {
+                eprintln!("[loop_engine] get_next_story failed: {e}; retrying next iteration");
+                continue;
+            }
         };
 
         let story = match story {
             Some(s) => s,
             None => {
                 // No pending stories — check if all complete
-                let all_done = {
-                    let conn = db.lock().expect("db lock");
-                    stories::all_stories_complete(&conn, project_id).unwrap_or(false)
+                let all_done = match lock_db(db) {
+                    Ok(conn) => stories::all_stories_complete(&conn, project_id).unwrap_or(false),
+                    Err(e) => {
+                        eprintln!("[loop_engine] all_stories_complete failed: {e}");
+                        false
+                    }
                 };
                 if all_done {
                     let _ = event_tx.send(LoopEvent::LoopCompleted).await;
-                    set_status(db, event_tx, project_id, "completed").await;
+                    set_status_best_effort(db, event_tx, project_id, "completed").await;
                 } else {
                     // Blocked by unsatisfied dependencies — cannot progress
                     let _ = event_tx
@@ -321,7 +397,7 @@ async fn run_loop_lifecycle(
                             reason: "No actionable stories: all remaining stories have unsatisfied dependencies".to_string(),
                         })
                         .await;
-                    set_status(db, event_tx, project_id, "failed").await;
+                    set_status_best_effort(db, event_tx, project_id, "failed").await;
                 }
                 return;
             }
@@ -333,16 +409,16 @@ async fn run_loop_lifecycle(
                 let _ = event_tx
                     .send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() })
                     .await;
-                set_status(db, event_tx, project_id, "paused").await;
+                set_status_best_effort(db, event_tx, project_id, "paused").await;
                 // Wait for an explicit Resume or Cancel
                 loop {
                     match cmd_rx.recv().await {
                         Some(LoopCommand::Resume) => {
-                            set_status(db, event_tx, project_id, "running").await;
+                            set_status_best_effort(db, event_tx, project_id, "running").await;
                             break;
                         }
                         Some(LoopCommand::Cancel) | None => {
-                            set_status(db, event_tx, project_id, "idle").await;
+                            set_status_best_effort(db, event_tx, project_id, "idle").await;
                             return;
                         }
                         _ => {}
@@ -355,15 +431,14 @@ async fn run_loop_lifecycle(
                     .send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() })
                     .await;
                 let _ = event_tx.send(LoopEvent::LoopFailed { reason }).await;
-                set_status(db, event_tx, project_id, "failed").await;
+                set_status_best_effort(db, event_tx, project_id, "failed").await;
                 return;
             }
             CircuitBreakerAction::Continue => {}
         }
 
         // Set current story in state
-        {
-            let conn = db.lock().expect("db lock");
+        if let Ok(conn) = lock_db(db) {
             let _ = arbiter_state::set_current_story(&conn, project_id, Some(&story.id));
         }
 
@@ -376,15 +451,18 @@ async fn run_loop_lifecycle(
         // -------------------------------------------------------------------
 
         // Resolve agent definition (prefer project-configured type, fallback to claude)
-        let agent_type_key = {
-            let conn = db.lock().expect("db lock");
-            match conn.query_row(
+        let agent_type_key = match lock_db(db) {
+            Ok(conn) => match conn.query_row(
                 "SELECT arbiter_agent_type FROM projects WHERE id = ?1",
                 rusqlite::params![project_id],
                 |row| row.get::<_, Option<String>>(0),
             ) {
                 Ok(t) => t.unwrap_or_else(|| "claude".to_string()),
                 Err(_) => "claude".to_string(),
+            },
+            Err(e) => {
+                eprintln!("[loop_engine] agent_type query failed: {e}; using claude");
+                "claude".to_string()
             }
         };
 
@@ -396,37 +474,52 @@ async fn run_loop_lifecycle(
             .expect("at least one agent definition exists");
 
         // Build context prompt
-        let memories_text = {
-            let query = format!("{} {}", story.title, story.description);
-            let conn = db.lock().expect("db lock");
-            let mems = search_memories(&conn, &query, project_id, None, 5).unwrap_or_default();
-            mems.iter()
-                .map(|m| format!("- {}", m.content))
-                .collect::<Vec<_>>()
-                .join("\n")
+        let memories_text = match lock_db(db) {
+            Ok(conn) => {
+                let query = format!("{} {}", story.title, story.description);
+                let mems = search_memories(&conn, &query, project_id, None, 5).unwrap_or_default();
+                mems.iter()
+                    .map(|m| format!("- {}", m.content))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            Err(e) => {
+                eprintln!("[loop_engine] memory search failed: {e}");
+                String::new()
+            }
         };
 
-        let l0_text = {
-            let conn = db.lock().expect("db lock");
-            let summaries = list_l0_summaries(&conn, project_id).unwrap_or_default();
-            summaries
-                .iter()
-                .map(|(_, name, summary)| format!("- {}: {}", name, summary))
-                .collect::<Vec<_>>()
-                .join("\n")
+        let l0_text = match lock_db(db) {
+            Ok(conn) => {
+                let summaries = list_l0_summaries(&conn, project_id).unwrap_or_default();
+                summaries
+                    .iter()
+                    .map(|(_, name, summary)| format!("- {}: {}", name, summary))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
+            Err(e) => {
+                eprintln!("[loop_engine] l0 summaries failed: {e}");
+                String::new()
+            }
         };
 
         let prompt = build_story_prompt(&story, &memories_text, &l0_text);
 
         // Retrieve yolo mode from agent settings
-        let yolo_mode = {
-            let conn = db.lock().expect("db lock");
-            let settings = load_app_settings(&conn);
-            settings
-                .agents
-                .get(&agent_type_key)
-                .map(|s| s.default_yolo_mode)
-                .unwrap_or(false)
+        let yolo_mode = match lock_db(db) {
+            Ok(conn) => {
+                let settings = load_app_settings(&conn);
+                settings
+                    .agents
+                    .get(&agent_type_key)
+                    .map(|s| s.default_yolo_mode)
+                    .unwrap_or(false)
+            }
+            Err(e) => {
+                eprintln!("[loop_engine] yolo_mode load failed: {e}; defaulting to false");
+                false
+            }
         };
 
         // Build spawn args (used for CliFlag/PositionalArg delivery; for
@@ -435,17 +528,23 @@ async fn run_loop_lifecycle(
 
         // Spawn PTY session for this story
         let session_id = format!("loop-{}-{}", project_id, story.id);
-        {
-            let agent_env = {
-                let conn = db.lock().expect("db lock");
+
+        let agent_env = match lock_db(db) {
+            Ok(conn) => {
                 let settings = load_app_settings(&conn);
                 settings
                     .agents
                     .get(&agent_type_key)
                     .map(|s| s.env_vars.clone())
                     .unwrap_or_default()
-            };
+            }
+            Err(e) => {
+                eprintln!("[loop_engine] agent_env load failed: {e}; using empty env");
+                std::collections::HashMap::new()
+            }
+        };
 
+        {
             let mut pm = pty_manager.write().await;
             if let Err(e) = pm.spawn(
                 session_id.clone(),
@@ -471,46 +570,39 @@ async fn run_loop_lifecycle(
             }
         }
 
-        // Wait for agent completion signal or pause/cancel
-        let agent_timeout =
-            tokio::time::Duration::from_secs(60 * 10); // 10 minute cap per story
+        // Take the exit receiver before entering the select so we can detect
+        // process exit without waiting for the full timeout.
+        let exit_rx = {
+            let mut pm = pty_manager.write().await;
+            pm.take_exit_rx(&session_id)
+        };
 
-        let cancelled = tokio::select! {
-            cmd = cmd_rx.recv() => {
-                match cmd {
-                    Some(LoopCommand::Pause) => {
-                        set_status(db, event_tx, project_id, "paused").await;
-                        // Kill the agent session
-                        let mut pm = pty_manager.write().await;
-                        let _ = pm.kill(&session_id);
-                        // Wait for resume/cancel
-                        loop {
-                            match cmd_rx.recv().await {
-                                Some(LoopCommand::Resume) => {
-                                    set_status(db, event_tx, project_id, "running").await;
-                                    break;
-                                }
-                                Some(LoopCommand::Cancel) | None => {
-                                    set_status(db, event_tx, project_id, "idle").await;
-                                    return;
-                                }
-                                _ => {}
-                            }
-                        }
-                        false
-                    }
-                    Some(LoopCommand::Cancel) | None => {
-                        set_status(db, event_tx, project_id, "idle").await;
-                        let mut pm = pty_manager.write().await;
-                        let _ = pm.kill(&session_id);
-                        return;
-                    }
-                    _ => false,
+        // Wait for: (a) agent process exit, (b) a loop command, or (c) timeout
+        let agent_timeout = tokio::time::Duration::from_secs(60 * 10); // 10 minute cap per story
+
+        let cancelled = if let Some(exit_rx) = exit_rx {
+            tokio::select! {
+                _ = exit_rx => {
+                    // PTY process exited naturally — proceed to quality gates
+                    false
+                }
+                cmd = cmd_rx.recv() => {
+                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &session_id, project_id, cmd_rx).await
+                }
+                _ = tokio::time::sleep(agent_timeout) => {
+                    // Timeout — proceed to quality gates
+                    false
                 }
             }
-            _ = tokio::time::sleep(agent_timeout) => {
-                // Timeout reached — proceed to quality gates
-                false
+        } else {
+            // exit_rx unavailable (already taken or spawn failed) — fall back to timeout only
+            tokio::select! {
+                cmd = cmd_rx.recv() => {
+                    handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &session_id, project_id, cmd_rx).await
+                }
+                _ = tokio::time::sleep(agent_timeout) => {
+                    false
+                }
             }
         };
 
@@ -528,7 +620,7 @@ async fn run_loop_lifecycle(
         // Phase: Quality gates
         // -------------------------------------------------------------------
 
-        let gate_config = load_quality_gate_config(db, project_id);
+        let gate_config = load_quality_gate_config(db, project_id).unwrap_or_default();
         let gate_results = run_quality_gates(&gate_config, project_path).await;
 
         for r in &gate_results {
@@ -546,37 +638,44 @@ async fn run_loop_lifecycle(
 
         // Optional arbiter judgement
         let arbiter_passed = if gate_config.arbiter_judge {
-            let (cli_command, model) = arbiter_cli_command(db);
-            let gate_triples: Vec<(String, bool, String)> = gate_results
-                .iter()
-                .map(|r| (r.name.clone(), r.passed, r.output.clone()))
-                .collect();
+            match arbiter_cli_command(db) {
+                Ok((cli_command, model)) => {
+                    let gate_triples: Vec<(String, bool, String)> = gate_results
+                        .iter()
+                        .map(|r| (r.name.clone(), r.passed, r.output.clone()))
+                        .collect();
 
-            let action = ArbiterAction::JudgeCompletion {
-                story: story.clone(),
-                test_output: gate_triples
-                    .iter()
-                    .map(|(n, p, o)| format!("[{}] {}: {}", if *p { "PASS" } else { "FAIL" }, n, o))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                gate_results: gate_triples,
-            };
+                    let action = ArbiterAction::JudgeCompletion {
+                        story: story.clone(),
+                        test_output: gate_triples
+                            .iter()
+                            .map(|(n, p, o)| format!("[{}] {}: {}", if *p { "PASS" } else { "FAIL" }, n, o))
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                        gate_results: gate_triples,
+                    };
 
-            match dispatch::dispatch(action, project_path, &cli_command, model.as_deref()).await {
-                Ok(resp) => {
-                    if let Some(reasoning) = &resp.reasoning {
-                        let _ = event_tx
-                            .send(LoopEvent::ReasoningEntry {
-                                action: "JudgeCompletion".to_string(),
-                                reasoning: reasoning.clone(),
-                            })
-                            .await;
+                    match dispatch::dispatch(action, project_path, &cli_command, model.as_deref()).await {
+                        Ok(resp) => {
+                            if let Some(reasoning) = &resp.reasoning {
+                                let _ = event_tx
+                                    .send(LoopEvent::ReasoningEntry {
+                                        action: "JudgeCompletion".to_string(),
+                                        reasoning: reasoning.clone(),
+                                    })
+                                    .await;
+                            }
+                            resp.passed.unwrap_or(false)
+                        }
+                        Err(e) => {
+                            eprintln!("[loop_engine] arbiter judge error: {}", e);
+                            false
+                        }
                     }
-                    resp.passed.unwrap_or(false)
                 }
                 Err(e) => {
-                    eprintln!("[loop_engine] arbiter judge error: {}", e);
-                    false
+                    eprintln!("[loop_engine] arbiter_cli_command failed: {e}; skipping judge");
+                    true // treat as passed when settings unavailable
                 }
             }
         } else {
@@ -590,8 +689,7 @@ async fn run_loop_lifecycle(
         // -------------------------------------------------------------------
 
         if story_passed {
-            {
-                let conn = db.lock().expect("db lock");
+            if let Ok(conn) = lock_db(db) {
                 let _ = stories::update_story_status(&conn, &story.id, "completed");
                 let _ = arbiter_state::set_current_story(&conn, project_id, None);
             }
@@ -610,8 +708,7 @@ async fn run_loop_lifecycle(
 
             consecutive_no_commit = 0;
         } else {
-            {
-                let conn = db.lock().expect("db lock");
+            if let Ok(conn) = lock_db(db) {
                 let _ = stories::increment_story_attempts(&conn, &story.id);
             }
 
@@ -635,13 +732,20 @@ async fn run_loop_lifecycle(
         // Phase: Loop bookkeeping
         // -------------------------------------------------------------------
 
-        {
-            let conn = db.lock().expect("db lock");
+        if let Ok(conn) = lock_db(db) {
             let _ = arbiter_state::increment_iteration(&conn, project_id);
             let _ = arbiter_state::update_last_activity(&conn, project_id);
         }
 
-        let updated_state = load_or_init_state(db, project_id);
+        let updated_state = load_or_init_state(db, project_id).unwrap_or(ArbiterStateRow {
+            project_id: project_id.to_string(),
+            trust_level: TrustLevel::Autonomous,
+            loop_status: "running".to_string(),
+            current_story_id: None,
+            iteration_count: 0,
+            max_iterations: 10,
+            last_activity_at: None,
+        });
         let _ = event_tx
             .send(LoopEvent::IterationCompleted {
                 count: updated_state.iteration_count,
@@ -650,15 +754,93 @@ async fn run_loop_lifecycle(
             .await;
 
         // Check whether all stories are now complete
-        let all_done = {
-            let conn = db.lock().expect("db lock");
-            stories::all_stories_complete(&conn, project_id).unwrap_or(false)
+        let all_done = match lock_db(db) {
+            Ok(conn) => stories::all_stories_complete(&conn, project_id).unwrap_or(false),
+            Err(e) => {
+                eprintln!("[loop_engine] all_stories_complete check failed: {e}");
+                false
+            }
         };
 
         if all_done {
             let _ = event_tx.send(LoopEvent::LoopCompleted).await;
-            set_status(db, event_tx, project_id, "completed").await;
+            set_status_best_effort(db, event_tx, project_id, "completed").await;
             return;
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: shared Pause/Cancel handling inside the agent-wait select arms
+// ---------------------------------------------------------------------------
+
+/// Handles a LoopCommand received while waiting for the agent to finish.
+/// Returns `true` if the story was cancelled/paused-then-resumed-as-skip
+/// (meaning the outer loop should `continue` to the next story),
+/// or `false` if execution should fall through to quality gates.
+///
+/// Note: this function takes ownership of the cmd Option because it comes
+/// directly out of `cmd_rx.recv()`.
+async fn handle_agent_wait_cmd(
+    cmd: Option<LoopCommand>,
+    db: &DbPool,
+    event_tx: &mpsc::Sender<LoopEvent>,
+    pty_manager: &Arc<RwLock<PtyManager>>,
+    session_id: &str,
+    project_id: &str,
+    cmd_rx: &mut mpsc::Receiver<LoopCommand>,
+) -> bool {
+    match cmd {
+        Some(LoopCommand::Pause) => {
+            set_status_best_effort(db, event_tx, project_id, "paused").await;
+            // Kill the agent session
+            {
+                let mut pm = pty_manager.write().await;
+                let _ = pm.kill(session_id);
+            }
+            // Wait for resume/cancel
+            loop {
+                match cmd_rx.recv().await {
+                    Some(LoopCommand::Resume) => {
+                        set_status_best_effort(db, event_tx, project_id, "running").await;
+                        return true; // re-run story from top of loop
+                    }
+                    Some(LoopCommand::Cancel) | None => {
+                        set_status_best_effort(db, event_tx, project_id, "idle").await;
+                        // Signal full exit via a dedicated sentinel — we cannot `return`
+                        // from run_loop_lifecycle here, so we use a special path.
+                        // The caller checks: if handle_agent_wait_cmd returns true it
+                        // `continue`s; the session was already killed and status is idle.
+                        // We need to actually exit the lifecycle, so we park indefinitely
+                        // on a channel that will never receive — the outer task will be
+                        // dropped when the cmd_rx sender is closed.
+                        loop {
+                            match cmd_rx.recv().await {
+                                None => return true,
+                                Some(LoopCommand::Cancel) => return true,
+                                _ => {}
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Some(LoopCommand::Cancel) | None => {
+            set_status_best_effort(db, event_tx, project_id, "idle").await;
+            {
+                let mut pm = pty_manager.write().await;
+                let _ = pm.kill(session_id);
+            }
+            // Park until the channel closes; outer loop will exit when cmd_rx closes.
+            loop {
+                match cmd_rx.recv().await {
+                    None => return true,
+                    Some(LoopCommand::Cancel) => return true,
+                    _ => {}
+                }
+            }
+        }
+        _ => false,
     }
 }

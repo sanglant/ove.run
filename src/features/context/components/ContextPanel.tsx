@@ -55,7 +55,20 @@ export function ContextPanel() {
       return;
     }
     listProjectDefaultContext(activeProjectId).then((defaults) => {
-      setDefaultUnitIds(new Set(defaults.map((d) => d.id)));
+      const explicitDefaultIds = new Set(defaults.map((d) => d.id));
+      // Global-scope units are enabled by default. Auto-register any
+      // global unit that isn't already in the project defaults table.
+      const globalUnits = units.filter((u) => u.scope === "global");
+      const allDefaultIds = new Set(explicitDefaultIds);
+
+      for (const gu of globalUnits) {
+        if (!explicitDefaultIds.has(gu.id)) {
+          setProjectDefaultContext(gu.id, activeProjectId).catch(() => {});
+          allDefaultIds.add(gu.id);
+        }
+      }
+
+      setDefaultUnitIds(allDefaultIds);
     }).catch((err) => {
       console.error("Failed to load project defaults:", err);
     });
@@ -231,6 +244,7 @@ export function ContextPanel() {
               onDelete={setPendingDelete}
               onGenerateSummary={handleGenerateSummary}
               isDefault={defaultUnitIds.has(unit.id)}
+              isGlobalDefault={unit.scope === "global"}
               onSetDefault={handleSetDefault}
               onRemoveDefault={handleRemoveDefault}
             />

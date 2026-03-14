@@ -217,7 +217,7 @@ impl Default for AppSettings {
                 font_family: "JetBrains Mono, monospace".to_string(),
                 font_size: 14,
                 notifications_enabled: true,
-                minimize_to_tray: false,
+                minimize_to_tray: true,
                 terminal_scrollback: 10000,
                 arbiter_timeout_seconds: 20,
                 arbiter_provider: String::new(),

@@ -113,6 +113,182 @@
   color: var(--text-secondary);
 }
 
+/* ── Phase steps ─────────────────────────────────────────── */
+.phaseSteps {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.phaseStep {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--text-secondary) 60%, transparent);
+  transition: color 200ms ease, background 200ms ease;
+}
+
+.phaseStepDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-secondary) 30%, transparent);
+  transition: background 200ms ease;
+}
+
+.phaseStepActive {
+  color: var(--accent-glow);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.phaseStepActive .phaseStepDot {
+  background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.phaseStepDone {
+  color: var(--text-secondary);
+}
+
+.phaseStepDone .phaseStepDot {
+  background: #10b981;
+}
+
+/* ── Console preview ─────────────────────────────────────── */
+.consolePreview {
+  flex-shrink: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.consoleToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color 140ms ease;
+  text-align: left;
+}
+
+.consoleToggle:hover {
+  color: var(--text-primary);
+}
+
+.consoleLiveDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.consoleBody {
+  position: relative;
+  padding: 0 20px 10px;
+}
+
+.consoleOutput {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-primary) 90%, black);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text-secondary) 85%, transparent);
+  max-height: 150px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.consoleExpandButton {
+  position: absolute;
+  top: 4px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+.consoleExpandButton:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ── Console modal output (used inside Mantine Modal) ───── */
+.consoleModalOutput {
+  margin: 0;
+  padding: 14px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--text-secondary) 90%, transparent);
+  background: color-mix(in srgb, var(--bg-primary) 95%, black);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Activity message ────────────────────────────────────── */
+.activityRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.activitySpinner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.activityText {
+  font-size: 11px;
+  color: var(--text-primary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .progressTrack {
   height: 4px;
   border-radius: 999px;
@@ -400,6 +576,51 @@
   justify-content: space-between;
   gap: 8px;
   padding-top: 4px;
+}
+
+/* ── Idle state (no stories yet) ─────────────────────────── */
+.idleState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.idleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.idleTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.idleDescription {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.idleDescription strong {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* ── Empty state ─────────────────────────────────────────── */

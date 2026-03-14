@@ -9,7 +9,8 @@ type ActivePanel =
   | "memory"
   | "loop"
   | "settings"
-  | "notifications";
+  | "notifications"
+  | "stats";
 export type TabViewMode = "grouped" | "flat";
 export type EditorLayoutMode = "write" | "split" | "raw";
 

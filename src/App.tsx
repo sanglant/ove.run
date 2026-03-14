@@ -9,6 +9,8 @@ import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
 import { LoopPanel } from "@/features/loop/components/LoopPanel";
+import { LoopFloatingPreview } from "@/features/loop/components/LoopFloatingPreview";
+import { StatsPanel } from "@/features/stats/components/StatsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackModal } from "@/features/arbiter/components/AgentFeedbackModal";
@@ -123,12 +125,12 @@ export default function App() {
             </div>
           )}
 
-          {/* Loop panel */}
-          {activePanel === "loop" && (
-            <div className={classes.panelContainer}>
-              <LoopPanel />
-            </div>
-          )}
+          {/* Loop panel — always mounted to preserve state across panel switches */}
+          <div
+            className={cn(classes.panelContainer, activePanel !== "loop" && classes.terminalContainerHidden)}
+          >
+            <LoopPanel />
+          </div>
 
           {/* Notifications panel */}
           {activePanel === "notifications" && (
@@ -136,6 +138,13 @@ export default function App() {
               <NotificationCenter />
             </div>
           )}
+
+          {/* Stats panel — always mounted to preserve state across panel switches */}
+          <div
+            className={cn(classes.panelContainer, activePanel !== "stats" && classes.terminalContainerHidden)}
+          >
+            <StatsPanel />
+          </div>
         </main>
 
         {/* Status bar */}
@@ -149,6 +158,9 @@ export default function App() {
 
       {/* Agent feedback modal — always rendered, visibility driven by store queue */}
       <AgentFeedbackModal />
+
+      {/* Floating loop preview — visible from any panel when loop is active */}
+      <LoopFloatingPreview />
     </div>
   );
 }

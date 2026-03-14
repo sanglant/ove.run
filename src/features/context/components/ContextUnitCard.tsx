@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Badge, ActionIcon, Collapse, Text, Tooltip } from "@mantine/core";
+import { Badge, ActionIcon, Collapse, Text, Tooltip, Switch } from "@mantine/core";
 import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, Star } from "lucide-react";
 import type { ContextUnit, ContextUnitType } from "@/types";
 import classes from "./ContextPanel.module.css";
@@ -24,11 +24,12 @@ interface ContextUnitCardProps {
   onDelete: (unit: ContextUnit) => void;
   onGenerateSummary: (unit: ContextUnit) => void;
   isDefault?: boolean;
+  isGlobalDefault?: boolean;
   onSetDefault?: (unit: ContextUnit) => void;
   onRemoveDefault?: (unit: ContextUnit) => void;
 }
 
-export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isDefault, onSetDefault, onRemoveDefault }: ContextUnitCardProps) {
+export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isDefault, isGlobalDefault, onSetDefault, onRemoveDefault }: ContextUnitCardProps) {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [contentOpen, setContentOpen] = useState(false);
 
@@ -66,7 +67,19 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
         </div>
 
         <div className={classes.cardActions}>
-          {(onSetDefault ?? onRemoveDefault) && (
+          {isGlobalDefault ? (
+            <Tooltip label={isDefault ? "Disable default context" : "Enable default context"} position="top" withArrow>
+              <Switch
+                checked={isDefault}
+                onChange={() => isDefault ? onRemoveDefault?.(unit) : onSetDefault?.(unit)}
+                size="xs"
+                aria-label={isDefault ? "Disable default context" : "Enable default context"}
+                styles={{
+                  track: { cursor: "pointer" },
+                }}
+              />
+            </Tooltip>
+          ) : (onSetDefault ?? onRemoveDefault) ? (
             <Tooltip label={isDefault ? "Remove project default" : "Set as project default"} position="top" withArrow>
               <ActionIcon
                 variant="subtle"
@@ -78,7 +91,7 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
                 <Star size={13} fill={isDefault ? "currentColor" : "none"} />
               </ActionIcon>
             </Tooltip>
-          )}
+          ) : null}
           {!unit.l0_summary && (
             <Tooltip label="Generate summary" position="top" withArrow>
               <ActionIcon
@@ -103,17 +116,19 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, isD
               <Pencil size={13} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label="Delete" position="top" withArrow>
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={() => onDelete(unit)}
-              aria-label={`Delete ${unit.name}`}
-              styles={{ root: { color: "var(--danger)" } }}
-            >
-              <Trash2 size={13} />
-            </ActionIcon>
-          </Tooltip>
+          {!isGlobalDefault && (
+            <Tooltip label="Delete" position="top" withArrow>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => onDelete(unit)}
+                aria-label={`Delete ${unit.name}`}
+                styles={{ root: { color: "var(--danger)" } }}
+              >
+                <Trash2 size={13} />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </div>
       </div>
 

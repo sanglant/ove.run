@@ -146,15 +146,21 @@ pub fn delete_context_unit(conn: &Connection, id: &str) -> Result<(), rusqlite::
         |row| row.get(0),
     )?;
 
+    // SAFETY: unchecked_transaction does not require &mut Connection.
+    // The transaction is rolled back automatically on drop if commit() is not called.
+    let tx = conn.unchecked_transaction()?;
+
     // Delete assignments and defaults first
-    conn.execute("DELETE FROM context_assignments WHERE context_unit_id = ?1", params![id])?;
-    conn.execute("DELETE FROM context_defaults WHERE context_unit_id = ?1", params![id])?;
+    tx.execute("DELETE FROM context_assignments WHERE context_unit_id = ?1", params![id])?;
+    tx.execute("DELETE FROM context_defaults WHERE context_unit_id = ?1", params![id])?;
 
     // Delete FTS entry
-    sync_fts_delete(conn, rid, &unit)?;
+    sync_fts_delete(&tx, rid, &unit)?;
 
     // Delete the row
-    conn.execute("DELETE FROM context_units WHERE id = ?1", params![id])?;
+    tx.execute("DELETE FROM context_units WHERE id = ?1", params![id])?;
+
+    tx.commit()?;
     Ok(())
 }
 

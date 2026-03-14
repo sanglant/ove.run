@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RotateCw, ChevronDown, ChevronRight, Settings2 } from "lucide-react";
+import { RotateCw, ChevronDown, ChevronRight, Settings2, Play } from "lucide-react";
 import { Button, Switch, TextInput } from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useLoopStore } from "@/stores/loopStore";
@@ -8,6 +8,7 @@ import { StoryList } from "./StoryList";
 import { LoopControls } from "./LoopControls";
 import { LoopProgress } from "./LoopProgress";
 import { ArbiterReasoningLog } from "./ArbiterReasoningLog";
+import { LoopConsolePreview } from "./LoopConsolePreview";
 import classes from "./LoopPanel.module.css";
 
 const DEFAULT_GATES: QualityGateConfig = {
@@ -29,6 +30,9 @@ export function LoopPanel() {
     maxIterations,
     qualityGates,
     loading,
+    activityMessage,
+    phase,
+    activeSessionId,
     loadState,
     loadQualityGates,
     saveQualityGates,
@@ -69,6 +73,8 @@ export function LoopPanel() {
     );
   }
 
+  const isIdle = status === "idle" && stories.length === 0 && !activityMessage;
+
   return (
     <div className={classes.root}>
       {/* Header */}
@@ -90,38 +96,57 @@ export function LoopPanel() {
 
       {/* Body */}
       <div className={classes.body}>
-        {/* Progress */}
-        <LoopProgress
-          status={status}
-          iterationCount={iterationCount}
-          maxIterations={maxIterations}
-          currentStoryId={arbiterState?.current_story_id ?? null}
-          stories={stories}
-        />
-
-        {/* Two-column layout */}
-        <div className={classes.columns}>
-          {/* Stories column */}
-          <div className={classes.column}>
-            <div className={classes.columnHeader}>
-              <span className={classes.columnTitle}>Stories</span>
-              {loading && <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>loading…</span>}
+        {isIdle ? (
+          <div className={classes.idleState}>
+            <div className={classes.idleIcon}>
+              <Play size={20} />
             </div>
-            <div className={classes.columnScroll}>
-              <StoryList stories={stories} />
-            </div>
+            <p className={classes.idleTitle}>Ready to loop</p>
+            <p className={classes.idleDescription}>
+              Press <strong>Start</strong> and describe what you want to build. The loop engine will decompose your request into stories and iterate through them autonomously.
+            </p>
           </div>
+        ) : (
+          <>
+            {/* Progress */}
+            <LoopProgress
+              status={status}
+              iterationCount={iterationCount}
+              maxIterations={maxIterations}
+              currentStoryId={arbiterState?.current_story_id ?? null}
+              stories={stories}
+              activityMessage={activityMessage}
+              phase={phase}
+            />
 
-          {/* Reasoning log column */}
-          <div className={classes.column}>
-            <div className={classes.columnHeader}>
-              <span className={classes.columnTitle}>Reasoning Log</span>
+            {/* Console preview — live PTY output from the active agent */}
+            <LoopConsolePreview sessionId={activeSessionId} />
+
+            {/* Two-column layout */}
+            <div className={classes.columns}>
+              {/* Stories column */}
+              <div className={classes.column}>
+                <div className={classes.columnHeader}>
+                  <span className={classes.columnTitle}>Stories</span>
+                  {loading && <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>loading…</span>}
+                </div>
+                <div className={classes.columnScroll}>
+                  <StoryList stories={stories} />
+                </div>
+              </div>
+
+              {/* Reasoning log column */}
+              <div className={classes.column}>
+                <div className={classes.columnHeader}>
+                  <span className={classes.columnTitle}>Reasoning Log</span>
+                </div>
+                <div className={classes.columnScroll}>
+                  <ArbiterReasoningLog entries={reasoningLog} />
+                </div>
+              </div>
             </div>
-            <div className={classes.columnScroll}>
-              <ArbiterReasoningLog entries={reasoningLog} />
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Quality gates section */}
         <div className={classes.gatesSection}>

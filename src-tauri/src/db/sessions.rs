@@ -36,23 +36,30 @@ pub fn load_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, rusqlit
 }
 
 pub fn save_sessions(conn: &Connection, sessions: &[PersistedSession]) -> Result<(), rusqlite::Error> {
-    conn.execute("DELETE FROM sessions", params![])?;
+    // SAFETY: unchecked_transaction does not require &mut Connection.
+    // The transaction is rolled back automatically on drop if commit() is not called.
+    let tx = conn.unchecked_transaction()?;
 
-    let mut stmt = conn.prepare(
-        "INSERT INTO sessions (id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-    )?;
+    tx.execute("DELETE FROM sessions", params![])?;
 
-    for session in sessions {
-        stmt.execute(params![
-            session.id,
-            session.project_id,
-            session.agent_type,
-            session.yolo_mode,
-            session.label,
-            session.initial_prompt,
-            session.created_at,
-        ])?;
+    {
+        let mut stmt = tx.prepare(
+            "INSERT INTO sessions (id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        )?;
+
+        for session in sessions {
+            stmt.execute(params![
+                session.id,
+                session.project_id,
+                session.agent_type,
+                session.yolo_mode,
+                session.label,
+                session.initial_prompt,
+                session.created_at,
+            ])?;
+        }
     }
 
+    tx.commit()?;
     Ok(())
 }

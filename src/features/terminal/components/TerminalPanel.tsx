@@ -59,13 +59,14 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   // Keep lastStatusRef in sync with external status changes (e.g. modal setting "working")
   lastStatusRef.current = session.status;
 
-  // Grace period: suppress arbiter auto-answer for resumed sessions on startup.
-  // Terminal may already show a stale needs_input prompt that shouldn't trigger arbiter.
-  const arbiterSuppressedRef = useRef(session.isResumed);
+  // Grace period: suppress feedback modal AND arbiter auto-answer for resumed
+  // sessions on startup.  Terminal may already show a stale needs_input prompt
+  // that shouldn't trigger a modal or arbiter action.
+  const feedbackSuppressedRef = useRef(session.isResumed);
   useEffect(() => {
-    if (!arbiterSuppressedRef.current) return;
+    if (!feedbackSuppressedRef.current) return;
     const timer = setTimeout(() => {
-      arbiterSuppressedRef.current = false;
+      feedbackSuppressedRef.current = false;
     }, 10_000); // 10s grace period after app start
     return () => clearTimeout(timer);
   }, []);
@@ -218,35 +219,38 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
             }
           }
 
-          // Enqueue feedback
-          const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
-          const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
+          // Enqueue feedback — skip entirely during startup grace period
+          // for resumed sessions to avoid stale prompts triggering modals
+          if (!feedbackSuppressedRef.current) {
+            const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+            const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
 
-          if (detected === "needs_input") {
-            const parsed = parseFeedbackOptions(feedbackOutput);
-            useAgentFeedbackStore.getState().enqueue({
-              id: uuidv4(),
-              sessionId: session.id,
-              projectId: session.projectId,
-              type: "question",
-              output: feedbackOutput,
-              parsedOptions: parsed.options,
-              allowFreeInput: parsed.allowFreeInput,
-              timestamp: new Date().toISOString(),
-              arbiterEnabled: !!project?.arbiter_enabled && !arbiterSuppressedRef.current,
-            });
-          } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
-            useAgentFeedbackStore.getState().enqueue({
-              id: uuidv4(),
-              sessionId: session.id,
-              projectId: session.projectId,
-              type: "response",
-              output: feedbackOutput,
-              parsedOptions: [],
-              allowFreeInput: false,
-              timestamp: new Date().toISOString(),
-              arbiterEnabled: false,
-            });
+            if (detected === "needs_input") {
+              const parsed = parseFeedbackOptions(feedbackOutput);
+              useAgentFeedbackStore.getState().enqueue({
+                id: uuidv4(),
+                sessionId: session.id,
+                projectId: session.projectId,
+                type: "question",
+                output: feedbackOutput,
+                parsedOptions: parsed.options,
+                allowFreeInput: parsed.allowFreeInput,
+                timestamp: new Date().toISOString(),
+                arbiterEnabled: !!project?.arbiter_enabled,
+              });
+            } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
+              useAgentFeedbackStore.getState().enqueue({
+                id: uuidv4(),
+                sessionId: session.id,
+                projectId: session.projectId,
+                type: "response",
+                output: feedbackOutput,
+                parsedOptions: [],
+                allowFreeInput: false,
+                timestamp: new Date().toISOString(),
+                arbiterEnabled: false,
+              });
+            }
           }
         }
       });

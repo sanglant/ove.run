@@ -246,6 +246,7 @@ export interface GateResult {
 
 export type LoopEventType =
   | { type: "StatusChanged"; status: LoopStatus }
+  | { type: "StoriesUpdated"; project_id: string }
   | { type: "StoryStarted"; story_id: string }
   | { type: "StoryCompleted"; story_id: string }
   | { type: "StoryFailed"; story_id: string; reason: string }

@@ -13,6 +13,7 @@ import {
   Folder,
   Brain,
   RotateCw,
+  BarChart3,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -177,6 +178,11 @@ export function Sidebar() {
       label: "Loop",
     },
     {
+      id: "stats" as const,
+      icon: <BarChart3 size={16} />,
+      label: "Stats",
+    },
+    {
       id: "settings" as const,
       icon: <Settings size={16} />,
       label: "Settings",
@@ -195,8 +201,7 @@ export function Sidebar() {
       {/* App title */}
       <div className={classes.header}>
         <h1 className={classes.title}>
-          <span className={classes.titleAccent}>ove</span>
-          <span className={classes.titleText}>.run</span>
+          <img src="/ove.svg" alt="ove.run" className={classes.logo} />
         </h1>
       </div>
 
@@ -452,6 +457,15 @@ export function Sidebar() {
           value={pendingTrustLevel}
           onChange={setPendingTrustLevel}
         />
+        <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 8, background: "color-mix(in srgb, var(--bg-tertiary) 60%, transparent)", border: "1px solid color-mix(in srgb, var(--border) 60%, transparent)" }}>
+          <Text size="xs" fw={600} c="var(--text-primary)" mb={6}>How the Arbiter works</Text>
+          <Text size="xs" c="var(--text-secondary)" lh={1.6} mb={4}>
+            <strong style={{ color: "var(--text-primary)" }}>Console:</strong> Monitors agent sessions for questions and permission prompts. When an agent gets stuck, the Arbiter reviews the context and answers automatically based on the trust level.
+          </Text>
+          <Text size="xs" c="var(--text-secondary)" lh={1.6}>
+            <strong style={{ color: "var(--text-primary)" }}>Loop:</strong> Acts as the orchestrator for multi-step workflows. Decomposes your request into stories, assigns them to agent sessions, reviews quality gates after each iteration, and decides whether to proceed, retry, or pause.
+          </Text>
+        </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
           <Button
             variant="subtle"

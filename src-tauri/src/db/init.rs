@@ -25,6 +25,16 @@ pub fn init_db(app_data_dir: &PathBuf) -> Result<DbPool, String> {
 
 fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
     conn.execute_batch(SCHEMA)?;
+    run_migrations(conn)?;
+    Ok(())
+}
+
+fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
+    // Migration: reduce old default of 50 max_iterations to 10 for existing projects
+    conn.execute(
+        "UPDATE arbiter_state SET max_iterations = 10 WHERE max_iterations = 50",
+        [],
+    )?;
     Ok(())
 }
 
@@ -130,7 +140,7 @@ CREATE TABLE IF NOT EXISTS arbiter_state (
     loop_status TEXT NOT NULL DEFAULT 'idle',
     current_story_id TEXT,
     iteration_count INTEGER NOT NULL DEFAULT 0,
-    max_iterations INTEGER NOT NULL DEFAULT 50,
+    max_iterations INTEGER NOT NULL DEFAULT 10,
     last_activity_at TEXT,
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
