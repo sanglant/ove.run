@@ -100,7 +100,12 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
           ? [...baseArgs, ...resumeArgs, ...defaultArgs, ...customArgs, agentDef.yolo_flag].filter(Boolean)
           : [...baseArgs, ...resumeArgs, ...defaultArgs, ...customArgs].filter(Boolean);
 
-        await spawnPty(session.id, command, args, projectPath, envVars, cols, rows);
+        // Pass sandbox params based on the per-session sandboxed flag
+        const sandboxEnabled = session?.sandboxed ?? false;
+        // Trust level defaults to 2 (Autonomous); read from arbiter state if available
+        const trustLevel = 2;
+
+        await spawnPty(session.id, command, args, projectPath, envVars, cols, rows, sandboxEnabled, trustLevel);
         updateStatus(session.id, "idle");
 
         if (session.initialPrompt) {
@@ -116,7 +121,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         spawnedRef.current = false;
       }
     },
-    [session.id, session.yoloMode, session.agentType, session.isResumed, projectPath, settings.agents, updateStatus],
+    [session.id, session.yoloMode, session.agentType, session.isResumed, session.sandboxed, projectPath, settings.agents, updateStatus],
   );
 
   // Initialize terminal on mount
