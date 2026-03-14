@@ -12,6 +12,7 @@ import type {
   TerminalSplitLayoutNode,
 } from "@/types";
 import { saveSessions, loadSessions } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 const MAX_GRID_PANES = 8;
 const DEFAULT_SPLIT_RATIO = 0.5;
@@ -817,6 +818,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       });
     } catch (err) {
       console.error("Failed to load persisted sessions:", err);
+      useNotificationStore.getState().showToast("error", "Failed to load persisted sessions", String(err));
     }
   },
 }));

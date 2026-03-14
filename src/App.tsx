@@ -10,6 +10,7 @@ import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
 import { LoopPanel } from "@/features/loop/components/LoopPanel";
 import { LoopFloatingPreview } from "@/features/loop/components/LoopFloatingPreview";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 import { StatsPanel } from "@/features/stats/components/StatsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
@@ -161,6 +162,9 @@ export default function App() {
 
       {/* Floating loop preview — visible from any panel when loop is active */}
       <LoopFloatingPreview />
+
+      {/* Toast notifications — rendered as a fixed overlay */}
+      <ToastContainer />
     </div>
   );
 }

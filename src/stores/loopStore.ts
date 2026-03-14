@@ -10,6 +10,7 @@ import {
   setQualityGates as apiSetQualityGates,
   listen,
 } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 export interface ReasoningEntry {
   action: string;
@@ -76,6 +77,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
     } catch (err) {
       console.error("Failed to load loop state:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load loop state", String(err));
     }
   },
 
@@ -85,6 +87,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
       set({ qualityGates: config });
     } catch (err) {
       console.error("Failed to load quality gates:", err);
+      useNotificationStore.getState().showToast("error", "Failed to load quality gates", String(err));
     }
   },
 
@@ -94,6 +97,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
       set({ qualityGates: config });
     } catch (err) {
       console.error("Failed to save quality gates:", err);
+      useNotificationStore.getState().showToast("error", "Failed to save quality gates", String(err));
     }
   },
 
@@ -105,6 +109,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
     } catch (err) {
       console.error("Failed to start loop:", err);
       set({ status: "idle", activityMessage: null, phase: "idle" });
+      useNotificationStore.getState().showToast("error", "Failed to start loop", String(err));
     }
   },
 
@@ -114,6 +119,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
       set({ status: "paused" });
     } catch (err) {
       console.error("Failed to pause loop:", err);
+      useNotificationStore.getState().showToast("error", "Failed to pause loop", String(err));
     }
   },
 
@@ -123,6 +129,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
       set({ status: "running" });
     } catch (err) {
       console.error("Failed to resume loop:", err);
+      useNotificationStore.getState().showToast("error", "Failed to resume loop", String(err));
     }
   },
 
@@ -132,6 +139,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
       set({ status: "idle", activityMessage: null, phase: "idle", activeSessionId: null });
     } catch (err) {
       console.error("Failed to cancel loop:", err);
+      useNotificationStore.getState().showToast("error", "Failed to cancel loop", String(err));
     }
   },
 

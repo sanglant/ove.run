@@ -6,6 +6,7 @@ import {
   removeProject as apiRemoveProject,
   updateProject as apiUpdateProject,
 } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 interface ProjectState {
   projects: Project[];
@@ -36,30 +37,43 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch (err) {
       console.error("Failed to load projects:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load projects", String(err));
     }
   },
 
   addProject: async (name: string, path: string) => {
-    const project = await apiAddProject(name, path);
-    set((state) => ({
-      projects: [...state.projects, project],
-      activeProjectId: project.id,
-    }));
-    return project;
+    try {
+      const project = await apiAddProject(name, path);
+      set((state) => ({
+        projects: [...state.projects, project],
+        activeProjectId: project.id,
+      }));
+      return project;
+    } catch (err) {
+      console.error("Failed to add project:", err);
+      useNotificationStore.getState().showToast("error", "Failed to add project", String(err));
+      throw err;
+    }
   },
 
   removeProject: async (id: string) => {
-    await apiRemoveProject(id);
-    set((state) => {
-      const projects = state.projects.filter((p) => p.id !== id);
-      const activeProjectId =
-        state.activeProjectId === id
-          ? projects.length > 0
-            ? projects[0].id
-            : null
-          : state.activeProjectId;
-      return { projects, activeProjectId };
-    });
+    try {
+      await apiRemoveProject(id);
+      set((state) => {
+        const projects = state.projects.filter((p) => p.id !== id);
+        const activeProjectId =
+          state.activeProjectId === id
+            ? projects.length > 0
+              ? projects[0].id
+              : null
+            : state.activeProjectId;
+        return { projects, activeProjectId };
+      });
+    } catch (err) {
+      console.error("Failed to remove project:", err);
+      useNotificationStore.getState().showToast("error", "Failed to remove project", String(err));
+      throw err;
+    }
   },
 
   updateProject: async (project: Project) => {

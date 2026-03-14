@@ -126,6 +126,16 @@ export interface NotificationItem {
   read: boolean;
 }
 
+export type ToastLevel = "error" | "warning" | "success" | "info";
+
+export interface ToastItem {
+  id: string;
+  level: ToastLevel;
+  title: string;
+  body?: string;
+  duration?: number;
+}
+
 export interface ParsedOption {
   label: string;
   keys: number[];

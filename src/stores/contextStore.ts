@@ -7,6 +7,7 @@ import {
   deleteContextUnit as apiDeleteContextUnit,
   searchContextUnits,
 } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 interface ContextState {
   units: ContextUnit[];
@@ -39,12 +40,19 @@ export const useContextStore = create<ContextState>((set) => ({
     } catch (err) {
       console.error("Failed to load context units:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load context units", String(err));
     }
   },
 
   addUnit: async (unit) => {
-    await apiCreateContextUnit(unit);
-    set((s) => ({ units: [unit, ...s.units] }));
+    try {
+      await apiCreateContextUnit(unit);
+      set((s) => ({ units: [unit, ...s.units] }));
+    } catch (err) {
+      console.error("Failed to create context unit:", err);
+      useNotificationStore.getState().showToast("error", "Failed to create context unit", String(err));
+      throw err;
+    }
   },
 
   editUnit: async (unit) => {
@@ -55,8 +63,14 @@ export const useContextStore = create<ContextState>((set) => ({
   },
 
   removeUnit: async (id) => {
-    await apiDeleteContextUnit(id);
-    set((s) => ({ units: s.units.filter((u) => u.id !== id) }));
+    try {
+      await apiDeleteContextUnit(id);
+      set((s) => ({ units: s.units.filter((u) => u.id !== id) }));
+    } catch (err) {
+      console.error("Failed to delete context unit:", err);
+      useNotificationStore.getState().showToast("error", "Failed to delete context unit", String(err));
+      throw err;
+    }
   },
 
   search: async (query, projectId) => {
@@ -67,6 +81,7 @@ export const useContextStore = create<ContextState>((set) => ({
     } catch (err) {
       console.error("Failed to search context units:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to search context units", String(err));
     }
   },
 }));
