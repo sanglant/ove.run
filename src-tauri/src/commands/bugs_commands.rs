@@ -114,24 +114,24 @@ pub async fn start_bug_oauth(
                     let auth_json = match serde_json::to_string(&auth) {
                         Ok(j) => j,
                         Err(e) => {
-                            eprintln!("[bugs] Failed to serialize provider auth: {}", e);
+                            tracing::error!("[bugs] Failed to serialize provider auth: {}", e);
                             return;
                         }
                     };
                     let conn = match db.lock() {
                         Ok(c) => c,
                         Err(e) => {
-                            eprintln!("[bugs] Failed to lock db: {}", e);
+                            tracing::error!("[bugs] Failed to lock db: {}", e);
                             return;
                         }
                     };
                     if let Err(e) = crate::db::bugs::save_bug_auth(&conn, &project_id_bg, &auth_json) {
-                        eprintln!("[bugs] Failed to save provider auth: {}", e);
+                        tracing::error!("[bugs] Failed to save provider auth: {}", e);
                     }
                 }
-                Err(e) => eprintln!("[bugs] Token exchange failed: {}", e),
+                Err(e) => tracing::error!("[bugs] Token exchange failed: {}", e),
             },
-            Err(e) => eprintln!("[bugs] OAuth callback failed: {}", e),
+            Err(e) => tracing::error!("[bugs] OAuth callback failed: {}", e),
         }
     });
 

@@ -4,6 +4,7 @@ use crate::error::AppError;
 use crate::state::AppState;
 use crate::sandbox;
 
+#[tracing::instrument(skip(state, app))]
 #[tauri::command]
 pub async fn spawn_pty(
     app: AppHandle,

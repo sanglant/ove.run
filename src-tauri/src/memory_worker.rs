@@ -30,12 +30,12 @@ pub async fn run_memory_worker(db: DbPool, mut rx: mpsc::Receiver<MemoryWorkerEv
         match event {
             MemoryWorkerEvent::ConsolidateProject { project_id, project_path } => {
                 if let Err(e) = consolidate_project(&db, &project_id, &project_path).await {
-                    eprintln!("[memory_worker] consolidation error for {}: {}", project_id, e);
+                    tracing::error!("[memory_worker] consolidation error for {}: {}", project_id, e);
                 }
             }
             MemoryWorkerEvent::PruneProject { project_id } => {
                 if let Err(e) = prune_project(&db, &project_id) {
-                    eprintln!("[memory_worker] prune error for {}: {}", project_id, e);
+                    tracing::warn!("[memory_worker] prune error for {}: {}", project_id, e);
                 }
             }
             MemoryWorkerEvent::Shutdown => break,
@@ -48,7 +48,7 @@ fn prune_project(db: &DbPool, project_id: &str) -> Result<(), String> {
     let pruned = memory::prune_decayed_memories(&conn, project_id)
         .map_err(|e| e.to_string())?;
     if pruned > 0 {
-        eprintln!("[memory_worker] pruned {} decayed memories for {}", pruned, project_id);
+        tracing::info!("[memory_worker] pruned {} decayed memories for {}", pruned, project_id);
     }
     Ok(())
 }
@@ -155,7 +155,7 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
             .map_err(|e| e.to_string())?;
     }
 
-    eprintln!(
+    tracing::info!(
         "[memory_worker] consolidated {} memories into {} for project {}",
         source_ids.len(),
         consolidation.id,

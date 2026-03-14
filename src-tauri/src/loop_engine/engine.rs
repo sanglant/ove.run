@@ -138,7 +138,7 @@ async fn set_status_best_effort(
     status: &str,
 ) {
     if let Err(e) = set_status(db, event_tx, project_id, status).await {
-        eprintln!("[loop_engine] set_status({status}) failed: {e}");
+        tracing::error!("[loop_engine] set_status({status}) failed: {e}");
     }
 }
 
@@ -228,7 +228,7 @@ async fn run_loop_lifecycle(
             Ok(conn) => crate::db::context::list_context_units(&conn, Some(project_id))
                 .unwrap_or_default(),
             Err(e) => {
-                eprintln!("[loop_engine] context load failed: {e}");
+                tracing::error!("[loop_engine] context load failed: {e}");
                 vec![]
             }
         };
@@ -236,7 +236,7 @@ async fn run_loop_lifecycle(
         let memories = match lock_db(db) {
             Ok(conn) => search_memories(&conn, request, project_id, None, 10).unwrap_or_default(),
             Err(e) => {
-                eprintln!("[loop_engine] memory search failed: {e}");
+                tracing::error!("[loop_engine] memory search failed: {e}");
                 vec![]
             }
         };
@@ -345,7 +345,7 @@ async fn run_loop_lifecycle(
         let arbiter_st = match load_or_init_state(db, project_id) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("[loop_engine] load_or_init_state failed: {e}; using defaults");
+                tracing::warn!("[loop_engine] load_or_init_state failed: {e}; using defaults");
                 ArbiterStateRow {
                     project_id: project_id.to_string(),
                     trust_level: TrustLevel::Autonomous,
@@ -371,7 +371,7 @@ async fn run_loop_lifecycle(
         let story = match lock_db(db) {
             Ok(conn) => stories::get_next_story(&conn, project_id).unwrap_or(None),
             Err(e) => {
-                eprintln!("[loop_engine] get_next_story failed: {e}; retrying next iteration");
+                tracing::error!("[loop_engine] get_next_story failed: {e}; retrying next iteration");
                 continue;
             }
         };
@@ -383,7 +383,7 @@ async fn run_loop_lifecycle(
                 let all_done = match lock_db(db) {
                     Ok(conn) => stories::all_stories_complete(&conn, project_id).unwrap_or(false),
                     Err(e) => {
-                        eprintln!("[loop_engine] all_stories_complete failed: {e}");
+                        tracing::error!("[loop_engine] all_stories_complete failed: {e}");
                         false
                     }
                 };
@@ -461,7 +461,7 @@ async fn run_loop_lifecycle(
                 Err(_) => "claude".to_string(),
             },
             Err(e) => {
-                eprintln!("[loop_engine] agent_type query failed: {e}; using claude");
+                tracing::warn!("[loop_engine] agent_type query failed: {e}; using claude");
                 "claude".to_string()
             }
         };
@@ -484,7 +484,7 @@ async fn run_loop_lifecycle(
                     .join("\n")
             }
             Err(e) => {
-                eprintln!("[loop_engine] memory search failed: {e}");
+                tracing::error!("[loop_engine] memory search failed: {e}");
                 String::new()
             }
         };
@@ -499,7 +499,7 @@ async fn run_loop_lifecycle(
                     .join("\n")
             }
             Err(e) => {
-                eprintln!("[loop_engine] l0 summaries failed: {e}");
+                tracing::error!("[loop_engine] l0 summaries failed: {e}");
                 String::new()
             }
         };
@@ -517,7 +517,7 @@ async fn run_loop_lifecycle(
                     .unwrap_or(false)
             }
             Err(e) => {
-                eprintln!("[loop_engine] yolo_mode load failed: {e}; defaulting to false");
+                tracing::warn!("[loop_engine] yolo_mode load failed: {e}; defaulting to false");
                 false
             }
         };
@@ -539,7 +539,7 @@ async fn run_loop_lifecycle(
                     .unwrap_or_default()
             }
             Err(e) => {
-                eprintln!("[loop_engine] agent_env load failed: {e}; using empty env");
+                tracing::warn!("[loop_engine] agent_env load failed: {e}; using empty env");
                 std::collections::HashMap::new()
             }
         };
@@ -556,7 +556,7 @@ async fn run_loop_lifecycle(
                 50,
                 _app_handle.clone(),
             ) {
-                eprintln!("[loop_engine] PTY spawn error for {}: {}", story.id, e);
+                tracing::error!("[loop_engine] PTY spawn error for {}: {}", story.id, e);
             } else if matches!(
                 &agent_def.prompt_delivery,
                 Some(crate::state::PromptDelivery::InteractiveInput)
@@ -668,13 +668,13 @@ async fn run_loop_lifecycle(
                             resp.passed.unwrap_or(false)
                         }
                         Err(e) => {
-                            eprintln!("[loop_engine] arbiter judge error: {}", e);
+                            tracing::error!("[loop_engine] arbiter judge error: {}", e);
                             false
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("[loop_engine] arbiter_cli_command failed: {e}; skipping judge");
+                    tracing::warn!("[loop_engine] arbiter_cli_command failed: {e}; skipping judge");
                     true // treat as passed when settings unavailable
                 }
             }
@@ -757,7 +757,7 @@ async fn run_loop_lifecycle(
         let all_done = match lock_db(db) {
             Ok(conn) => stories::all_stories_complete(&conn, project_id).unwrap_or(false),
             Err(e) => {
-                eprintln!("[loop_engine] all_stories_complete check failed: {e}");
+                tracing::error!("[loop_engine] all_stories_complete check failed: {e}");
                 false
             }
         };

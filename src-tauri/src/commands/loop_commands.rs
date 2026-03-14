@@ -3,6 +3,7 @@ use crate::error::{AppError, lock_err};
 use crate::state::{AppState, QualityGateConfig};
 use crate::loop_engine::engine::LoopCommand;
 
+#[tracing::instrument(skip(state))]
 #[tauri::command]
 pub async fn start_loop(
     state: State<'_, AppState>,
