@@ -1,11 +1,12 @@
-export type AgentType = "claude" | "gemini" | "copilot" | "codex" | "terminal";
-export type AgentStatus =
-  | "starting"
-  | "idle"
-  | "working"
-  | "needs_input"
-  | "finished"
-  | "error";
+// Re-export auto-generated types from Rust (via ts-rs).
+// Types not listed here either have no Rust counterpart or differ from the
+// generated shape (e.g. TrustLevel uses numeric keys on the frontend;
+// AgentSettings.env_vars keeps Record<string,string> rather than optional values).
+export type { AgentType, AgentStatus, GlobalSettings, Consolidation, QualityGateConfig } from "./generated";
+
+// Import for local use within this file (re-exports alone don't bring names into scope).
+import type { AgentType, AgentStatus, GlobalSettings } from "./generated";
+
 export type TerminalLayoutMode = "single" | "grid";
 export type TerminalSplitFlow = "row" | "column";
 export type TerminalPaneDropZone = "center" | "top" | "right" | "bottom" | "left";
@@ -88,18 +89,9 @@ export interface Note {
   updated_at: string;
 }
 
-export interface GlobalSettings {
-  theme: string;
-  font_family: string;
-  font_size: number;
-  notifications_enabled: boolean;
-  minimize_to_tray: boolean;
-  terminal_scrollback: number;
-  arbiter_timeout_seconds: number;
-  arbiter_provider: string;
-  arbiter_model: string;
-}
-
+// AgentSettings and AppSettings are kept as manual definitions rather than
+// using the generated types because ts-rs emits env_vars as { [key in string]?: string }
+// (optional values), while the frontend relies on Record<string, string> throughout.
 export interface AgentSettings {
   default_yolo_mode: boolean;
   custom_args: string[];
@@ -188,15 +180,6 @@ export interface Memory {
   created_at: string;
 }
 
-export interface Consolidation {
-  id: string;
-  project_id: string;
-  source_ids_json: string;
-  summary: string;
-  insight: string;
-  created_at: string;
-}
-
 export type TrustLevel = 1 | 2 | 3;
 export type LoopStatus = "idle" | "planning" | "running" | "paused" | "completed" | "failed";
 export type StoryStatus = "pending" | "in_progress" | "completed" | "failed" | "skipped";
@@ -229,14 +212,6 @@ export const TRUST_LEVEL_LABELS: Record<TrustLevel, { name: string; description:
   2: { name: "Autonomous", description: "Run it, ask me when stuck" },
   3: { name: "Full Auto", description: "Handle everything" },
 };
-
-export interface QualityGateConfig {
-  build_command: string | null;
-  lint_command: string | null;
-  typecheck_command: string | null;
-  test_command: string | null;
-  arbiter_judge: boolean;
-}
 
 export interface GateResult {
   name: string;
