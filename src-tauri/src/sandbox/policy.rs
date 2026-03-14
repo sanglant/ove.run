@@ -50,9 +50,14 @@ pub const SYSTEM_READ_PATHS: &[&str] = &[
 ];
 
 /// Paths for common dev tool runtimes (read-only).
+/// NOTE: Binaries in .local/bin are often symlinks into .local/share (e.g.
+/// claude → .local/share/claude/...), so both must be mounted.
 pub const RUNTIME_PATHS: &[&str] = &[
     ".nvm",
     ".local/share/fnm",
+    ".local/share/claude",
+    ".local/share/gemini",
+    ".local/share/codex",
     ".cargo",
     ".rustup",
     ".local/bin",
