@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Shield } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
-import { listAgentTypes } from "@/lib/tauri";
+import { useProjectStore } from "@/stores/projectStore";
+import { listAgentTypes, setMaxIterations as setMaxIterationsFn, startLoop } from "@/lib/tauri";
 import type { AgentType, AgentDefinition, AgentSession } from "@/types";
 import {
   Modal,
   TextInput,
+  Textarea,
+  Slider,
+  NumberInput,
   Button,
   Group,
   Switch,
@@ -37,9 +41,13 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
   const [label, setLabel] = useState(initialLabel ?? "");
   const [agentDefs, setAgentDefs] = useState<AgentDefinition[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sandboxed, setSandboxed] = useState(false);
+  const [arbiterEnabled, setArbiterEnabled] = useState(false);
+  const [maxIterations, setMaxIterations] = useState(10);
+  const [initialPromptText, setInitialPromptText] = useState(initialPrompt ?? "");
 
   const { addSession } = useSessionStore();
-  const { settings } = useSettingsStore();
+  const { settings, sandboxAvailable } = useSettingsStore();
   const setActivePanel = useUiStore((s) => s.setActivePanel);
 
   useEffect(() => {
@@ -108,8 +116,9 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
     }
   }, [agentType, settings.agents]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!projectId) return;
+    if (arbiterEnabled && !initialPromptText.trim()) return;
     setLoading(true);
 
     const agentDef = agentDefs.find((d) => d.agent_type === agentType);
@@ -126,11 +135,28 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       createdAt: new Date().toISOString(),
       label: sessionLabel,
       isResumed: false,
-      ...(initialPrompt ? { initialPrompt } : {}),
+      sandboxed,
+      arbiterEnabled,
+      maxIterations: arbiterEnabled ? maxIterations : undefined,
+      ...(initialPromptText.trim() ? { initialPrompt: initialPromptText.trim() } : {}),
     };
 
     addSession(session);
     setActivePanel("terminal");
+
+    if (arbiterEnabled) {
+      try {
+        const projects = useProjectStore.getState().projects;
+        const project = projects.find((p) => p.id === projectId);
+        if (project) {
+          await setMaxIterationsFn(projectId, maxIterations);
+          await startLoop(projectId, project.path, initialPromptText.trim());
+        }
+      } catch (err) {
+        console.error("Failed to start arbiter loop:", err);
+      }
+    }
+
     setLoading(false);
     onClose();
   };
@@ -218,6 +244,25 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           }}
         />
 
+        {/* Initial prompt textarea */}
+        <Textarea
+          label={
+            <>
+              Initial prompt{" "}
+              <Text component="span" size="xs" c="var(--text-secondary)" fw={400}>
+                {arbiterEnabled ? "(required for loop)" : "(optional)"}
+              </Text>
+            </>
+          }
+          value={initialPromptText}
+          onChange={(e) => setInitialPromptText(e.target.value)}
+          placeholder="What should the agent work on?"
+          minRows={2}
+          maxRows={4}
+          autosize
+          styles={INPUT_STYLES}
+        />
+
         {/* YOLO mode toggle — hidden for plain terminal */}
         {agentType !== "terminal" && (
         <Stack gap="xs">
@@ -255,6 +300,83 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           )}
         </Stack>
         )}
+
+        {/* Sandbox toggle */}
+        {sandboxAvailable && agentType !== "terminal" && (
+          <Group justify="space-between">
+            <Group gap="xs">
+              <Shield size={14} color="var(--text-secondary)" />
+              <SectionTitle mb={0}>Isolated Environment</SectionTitle>
+            </Group>
+            <Switch
+              checked={sandboxed}
+              onChange={(e) => setSandboxed(e.currentTarget.checked)}
+              styles={{
+                track: {
+                  backgroundColor: sandboxed ? undefined : "var(--bg-tertiary)",
+                  borderColor: "var(--bg-tertiary)",
+                },
+              }}
+            />
+          </Group>
+        )}
+
+        {/* Arbiter session toggle */}
+        {agentType !== "terminal" && (
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <SectionTitle mb={0}>Arbiter Session</SectionTitle>
+              <Switch
+                checked={arbiterEnabled}
+                onChange={(e) => setArbiterEnabled(e.currentTarget.checked)}
+                color="cyan"
+                styles={{
+                  track: {
+                    backgroundColor: arbiterEnabled ? undefined : "var(--bg-tertiary)",
+                    borderColor: "var(--bg-tertiary)",
+                  },
+                }}
+              />
+            </Group>
+
+            {arbiterEnabled && (
+              <Stack gap="xs" pl="xs" style={{ borderLeft: "2px solid var(--border)" }}>
+                <Group justify="space-between" align="center">
+                  <Text size="xs" c="var(--text-secondary)">Max loops</Text>
+                  <Group gap="xs" align="center">
+                    <Slider
+                      value={maxIterations}
+                      onChange={setMaxIterations}
+                      min={1}
+                      max={50}
+                      step={1}
+                      style={{ width: 120 }}
+                      color="cyan"
+                      size="xs"
+                      styles={{
+                        track: { backgroundColor: "var(--bg-tertiary)" },
+                      }}
+                    />
+                    <NumberInput
+                      value={maxIterations}
+                      onChange={(val) => setMaxIterations(typeof val === "number" ? Math.max(1, Math.min(50, val)) : 10)}
+                      min={1}
+                      max={50}
+                      step={1}
+                      size="xs"
+                      style={{ width: 60 }}
+                      styles={INPUT_STYLES}
+                      hideControls
+                    />
+                  </Group>
+                </Group>
+                <Text size="xs" c="var(--text-tertiary)">
+                  Each loop iteration uses one CLI session. Higher values increase token usage.
+                </Text>
+              </Stack>
+            )}
+          </Stack>
+        )}
       </Stack>
 
       {/* Footer */}
@@ -262,7 +384,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
         <Button variant="subtle" onClick={onClose} styles={BUTTON_STYLES.subtle}>
           Cancel
         </Button>
-        <Button onClick={handleStart} disabled={loading || !projectId} styles={BUTTON_STYLES.primary}>
+        <Button onClick={handleStart} disabled={loading || !projectId || (arbiterEnabled && !initialPromptText.trim())} styles={BUTTON_STYLES.primary}>
           {loading ? "Starting..." : "Start Session"}
         </Button>
       </ModalFooter>
