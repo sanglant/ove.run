@@ -168,6 +168,8 @@ export interface ContextUnit {
   l2_content: string | null;
   created_at: string;
   updated_at: string;
+  is_bundled: boolean;
+  bundled_slug: string | null;
 }
 
 export interface ContextAssignment {

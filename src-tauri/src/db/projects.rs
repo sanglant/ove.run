@@ -88,7 +88,7 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
     let context_units_to_delete: Vec<(i64, ContextUnit)> = {
         let mut stmt = conn.prepare(
             "SELECT rid, id, project_id, name, type, scope, tags_json, \
-             l0_summary, l1_overview, l2_content, created_at, updated_at \
+             l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
              FROM context_units WHERE project_id = ?1",
         )?;
         let rows = stmt.query_map(params![id], |row| {
@@ -104,6 +104,8 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
                 l2_content: row.get(9)?,
                 created_at: row.get(10)?,
                 updated_at: row.get(11)?,
+                is_bundled: row.get::<_, i32>(12).unwrap_or(0) != 0,
+                bundled_slug: row.get(13).ok(),
             }))
         })?;
         rows.collect::<Result<Vec<_>, _>>()?

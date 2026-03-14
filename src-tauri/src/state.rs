@@ -122,6 +122,9 @@ pub struct ContextUnit {
     pub l2_content: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub is_bundled: bool,
+    pub bundled_slug: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

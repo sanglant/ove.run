@@ -64,6 +64,8 @@ fn upsert_bundled(conn: &Connection, bundled: &BundledUnit) -> Result<(), String
         l2_content: Some(bundled.l2_content.to_string()),
         created_at: now.clone(),
         updated_at: now,
+        is_bundled: true,
+        bundled_slug: Some(bundled.slug.to_string()),
     };
     context::upsert_bundled_unit(conn, &unit, bundled.slug)
         .map_err(|e| e.to_string())

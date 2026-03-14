@@ -14,6 +14,8 @@ fn row_to_context_unit(row: &rusqlite::Row) -> Result<ContextUnit, rusqlite::Err
         l2_content: row.get("l2_content")?,
         created_at: row.get("created_at")?,
         updated_at: row.get("updated_at")?,
+        is_bundled: row.get::<_, i32>("is_bundled").unwrap_or(0) != 0,
+        bundled_slug: row.get("bundled_slug").ok(),
     })
 }
 
@@ -47,7 +49,7 @@ pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result
     match project_id {
         Some(pid) => {
             let mut stmt = conn.prepare(
-                "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at \
+                "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
                  FROM context_units WHERE project_id = ?1 OR project_id IS NULL ORDER BY updated_at DESC"
             )?;
             let rows = stmt.query_map(params![pid], |row| row_to_context_unit(row))?;
@@ -57,7 +59,7 @@ pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result
         }
         None => {
             let mut stmt = conn.prepare(
-                "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at \
+                "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
                  FROM context_units WHERE project_id IS NULL ORDER BY updated_at DESC"
             )?;
             let rows = stmt.query_map([], |row| row_to_context_unit(row))?;
@@ -71,7 +73,7 @@ pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result
 
 pub fn get_context_unit(conn: &Connection, id: &str) -> Result<ContextUnit, rusqlite::Error> {
     conn.query_row(
-        "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at \
+        "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
          FROM context_units WHERE id = ?1",
         params![id],
         |row| row_to_context_unit(row),
@@ -80,8 +82,8 @@ pub fn get_context_unit(conn: &Connection, id: &str) -> Result<ContextUnit, rusq
 
 pub fn create_context_unit(conn: &Connection, unit: &ContextUnit) -> Result<(), rusqlite::Error> {
     conn.execute(
-        "INSERT INTO context_units (id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        "INSERT INTO context_units (id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         params![
             unit.id,
             unit.project_id,
@@ -94,6 +96,8 @@ pub fn create_context_unit(conn: &Connection, unit: &ContextUnit) -> Result<(), 
             unit.l2_content,
             unit.created_at,
             unit.updated_at,
+            unit.is_bundled as i32,
+            unit.bundled_slug,
         ],
     )?;
     sync_fts_insert(conn, unit)?;
@@ -170,7 +174,7 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
         Some(pid) => {
             let mut stmt = conn.prepare(
                 "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
-                 cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at \
+                 cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
                  FROM context_units cu \
                  JOIN context_units_fts fts ON cu.rid = fts.rowid \
                  WHERE context_units_fts MATCH ?1 AND (cu.project_id = ?2 OR cu.project_id IS NULL) \
@@ -184,7 +188,7 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
         None => {
             let mut stmt = conn.prepare(
                 "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
-                 cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at \
+                 cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
                  FROM context_units cu \
                  JOIN context_units_fts fts ON cu.rid = fts.rowid \
                  WHERE context_units_fts MATCH ?1 AND cu.project_id IS NULL \
@@ -236,7 +240,7 @@ pub fn unassign_context_from_session(conn: &Connection, unit_id: &str, session_i
 pub fn list_session_context(conn: &Connection, session_id: &str) -> Result<Vec<ContextUnit>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
-         cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at \
+         cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
          FROM context_units cu \
          JOIN context_assignments ca ON cu.id = ca.context_unit_id \
          WHERE ca.session_id = ?1 \
@@ -269,7 +273,7 @@ pub fn remove_project_default(conn: &Connection, unit_id: &str, project_id: &str
 pub fn list_project_defaults(conn: &Connection, project_id: &str) -> Result<Vec<ContextUnit>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
-         cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at \
+         cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
          FROM context_units cu \
          JOIN context_defaults cd ON cu.id = cd.context_unit_id \
          WHERE cd.project_id = ?1 \

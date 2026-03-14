@@ -102,6 +102,8 @@ export function ContextUnitEditor({ opened, unit, projectId, onSave, onClose }: 
         l2_content: l2Content.trim() || null,
         created_at: unit?.created_at ?? now,
         updated_at: now,
+        is_bundled: unit?.is_bundled ?? false,
+        bundled_slug: unit?.bundled_slug ?? null,
       };
       await onSave(saved);
       onClose();
