@@ -489,12 +489,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         state.activeSessionId,
       );
 
+      let layout = placeSessionInLayout(currentLayout, session.id);
+
+      // Auto-create artifacts pane for arbiter sessions
+      if (session.arbiterEnabled) {
+        const terminalPaneId = layout.activePaneId;
+        const artifactsPane: TerminalPaneLayoutNode = {
+          type: "pane",
+          id: createNodeId("pane"),
+          sessionId: null,
+          paneType: "artifacts",
+        };
+        const terminalPane = findPaneById(layout.root, terminalPaneId);
+        if (terminalPane) {
+          const split = createSplit("row", terminalPane, artifactsPane, 0.7);
+          layout = {
+            ...layout,
+            root: replacePane(layout.root, terminalPaneId, split),
+          };
+        }
+      }
+
       return {
         sessions,
         activeSessionId: session.id,
         projectLayouts: {
           ...state.projectLayouts,
-          [session.projectId]: placeSessionInLayout(currentLayout, session.id),
+          [session.projectId]: layout,
         },
       };
     });
