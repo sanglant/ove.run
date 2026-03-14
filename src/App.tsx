@@ -8,8 +8,6 @@ import { ContextPanel } from "@/features/context/components/ContextPanel";
 import { NotesPanel } from "@/features/notes/components/NotesPanel";
 import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
-import { LoopPanel } from "@/features/loop/components/LoopPanel";
-import { LoopFloatingPreview } from "@/features/loop/components/LoopFloatingPreview";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { StatsPanel } from "@/features/stats/components/StatsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
@@ -127,13 +125,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Loop panel — always mounted to preserve state across panel switches */}
-          <div
-            className={cn(classes.panelContainer, activePanel !== "loop" && classes.terminalContainerHidden)}
-          >
-            <LoopPanel />
-          </div>
-
           {/* Notifications panel */}
           {activePanel === "notifications" && (
             <div className={classes.panelContainer}>
@@ -160,9 +151,6 @@ export default function App() {
 
       {/* Agent feedback modal — always rendered, visibility driven by store queue */}
       <AgentFeedbackModal />
-
-      {/* Floating loop preview — visible from any panel when loop is active */}
-      <LoopFloatingPreview />
 
       {/* Toast notifications — rendered as a fixed overlay */}
       <ToastContainer />

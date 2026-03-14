@@ -7,7 +7,6 @@ type ActivePanel =
   | "notes"
   | "bugs"
   | "memory"
-  | "loop"
   | "settings"
   | "notifications"
   | "stats";

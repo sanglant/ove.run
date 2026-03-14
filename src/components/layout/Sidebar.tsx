@@ -12,7 +12,6 @@ import {
   ChevronDown,
   Folder,
   Brain,
-  RotateCw,
   BarChart3,
   Shield,
 } from "lucide-react";
@@ -172,11 +171,6 @@ export function Sidebar() {
       id: "memory" as const,
       icon: <Brain size={16} />,
       label: "Memory",
-    },
-    {
-      id: "loop" as const,
-      icon: <RotateCw size={16} />,
-      label: "Loop",
     },
     {
       id: "stats" as const,
