@@ -14,6 +14,7 @@ import {
   Brain,
   RotateCw,
   BarChart3,
+  Shield,
 } from "lucide-react";
 import {
   ActionIcon,
@@ -340,6 +341,8 @@ export function Sidebar() {
                             <Text size="sm" className={classes.sessionLabel}>
                               {session.label}
                             </Text>
+                            {/* Sandboxed indicator */}
+                            {session.sandboxed && <Shield size={11} color="var(--text-secondary)" />}
                             {/* YOLO badge */}
                             {session.yoloMode && (
                               <span className={classes.yoloBadge}>
