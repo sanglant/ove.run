@@ -41,6 +41,16 @@ const MIGRATIONS: &[Migration] = &[
         description: "reduce default max_iterations from 50 to 10",
         sql: "UPDATE arbiter_state SET max_iterations = 10 WHERE max_iterations = 50",
     },
+    Migration {
+        version: 2,
+        description: "add is_bundled column to context_units",
+        sql: "ALTER TABLE context_units ADD COLUMN is_bundled INTEGER NOT NULL DEFAULT 0;",
+    },
+    Migration {
+        version: 3,
+        description: "add bundled_slug column to context_units",
+        sql: "ALTER TABLE context_units ADD COLUMN bundled_slug TEXT;",
+    },
 ];
 
 fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
