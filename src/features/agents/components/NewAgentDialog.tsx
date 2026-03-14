@@ -244,25 +244,6 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
           }}
         />
 
-        {/* Initial prompt textarea */}
-        <Textarea
-          label={
-            <>
-              Initial prompt{" "}
-              <Text component="span" size="xs" c="var(--text-secondary)" fw={400}>
-                {arbiterEnabled ? "(required for loop)" : "(optional)"}
-              </Text>
-            </>
-          }
-          value={initialPromptText}
-          onChange={(e) => setInitialPromptText(e.target.value)}
-          placeholder="What should the agent work on?"
-          minRows={2}
-          maxRows={4}
-          autosize
-          styles={INPUT_STYLES}
-        />
-
         {/* YOLO mode toggle — hidden for plain terminal */}
         {agentType !== "terminal" && (
         <Stack gap="xs">
@@ -373,6 +354,20 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
                 <Text size="xs" c="var(--text-tertiary)">
                   Each loop iteration uses one CLI session. Higher values increase token usage.
                 </Text>
+                <Textarea
+                  label={
+                    <Text size="xs" c="var(--text-secondary)" fw={500}>
+                      Initial prompt (required)
+                    </Text>
+                  }
+                  value={initialPromptText}
+                  onChange={(e) => setInitialPromptText(e.target.value)}
+                  placeholder="What should the agent work on?"
+                  minRows={2}
+                  maxRows={4}
+                  autosize
+                  styles={INPUT_STYLES}
+                />
               </Stack>
             )}
           </Stack>
