@@ -1,10 +1,11 @@
 use crate::db::notes::Note;
+use crate::error::{AppError, lock_err};
 use crate::state::AppState;
 use tauri::State;
 
-fn validate_non_empty(value: &str, field: &str) -> Result<(), String> {
+fn validate_non_empty(value: &str, field: &str) -> Result<(), AppError> {
     if value.trim().is_empty() {
-        Err(format!("{} must not be empty", field))
+        Err(AppError::Validation(format!("{} must not be empty", field)))
     } else {
         Ok(())
     }
@@ -14,11 +15,10 @@ fn validate_non_empty(value: &str, field: &str) -> Result<(), String> {
 pub async fn list_notes(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Vec<Note>, String> {
+) -> Result<Vec<Note>, AppError> {
     validate_non_empty(&project_id, "project_id")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::notes::list_notes(&conn, &project_id)
-        .map_err(|e| e.to_string())
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::notes::list_notes(&conn, &project_id).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -27,7 +27,7 @@ pub async fn create_note(
     project_id: String,
     title: String,
     content: String,
-) -> Result<Note, String> {
+) -> Result<Note, AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&title, "title")?;
     let note = Note {
@@ -39,9 +39,8 @@ pub async fn create_note(
         created_at: chrono::Utc::now().to_rfc3339(),
         updated_at: chrono::Utc::now().to_rfc3339(),
     };
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::notes::create_note(&conn, &note)
-        .map_err(|e| e.to_string())?;
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::notes::create_note(&conn, &note)?;
     Ok(note)
 }
 
@@ -50,12 +49,11 @@ pub async fn read_note_content(
     state: State<'_, AppState>,
     project_id: String,
     note_id: String,
-) -> Result<String, String> {
+) -> Result<String, AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&note_id, "note_id")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    let note = crate::db::notes::read_note(&conn, &project_id, &note_id)
-        .map_err(|e| e.to_string())?;
+    let conn = state.db.lock().map_err(lock_err)?;
+    let note = crate::db::notes::read_note(&conn, &project_id, &note_id)?;
     Ok(note.content)
 }
 
@@ -66,13 +64,12 @@ pub async fn update_note(
     note_id: String,
     title: String,
     content: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&note_id, "note_id")?;
     validate_non_empty(&title, "title")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::notes::update_note(&conn, &note_id, &title, &content)
-        .map_err(|e| e.to_string())
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::notes::update_note(&conn, &note_id, &title, &content).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -80,12 +77,11 @@ pub async fn delete_note(
     state: State<'_, AppState>,
     project_id: String,
     note_id: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&note_id, "note_id")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::notes::delete_note(&conn, &project_id, &note_id)
-        .map_err(|e| e.to_string())
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::notes::delete_note(&conn, &project_id, &note_id).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -94,10 +90,9 @@ pub async fn set_note_context_toggle(
     project_id: String,
     note_id: String,
     include: bool,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&note_id, "note_id")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::notes::set_include_in_context(&conn, &note_id, include)
-        .map_err(|e| e.to_string())
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::notes::set_include_in_context(&conn, &note_id, include).map_err(Into::into)
 }

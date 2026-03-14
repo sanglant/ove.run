@@ -104,7 +104,9 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
     let prompt = CONSOLIDATION_PROMPT_TEMPLATE.replace("{memories}", &memories_text);
 
     // 5. Call arbiter
-    let response = run_arbiter_cli(&prompt, project_path, &cli_command, model.as_deref()).await?;
+    let response = run_arbiter_cli(&prompt, project_path, &cli_command, model.as_deref())
+        .await
+        .map_err(|e| e.to_string())?;
 
     // 6. Parse SUMMARY: and INSIGHT: lines
     let mut summary = String::new();

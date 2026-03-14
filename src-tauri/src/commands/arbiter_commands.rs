@@ -1,6 +1,7 @@
 use tauri::State;
 use uuid::Uuid;
 use chrono::Utc;
+use crate::error::{AppError, lock_err};
 use crate::state::{AppState, ArbiterStateRow, Story, TrustLevel};
 use crate::db::{arbiter_state, stories, context, memory};
 use crate::arbiter::actions::ArbiterAction;
@@ -10,9 +11,9 @@ use crate::arbiter::dispatch;
 pub async fn get_arbiter_state(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Option<ArbiterStateRow>, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    arbiter_state::get_arbiter_state(&conn, &project_id).map_err(|e| e.to_string())
+) -> Result<Option<ArbiterStateRow>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    arbiter_state::get_arbiter_state(&conn, &project_id).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -20,12 +21,9 @@ pub async fn set_trust_level(
     state: State<'_, AppState>,
     project_id: String,
     level: i32,
-) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    if arbiter_state::get_arbiter_state(&conn, &project_id)
-        .map_err(|e| e.to_string())?
-        .is_none()
-    {
+) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    if arbiter_state::get_arbiter_state(&conn, &project_id)?.is_none() {
         let default = ArbiterStateRow {
             project_id: project_id.clone(),
             trust_level: TrustLevel::from_i32(level),
@@ -35,10 +33,9 @@ pub async fn set_trust_level(
             max_iterations: 50,
             last_activity_at: None,
         };
-        arbiter_state::upsert_arbiter_state(&conn, &default).map_err(|e| e.to_string())?;
+        arbiter_state::upsert_arbiter_state(&conn, &default)?;
     } else {
-        arbiter_state::set_trust_level(&conn, &project_id, TrustLevel::from_i32(level))
-            .map_err(|e| e.to_string())?;
+        arbiter_state::set_trust_level(&conn, &project_id, TrustLevel::from_i32(level))?;
     }
     Ok(())
 }
@@ -49,14 +46,12 @@ pub async fn decompose_request(
     project_id: String,
     project_path: String,
     user_request: String,
-) -> Result<Vec<Story>, String> {
+) -> Result<Vec<Story>, AppError> {
     // 1. Load context units and relevant memories
     let (context_units, memories_list) = {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        let ctx = context::list_context_units(&conn, Some(&project_id))
-            .map_err(|e| e.to_string())?;
-        let mems = memory::search_memories(&conn, &user_request, &project_id, None, 10)
-            .map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(lock_err)?;
+        let ctx = context::list_context_units(&conn, Some(&project_id))?;
+        let mems = memory::search_memories(&conn, &user_request, &project_id, None, 10)?;
         (ctx, mems)
     };
 
@@ -80,7 +75,9 @@ pub async fn decompose_request(
         memories: memories_list,
     };
     let response =
-        dispatch::dispatch(action, &project_path, &cli_command, model.as_deref()).await?;
+        dispatch::dispatch(action, &project_path, &cli_command, model.as_deref())
+            .await
+            .map_err(AppError::Other)?;
 
     // 4. Convert StoryDrafts to Stories and save
     let drafts = response.stories.unwrap_or_default();
@@ -119,10 +116,9 @@ pub async fn decompose_request(
 
     // Save to DB
     {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        stories::create_stories_batch(&conn, &created_stories).map_err(|e| e.to_string())?;
-        arbiter_state::set_loop_status(&conn, &project_id, "planning")
-            .map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(lock_err)?;
+        stories::create_stories_batch(&conn, &created_stories)?;
+        arbiter_state::set_loop_status(&conn, &project_id, "planning")?;
     }
 
     Ok(created_stories)
@@ -132,21 +128,21 @@ pub async fn decompose_request(
 pub async fn list_stories(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Vec<Story>, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    stories::list_stories(&conn, &project_id).map_err(|e| e.to_string())
+) -> Result<Vec<Story>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    stories::list_stories(&conn, &project_id).map_err(Into::into)
 }
 
 #[tauri::command]
-pub async fn update_story(state: State<'_, AppState>, story: Story) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    stories::update_story(&conn, &story).map_err(|e| e.to_string())
+pub async fn update_story(state: State<'_, AppState>, story: Story) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    stories::update_story(&conn, &story).map_err(Into::into)
 }
 
 #[tauri::command]
-pub async fn delete_story(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    stories::delete_story(&conn, &id).map_err(|e| e.to_string())
+pub async fn delete_story(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    stories::delete_story(&conn, &id).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -154,14 +150,14 @@ pub async fn reorder_stories(
     state: State<'_, AppState>,
     project_id: String,
     story_ids: Vec<String>,
-) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
     // First = highest priority (longest distance from 0)
     for (i, id) in story_ids.iter().enumerate() {
         let priority = (story_ids.len() - i) as i32;
         if let Ok(mut story) = stories::get_story(&conn, id) {
             story.priority = priority;
-            stories::update_story(&conn, &story).map_err(|e| e.to_string())?;
+            stories::update_story(&conn, &story)?;
         }
     }
     // Suppress unused variable warning from project_id (kept for API clarity)

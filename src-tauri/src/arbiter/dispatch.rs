@@ -9,7 +9,9 @@ pub async fn dispatch(
     model: Option<&str>,
 ) -> Result<ArbiterResponse, String> {
     let prompt = build_prompt(&action);
-    let raw = run_arbiter_cli(&prompt, project_path, cli_command, model).await?;
+    let raw = run_arbiter_cli(&prompt, project_path, cli_command, model)
+        .await
+        .map_err(|e| e.to_string())?;
     parse_response(&action, &raw)
 }
 

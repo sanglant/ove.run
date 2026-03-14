@@ -1,10 +1,11 @@
 use chrono::Utc;
 use tauri::State;
 use uuid::Uuid;
+use crate::error::{AppError, lock_err};
 use crate::state::{AppState, Project};
 
 #[tauri::command]
-pub async fn list_projects(state: State<'_, AppState>) -> Result<Vec<Project>, String> {
+pub async fn list_projects(state: State<'_, AppState>) -> Result<Vec<Project>, AppError> {
     let projects = state.projects.read().await;
     Ok(projects.clone())
 }
@@ -14,7 +15,7 @@ pub async fn add_project(
     state: State<'_, AppState>,
     name: String,
     path: String,
-) -> Result<Project, String> {
+) -> Result<Project, AppError> {
     let git_enabled = std::path::Path::new(&path).join(".git").exists();
 
     let project = Project {
@@ -28,9 +29,8 @@ pub async fn add_project(
     };
 
     {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        crate::db::projects::insert_project(&conn, &project)
-            .map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(lock_err)?;
+        crate::db::projects::insert_project(&conn, &project)?;
     }
 
     let mut projects = state.projects.write().await;
@@ -43,11 +43,10 @@ pub async fn add_project(
 pub async fn remove_project(
     state: State<'_, AppState>,
     id: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        crate::db::projects::delete_project(&conn, &id)
-            .map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(lock_err)?;
+        crate::db::projects::delete_project(&conn, &id)?;
     }
 
     let mut projects = state.projects.write().await;
@@ -55,7 +54,7 @@ pub async fn remove_project(
     projects.retain(|p| p.id != id);
 
     if projects.len() == len_before {
-        return Err(format!("Project {} not found", id));
+        return Err(AppError::NotFound(format!("Project {} not found", id)));
     }
 
     Ok(())
@@ -65,18 +64,17 @@ pub async fn remove_project(
 pub async fn update_project(
     state: State<'_, AppState>,
     updated_project: Project,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     {
-        let conn = state.db.lock().map_err(|e| e.to_string())?;
-        crate::db::projects::update_project(&conn, &updated_project)
-            .map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(lock_err)?;
+        crate::db::projects::update_project(&conn, &updated_project)?;
     }
 
     let mut projects = state.projects.write().await;
     let pos = projects
         .iter()
         .position(|p| p.id == updated_project.id)
-        .ok_or_else(|| format!("Project {} not found", updated_project.id))?;
+        .ok_or_else(|| AppError::NotFound(format!("Project {} not found", updated_project.id)))?;
 
     projects[pos] = updated_project;
     Ok(())
@@ -89,9 +87,9 @@ pub async fn run_arbiter_cli(
     project_path: &str,
     cli_command: &str,
     model: Option<&str>,
-) -> Result<String, String> {
+) -> Result<String, AppError> {
     let tmp_dir = tempfile::tempdir()
-        .map_err(|e| format!("Failed to create temp dir for arbiter: {}", e))?;
+        .map_err(|e| AppError::Other(format!("Failed to create temp dir for arbiter: {}", e)))?;
 
     let mut cmd = tokio::process::Command::new(cli_command);
     if cli_command == "claude" {
@@ -109,14 +107,14 @@ pub async fn run_arbiter_cli(
     let output = cmd
         .output()
         .await
-        .map_err(|e| format!("Failed to run {} for arbiter review: {}", cli_command, e))?;
+        .map_err(|e| AppError::Other(format!("Failed to run {} for arbiter review: {}", cli_command, e)))?;
 
     if output.status.success() {
         String::from_utf8(output.stdout)
-            .map_err(|e| format!("Invalid UTF-8 in arbiter output: {}", e))
+            .map_err(|e| AppError::Other(format!("Invalid UTF-8 in arbiter output: {}", e)))
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Arbiter review process failed: {}", stderr))
+        Err(AppError::Other(format!("Arbiter review process failed: {}", stderr)))
     }
 }
 
@@ -130,7 +128,7 @@ pub async fn arbiter_review(
     project_path: String,
     cli_command: Option<String>,
     model: Option<String>,
-) -> Result<String, String> {
+) -> Result<String, AppError> {
     let command = cli_command.unwrap_or_else(|| "claude".to_string());
     run_arbiter_cli(&prompt, &project_path, &command, model.as_deref()).await
 }
@@ -138,7 +136,7 @@ pub async fn arbiter_review(
 /// Return known model aliases and IDs for a given CLI agent tool.
 /// Uses official documentation as source for aliases.
 #[tauri::command]
-pub async fn list_cli_models(cli_command: String) -> Result<Vec<String>, String> {
+pub async fn list_cli_models(cli_command: String) -> Result<Vec<String>, AppError> {
     let cmd = cli_command.trim().split_whitespace().next().unwrap_or("claude");
 
     match cmd {

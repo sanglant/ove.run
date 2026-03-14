@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::agents::registry::get_agent_definitions;
+use crate::error::AppError;
 use crate::state::AgentType;
 
 /// Serializable DTO for agent definitions (sent to frontend)
@@ -18,7 +19,7 @@ pub struct AgentDefinitionDto {
 }
 
 #[tauri::command]
-pub async fn list_agent_types() -> Result<Vec<AgentDefinitionDto>, String> {
+pub async fn list_agent_types() -> Result<Vec<AgentDefinitionDto>, AppError> {
     let defs = get_agent_definitions();
     let dtos = defs
         .into_iter()

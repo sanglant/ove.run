@@ -6,38 +6,39 @@ use crate::bugs::{
     provider::{BugItem, BugProvider, ProviderAuth, ProviderConfig},
 };
 use crate::db::init::DbPool;
+use crate::error::{AppError, lock_err};
 use crate::state::AppState;
 
-fn validate_non_empty(value: &str, field: &str) -> Result<(), String> {
+fn validate_non_empty(value: &str, field: &str) -> Result<(), AppError> {
     if value.trim().is_empty() {
-        Err(format!("{} must not be empty", field))
+        Err(AppError::Validation(format!("{} must not be empty", field)))
     } else {
         Ok(())
     }
 }
 
-fn load_provider_config_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderConfig>, String> {
-    let conn = db.lock().map_err(|e| e.to_string())?;
-    match crate::db::bugs::load_bug_config(&conn, project_id).map_err(|e| e.to_string())? {
+fn load_provider_config_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderConfig>, AppError> {
+    let conn = db.lock().map_err(lock_err)?;
+    match crate::db::bugs::load_bug_config(&conn, project_id)? {
         Some((_provider, config_json)) => {
             let config: ProviderConfig = serde_json::from_str(&config_json)
-                .map_err(|e| format!("Failed to parse provider config: {}", e))?;
+                .map_err(|e| AppError::Other(format!("Failed to parse provider config: {}", e)))?;
             Ok(Some(config))
         }
         None => Ok(None),
     }
 }
 
-fn load_provider_auth_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderAuth>, String> {
-    let conn = db.lock().map_err(|e| e.to_string())?;
-    match crate::db::bugs::load_bug_auth(&conn, project_id).map_err(|e| e.to_string())? {
+fn load_provider_auth_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderAuth>, AppError> {
+    let conn = db.lock().map_err(lock_err)?;
+    match crate::db::bugs::load_bug_auth(&conn, project_id)? {
         Some(auth_json) => {
             // Empty or default '{}' means no auth
             if auth_json.trim().is_empty() || auth_json.trim() == "{}" {
                 return Ok(None);
             }
             let auth: ProviderAuth = serde_json::from_str(&auth_json)
-                .map_err(|e| format!("Failed to parse provider auth: {}", e))?;
+                .map_err(|e| AppError::Other(format!("Failed to parse provider auth: {}", e)))?;
             Ok(Some(auth))
         }
         None => Ok(None),
@@ -48,7 +49,7 @@ fn load_provider_auth_from_db(db: &DbPool, project_id: &str) -> Result<Option<Pr
 pub async fn get_bug_provider_config(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Option<ProviderConfig>, String> {
+) -> Result<Option<ProviderConfig>, AppError> {
     validate_non_empty(&project_id, "project_id")?;
     load_provider_config_from_db(&state.db, &project_id)
 }
@@ -58,17 +59,17 @@ pub async fn save_bug_provider_config(
     state: State<'_, AppState>,
     project_id: String,
     config: ProviderConfig,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     validate_non_empty(&project_id, "project_id")?;
     let provider = serde_json::to_string(&config.provider)
-        .map_err(|e| e.to_string())?
+        .map_err(|e| AppError::Other(e.to_string()))?
         .trim_matches('"')
         .to_string();
     let config_json = serde_json::to_string(&config)
-        .map_err(|e| format!("Failed to serialize provider config: {}", e))?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::Other(format!("Failed to serialize provider config: {}", e)))?;
+    let conn = state.db.lock().map_err(lock_err)?;
     crate::db::bugs::save_bug_config(&conn, &project_id, &provider, &config_json)
-        .map_err(|e| e.to_string())
+        .map_err(Into::into)
 }
 
 /// Binds a random localhost port, builds the OAuth authorization URL, then
@@ -83,23 +84,25 @@ pub async fn save_bug_provider_config(
 pub async fn start_bug_oauth(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, AppError> {
     validate_non_empty(&project_id, "project_id")?;
 
     let config = load_provider_config_from_db(&state.db, &project_id)?
-        .ok_or("No provider configured")?;
+        .ok_or_else(|| AppError::Other("No provider configured".to_string()))?;
 
     // Bind on a random port before building the auth URL so we know the port.
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
-        .map_err(|e| format!("Failed to bind OAuth listener: {}", e))?;
+        .map_err(|e| AppError::Other(format!("Failed to bind OAuth listener: {}", e)))?;
     let port = listener
         .local_addr()
-        .map_err(|e| e.to_string())?
+        .map_err(|e| AppError::Io(e))?
         .port();
     let redirect_uri = format!("http://127.0.0.1:{}", port);
 
-    let result = oauth::start_oauth(&config, &redirect_uri).await?;
+    let result = oauth::start_oauth(&config, &redirect_uri)
+        .await
+        .map_err(AppError::Other)?;
 
     // Clone the db pool for the background task
     let db = state.db.clone();
@@ -142,7 +145,7 @@ pub async fn start_bug_oauth(
 pub async fn check_bug_auth(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<bool, String> {
+) -> Result<bool, AppError> {
     validate_non_empty(&project_id, "project_id")?;
     Ok(load_provider_auth_from_db(&state.db, &project_id)?.is_some())
 }
@@ -151,18 +154,18 @@ pub async fn check_bug_auth(
 pub async fn list_bugs(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Vec<BugItem>, String> {
+) -> Result<Vec<BugItem>, AppError> {
     validate_non_empty(&project_id, "project_id")?;
 
     let config = load_provider_config_from_db(&state.db, &project_id)?
-        .ok_or("No provider configured")?;
+        .ok_or_else(|| AppError::Other("No provider configured".to_string()))?;
     let auth = load_provider_auth_from_db(&state.db, &project_id)?
-        .ok_or("Not authenticated")?;
+        .ok_or_else(|| AppError::Other("Not authenticated".to_string()))?;
 
     match config.provider {
-        BugProvider::Jira => crate::bugs::jira::list_bugs(&auth, &config).await,
-        BugProvider::GithubProjects => crate::bugs::github::list_bugs(&auth, &config).await,
-        BugProvider::YouTrack => crate::bugs::youtrack::list_bugs(&auth, &config).await,
+        BugProvider::Jira => crate::bugs::jira::list_bugs(&auth, &config).await.map_err(AppError::Other),
+        BugProvider::GithubProjects => crate::bugs::github::list_bugs(&auth, &config).await.map_err(AppError::Other),
+        BugProvider::YouTrack => crate::bugs::youtrack::list_bugs(&auth, &config).await.map_err(AppError::Other),
     }
 }
 
@@ -171,22 +174,22 @@ pub async fn get_bug_detail(
     state: State<'_, AppState>,
     project_id: String,
     bug_id: String,
-) -> Result<BugItem, String> {
+) -> Result<BugItem, AppError> {
     validate_non_empty(&project_id, "project_id")?;
     validate_non_empty(&bug_id, "bug_id")?;
 
     let config = load_provider_config_from_db(&state.db, &project_id)?
-        .ok_or("No provider configured")?;
+        .ok_or_else(|| AppError::Other("No provider configured".to_string()))?;
     let auth = load_provider_auth_from_db(&state.db, &project_id)?
-        .ok_or("Not authenticated")?;
+        .ok_or_else(|| AppError::Other("Not authenticated".to_string()))?;
 
     match config.provider {
-        BugProvider::Jira => crate::bugs::jira::get_bug_detail(&auth, &config, &bug_id).await,
+        BugProvider::Jira => crate::bugs::jira::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other),
         BugProvider::GithubProjects => {
-            crate::bugs::github::get_bug_detail(&auth, &config, &bug_id).await
+            crate::bugs::github::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other)
         }
         BugProvider::YouTrack => {
-            crate::bugs::youtrack::get_bug_detail(&auth, &config, &bug_id).await
+            crate::bugs::youtrack::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other)
         }
     }
 }
@@ -195,9 +198,8 @@ pub async fn get_bug_detail(
 pub async fn disconnect_bug_provider(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     validate_non_empty(&project_id, "project_id")?;
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    crate::db::bugs::delete_bug_data(&conn, &project_id)
-        .map_err(|e| e.to_string())
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::bugs::delete_bug_data(&conn, &project_id).map_err(Into::into)
 }

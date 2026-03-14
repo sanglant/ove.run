@@ -3,6 +3,7 @@ use tauri::State;
 use uuid::Uuid;
 
 use crate::db::memory;
+use crate::error::{AppError, lock_err};
 use crate::memory_worker::MemoryWorkerEvent;
 use crate::state::{AppState, Consolidation, Memory};
 
@@ -27,10 +28,9 @@ pub async fn list_memories(
     state: State<'_, AppState>,
     project_id: String,
     session_id: Option<String>,
-) -> Result<Vec<Memory>, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    memory::list_memories(&conn, &project_id, session_id.as_deref(), None)
-        .map_err(|e| e.to_string())
+) -> Result<Vec<Memory>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    memory::list_memories(&conn, &project_id, session_id.as_deref(), None).map_err(Into::into)
 }
 
 #[tauri::command]
@@ -40,10 +40,10 @@ pub async fn search_memories(
     project_id: String,
     session_id: Option<String>,
     limit: usize,
-) -> Result<Vec<Memory>, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<Vec<Memory>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
     memory::search_memories(&conn, &query, &project_id, session_id.as_deref(), limit)
-        .map_err(|e| e.to_string())
+        .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -51,30 +51,27 @@ pub async fn toggle_memory_visibility(
     state: State<'_, AppState>,
     id: String,
     visibility: String,
-) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    memory::update_memory_visibility(&conn, &id, &visibility)
-        .map_err(|e| e.to_string())
+) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    memory::update_memory_visibility(&conn, &id, &visibility).map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn delete_memory(
     state: State<'_, AppState>,
     id: String,
-) -> Result<(), String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    memory::delete_memory(&conn, &id)
-        .map_err(|e| e.to_string())
+) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    memory::delete_memory(&conn, &id).map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn list_consolidations(
     state: State<'_, AppState>,
     project_id: String,
-) -> Result<Vec<Consolidation>, String> {
-    let conn = state.db.lock().map_err(|e| e.to_string())?;
-    memory::list_consolidations(&conn, &project_id)
-        .map_err(|e| e.to_string())
+) -> Result<Vec<Consolidation>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    memory::list_consolidations(&conn, &project_id).map_err(Into::into)
 }
 
 /// Extract memories from terminal output by calling the arbiter CLI.
@@ -87,7 +84,7 @@ pub async fn extract_memories(
     session_id: String,
     terminal_output: String,
     project_path: String,
-) -> Result<Vec<Memory>, String> {
+) -> Result<Vec<Memory>, AppError> {
     // Read arbiter settings from AppState
     let (cli_command, model) = {
         let settings = state.settings.read().await;
@@ -189,8 +186,8 @@ pub async fn extract_memories(
         };
 
         {
-            let conn = state.db.lock().map_err(|e| e.to_string())?;
-            memory::create_memory(&conn, &mem).map_err(|e| e.to_string())?;
+            let conn = state.db.lock().map_err(lock_err)?;
+            memory::create_memory(&conn, &mem)?;
         }
 
         memories.push(mem);
@@ -205,7 +202,7 @@ pub async fn check_consolidation(
     state: State<'_, AppState>,
     project_id: String,
     project_path: String,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     state
         .memory_worker_tx
         .send(MemoryWorkerEvent::ConsolidateProject {
@@ -213,5 +210,5 @@ pub async fn check_consolidation(
             project_path,
         })
         .await
-        .map_err(|e| format!("Failed to send consolidation event: {}", e))
+        .map_err(|e| AppError::Channel(format!("Failed to send consolidation event: {}", e)))
 }
