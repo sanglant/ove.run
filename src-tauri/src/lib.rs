@@ -9,10 +9,12 @@ pub mod bugs;
 pub mod bundled;
 pub mod commands;
 pub mod db;
+pub mod error;
 pub mod git;
 pub mod memory_worker;
 pub mod notifications;
 pub mod pty;
+pub mod sandbox;
 pub mod state;
 pub mod tray;
 
@@ -50,6 +52,7 @@ use commands::loop_commands::{
 use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
+use commands::sandbox_commands::get_sandbox_capabilities;
 use commands::settings_commands::{get_settings, update_settings};
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
@@ -259,6 +262,8 @@ pub fn run() {
             set_quality_gates,
             get_quality_gates,
             set_max_iterations,
+            // Sandbox commands
+            get_sandbox_capabilities,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
