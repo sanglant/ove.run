@@ -226,10 +226,14 @@ async fn run_loop_lifecycle(
             }
         };
 
-        // Load context units and memories for decompose action
+        // Load context units for decompose — exclude bundled globals to avoid
+        // irrelevant story generation from persona/skill descriptions
         let project_context = match lock_db(db) {
             Ok(conn) => crate::db::context::list_context_units(&conn, Some(project_id))
-                .unwrap_or_default(),
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|u| !u.is_bundled)
+                .collect(),
             Err(e) => {
                 tracing::error!("[loop_engine] context load failed: {e}");
                 vec![]
