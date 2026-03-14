@@ -19,7 +19,8 @@ pub const SENSITIVE_PATTERNS: &[&str] = &[
     "service-account.json",
 ];
 
-/// Agent config directories that must remain accessible (read-only) for auth.
+/// Agent config directories that must remain accessible (read-write) for auth.
+/// CLI tools need write access to refresh tokens, write lock files, etc.
 pub const AGENT_CONFIG_PATHS: &[&str] = &[
     ".claude",
     ".config/claude",

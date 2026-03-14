@@ -68,12 +68,14 @@ pub fn wrap_command(
         bwrap_args.extend(["--bind".into(), project_path.into(), project_path.into()]);
     }
 
-    // ── Agent config dirs (read-only for auth) ──────────────
+    // ── Agent config dirs (read-write for auth) ──────────────
+    // These must be writable because CLI tools refresh tokens,
+    // write lock files, and update session state in their config dirs.
     for config_path in policy::AGENT_CONFIG_PATHS {
         let full_path = home.join(config_path);
         if full_path.exists() {
             let p = full_path.to_string_lossy().to_string();
-            bwrap_args.extend(["--ro-bind".into(), p.clone(), p]);
+            bwrap_args.extend(["--bind".into(), p.clone(), p]);
         }
     }
 
