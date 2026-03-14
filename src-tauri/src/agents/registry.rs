@@ -16,7 +16,7 @@ pub fn get_agent_definitions() -> Vec<AgentDefinition> {
             // Claude signals task completion
             detect_finished_pattern: r"(?i)(task completed|all done|finished|i've completed|i have completed)".to_string(),
             icon: "claude".to_string(),
-            prompt_delivery: Some(PromptDelivery::InteractiveInput),
+            prompt_delivery: Some(PromptDelivery::CliFlag("-p".to_string())),
         },
         AgentDefinition {
             agent_type: AgentType::Gemini,
