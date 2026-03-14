@@ -64,8 +64,16 @@ export function ArtifactsPane() {
           </div>
         )}
 
-        {stories.length === 0 && status === "idle" && (
-          <div className={classes.empty}>Waiting for loop to start...</div>
+        {stories.length === 0 && (
+          <div className={classes.empty}>
+            {status === "planning"
+              ? "Decomposing request into stories..."
+              : status === "running"
+              ? "Starting..."
+              : status === "failed"
+              ? "Loop failed to start"
+              : "Waiting for loop to start..."}
+          </div>
         )}
       </div>
     </div>
