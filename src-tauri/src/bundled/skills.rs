@@ -3,6 +3,7 @@ use super::personas::BundledUnit;
 pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     // 1. Code Review Guidelines
     BundledUnit {
+        slug: "code-review-guidelines",
         name: "Code Review Guidelines",
         unit_type: "skill",
         l0_summary: "Structured guidelines for conducting effective, constructive code reviews.",
@@ -75,6 +76,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 2. Testing Best Practices
     BundledUnit {
+        slug: "testing-best-practices",
         name: "Testing Best Practices",
         unit_type: "skill",
         l0_summary: "Comprehensive testing strategies covering unit, integration, and end-to-end testing.",
@@ -136,6 +138,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 3. Git Workflow
     BundledUnit {
+        slug: "git-workflow",
         name: "Git Workflow",
         unit_type: "skill",
         l0_summary: "Git best practices for branching, commits, pull requests, and conflict resolution.",
@@ -200,6 +203,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 4. Error Handling Patterns
     BundledUnit {
+        slug: "error-handling-patterns",
         name: "Error Handling Patterns",
         unit_type: "skill",
         l0_summary: "Structured error handling patterns for logging, recovery, and user-facing error messages.",
@@ -261,6 +265,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 5. Performance Optimization
     BundledUnit {
+        slug: "performance-optimization",
         name: "Performance Optimization",
         unit_type: "skill",
         l0_summary: "Techniques for profiling, caching, lazy loading, and benchmarking application performance.",
@@ -325,6 +330,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 6. Security Checklist
     BundledUnit {
+        slug: "security-checklist",
         name: "Security Checklist",
         unit_type: "skill",
         l0_summary: "Security checklist covering input validation, authentication, OWASP, and secrets management.",
@@ -398,6 +404,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 7. API Design
     BundledUnit {
+        slug: "api-design",
         name: "API Design",
         unit_type: "skill",
         l0_summary: "RESTful API design principles covering versioning, pagination, error responses, and contracts.",
@@ -469,6 +476,7 @@ pub static BUNDLED_SKILLS: &[BundledUnit] = &[
     },
     // 8. Documentation Standards
     BundledUnit {
+        slug: "documentation-standards",
         name: "Documentation Standards",
         unit_type: "skill",
         l0_summary: "Standards for code comments, README files, API docs, changelogs, and project documentation.",

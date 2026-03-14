@@ -51,6 +51,32 @@ const MIGRATIONS: &[Migration] = &[
         description: "add bundled_slug column to context_units",
         sql: "ALTER TABLE context_units ADD COLUMN bundled_slug TEXT;",
     },
+    Migration {
+        version: 4,
+        description: "mark existing bundled content with is_bundled flag and slugs",
+        sql: "\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'backend-developer' WHERE name = 'Backend Developer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'frontend-developer' WHERE name = 'Frontend Developer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'full-stack-developer' WHERE name = 'Full Stack Developer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'security-auditor' WHERE name = 'Security Auditor' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'code-reviewer' WHERE name = 'Code Reviewer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'devops-engineer' WHERE name = 'DevOps Engineer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'database-architect' WHERE name = 'Database Architect' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'technical-writer' WHERE name = 'Technical Writer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'test-engineer' WHERE name = 'Test Engineer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'performance-engineer' WHERE name = 'Performance Engineer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'api-designer' WHERE name = 'API Designer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'uiux-developer' WHERE name = 'UI/UX Developer' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'code-review-guidelines' WHERE name = 'Code Review Guidelines' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'testing-best-practices' WHERE name = 'Testing Best Practices' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'git-workflow' WHERE name = 'Git Workflow' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'error-handling-patterns' WHERE name = 'Error Handling Patterns' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'performance-optimization' WHERE name = 'Performance Optimization' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'security-checklist' WHERE name = 'Security Checklist' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'api-design' WHERE name = 'API Design' AND scope = 'global' AND project_id IS NULL;\
+            UPDATE context_units SET is_bundled = 1, bundled_slug = 'documentation-standards' WHERE name = 'Documentation Standards' AND scope = 'global' AND project_id IS NULL;\
+        ",
+    },
 ];
 
 fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {

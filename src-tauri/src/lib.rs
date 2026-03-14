@@ -98,7 +98,7 @@ pub fn run() {
             // Seed bundled content on first run
             {
                 let conn = db.lock().unwrap();
-                crate::bundled::seed::seed_bundled_content(&conn).ok();
+                crate::bundled::seed::sync_bundled_content(&conn).ok();
             }
 
             // Load persisted data from SQLite

@@ -1,4 +1,5 @@
 pub struct BundledUnit {
+    pub slug: &'static str,
     pub name: &'static str,
     pub unit_type: &'static str,
     pub l0_summary: &'static str,
@@ -9,6 +10,7 @@ pub struct BundledUnit {
 pub static BUNDLED_PERSONAS: &[BundledUnit] = &[
     // 1. Backend Developer
     BundledUnit {
+        slug: "backend-developer",
         name: "Backend Developer",
         unit_type: "persona",
         l0_summary: "Expert backend developer focused on APIs, databases, and server-side architecture.",
@@ -75,6 +77,7 @@ Write server-side code that is correct, performant, and maintainable. Every endp
     },
     // 2. Frontend Developer
     BundledUnit {
+        slug: "frontend-developer",
         name: "Frontend Developer",
         unit_type: "persona",
         l0_summary: "Expert frontend developer focused on UI/UX, components, responsive design, and accessibility.",
@@ -143,6 +146,7 @@ Build user interfaces that are fast, accessible, and delightful. Every component
     },
     // 3. Full Stack Developer
     BundledUnit {
+        slug: "full-stack-developer",
         name: "Full Stack Developer",
         unit_type: "persona",
         l0_summary: "Versatile full stack developer bridging frontend and backend with end-to-end architecture skills.",
@@ -208,6 +212,7 @@ Build applications as cohesive systems, not disconnected frontend and backend pi
     },
     // 4. Security Auditor
     BundledUnit {
+        slug: "security-auditor",
         name: "Security Auditor",
         unit_type: "persona",
         l0_summary: "Security-focused auditor specializing in vulnerability assessment, OWASP, and secure architecture.",
@@ -270,6 +275,7 @@ Security is not a feature; it is a property of the entire system. Review code wi
     },
     // 5. Code Reviewer
     BundledUnit {
+        slug: "code-reviewer",
         name: "Code Reviewer",
         unit_type: "persona",
         l0_summary: "Meticulous code reviewer focused on quality, patterns, readability, and maintainability.",
@@ -336,6 +342,7 @@ Code review is a collaborative practice that improves code quality, shares knowl
     },
     // 6. DevOps Engineer
     BundledUnit {
+        slug: "devops-engineer",
         name: "DevOps Engineer",
         unit_type: "persona",
         l0_summary: "DevOps engineer specializing in CI/CD, containers, infrastructure, and monitoring.",
@@ -401,6 +408,7 @@ Automate everything repeatable. Infrastructure should be treated as code: versio
     },
     // 7. Database Architect
     BundledUnit {
+        slug: "database-architect",
         name: "Database Architect",
         unit_type: "persona",
         l0_summary: "Database architect expert in schema design, query optimization, migrations, and scaling strategies.",
@@ -470,6 +478,7 @@ Data is the most valuable asset in any system. Design schemas that enforce integ
     },
     // 8. Technical Writer
     BundledUnit {
+        slug: "technical-writer",
         name: "Technical Writer",
         unit_type: "persona",
         l0_summary: "Technical writer focused on clear documentation, API docs, tutorials, and user guides.",
@@ -532,6 +541,7 @@ Documentation is a product. It should be accurate, discoverable, and maintained 
     },
     // 9. Test Engineer
     BundledUnit {
+        slug: "test-engineer",
         name: "Test Engineer",
         unit_type: "persona",
         l0_summary: "Test engineer specializing in testing strategies, TDD, integration tests, and coverage analysis.",
@@ -598,6 +608,7 @@ Tests exist to give confidence that the software works correctly and to catch re
     },
     // 10. Performance Engineer
     BundledUnit {
+        slug: "performance-engineer",
         name: "Performance Engineer",
         unit_type: "persona",
         l0_summary: "Performance engineer specializing in profiling, optimization, caching, and load testing.",
@@ -668,6 +679,7 @@ Performance is a feature. Measure before optimizing; intuition about bottlenecks
     },
     // 11. API Designer
     BundledUnit {
+        slug: "api-designer",
         name: "API Designer",
         unit_type: "persona",
         l0_summary: "API designer expert in REST, GraphQL, versioning, contracts, and developer experience.",
@@ -735,6 +747,7 @@ An API is a user interface for developers. It should be consistent, predictable,
     },
     // 12. UI/UX Developer
     BundledUnit {
+        slug: "uiux-developer",
         name: "UI/UX Developer",
         unit_type: "persona",
         l0_summary: "UI/UX developer focused on design systems, accessibility, animations, and user experience.",

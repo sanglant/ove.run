@@ -292,3 +292,53 @@ pub fn copy_defaults_to_session(conn: &Connection, project_id: &str, session_id:
     )?;
     Ok(())
 }
+
+/// Upsert a bundled context unit by its slug.
+pub fn upsert_bundled_unit(conn: &Connection, unit: &ContextUnit, slug: &str) -> Result<(), rusqlite::Error> {
+    use rusqlite::OptionalExtension;
+    let existing_id: Option<String> = conn
+        .query_row(
+            "SELECT id FROM context_units WHERE bundled_slug = ?1",
+            params![slug],
+            |row| row.get(0),
+        )
+        .optional()?;
+
+    if let Some(id) = existing_id {
+        conn.execute(
+            "UPDATE context_units SET name = ?1, type = ?2, l0_summary = ?3, l1_overview = ?4, \
+             l2_content = ?5, is_bundled = 1, updated_at = ?6 WHERE id = ?7",
+            params![
+                unit.name,
+                unit.unit_type,
+                unit.l0_summary,
+                unit.l1_overview,
+                unit.l2_content,
+                unit.updated_at,
+                id,
+            ],
+        )?;
+    } else {
+        conn.execute(
+            "INSERT INTO context_units (id, project_id, name, type, scope, tags_json, l0_summary, \
+             l1_overview, l2_content, is_bundled, bundled_slug, created_at, updated_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 1, ?10, ?11, ?12)",
+            params![
+                unit.id,
+                unit.project_id,
+                unit.name,
+                unit.unit_type,
+                unit.scope,
+                unit.tags_json,
+                unit.l0_summary,
+                unit.l1_overview,
+                unit.l2_content,
+                slug,
+                unit.created_at,
+                unit.updated_at,
+            ],
+        )?;
+        sync_fts_insert(conn, unit)?;
+    }
+    Ok(())
+}

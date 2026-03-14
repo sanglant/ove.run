@@ -7,35 +7,50 @@ use super::skills::BUNDLED_SKILLS;
 use super::personas::BundledUnit;
 
 const SEED_VERSION_KEY: &str = "bundled_seed_version";
-const CURRENT_SEED_VERSION: &str = "1";
+const CURRENT_SEED_VERSION: &str = "2";
 
-pub fn seed_bundled_content(conn: &Connection) -> Result<(), String> {
-    // Check if already seeded
+/// Sync bundled content with the database.
+/// On version mismatch: upserts all bundled units by slug.
+pub fn sync_bundled_content(conn: &Connection) -> Result<(), String> {
     let current = settings::get_setting(conn, SEED_VERSION_KEY)
         .map_err(|e| e.to_string())?;
 
     if current.as_deref() == Some(CURRENT_SEED_VERSION) {
-        return Ok(()); // Already seeded
+        return Ok(());
     }
 
-    // Insert all personas
+    let mut active_slugs: Vec<&str> = Vec::new();
+
     for bundled in BUNDLED_PERSONAS {
-        insert_bundled_unit(conn, bundled)?;
+        upsert_bundled(conn, bundled)?;
+        active_slugs.push(bundled.slug);
     }
 
-    // Insert all skills
     for bundled in BUNDLED_SKILLS {
-        insert_bundled_unit(conn, bundled)?;
+        upsert_bundled(conn, bundled)?;
+        active_slugs.push(bundled.slug);
     }
 
-    // Mark as seeded
+    // Mark removed bundled units as non-bundled
+    if !active_slugs.is_empty() {
+        let placeholders: Vec<String> = active_slugs.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1)).collect();
+        let sql = format!(
+            "UPDATE context_units SET is_bundled = 0 WHERE is_bundled = 1 AND bundled_slug NOT IN ({})",
+            placeholders.join(", ")
+        );
+        let params: Vec<&dyn rusqlite::types::ToSql> = active_slugs.iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql).collect();
+        conn.execute(&sql, params.as_slice()).map_err(|e| e.to_string())?;
+    }
+
     settings::set_setting(conn, SEED_VERSION_KEY, CURRENT_SEED_VERSION)
         .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
-fn insert_bundled_unit(conn: &Connection, bundled: &BundledUnit) -> Result<(), String> {
+fn upsert_bundled(conn: &Connection, bundled: &BundledUnit) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
     let unit = ContextUnit {
         id: uuid::Uuid::new_v4().to_string(),
@@ -50,6 +65,6 @@ fn insert_bundled_unit(conn: &Connection, bundled: &BundledUnit) -> Result<(), S
         created_at: now.clone(),
         updated_at: now,
     };
-    context::create_context_unit(conn, &unit)
+    context::upsert_bundled_unit(conn, &unit, bundled.slug)
         .map_err(|e| e.to_string())
 }
