@@ -138,3 +138,54 @@
   color: var(--text-tertiary);
   font-size: 12px;
 }
+
+.exhaustedBanner {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-tertiary));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.exhaustedLabel {
+  font-size: 11px;
+  color: var(--accent);
+  font-family: "Geist Mono", monospace;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.exhaustedActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exhaustedHint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.continueBtn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-family: "Geist Mono", monospace;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.continueBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.continueBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

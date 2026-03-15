@@ -145,6 +145,14 @@ pub fn all_stories_complete(conn: &Connection, project_id: &str) -> Result<bool,
     Ok(count == 0)
 }
 
+pub fn count_incomplete_stories(conn: &Connection, project_id: &str) -> Result<i64, rusqlite::Error> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM stories WHERE project_id = ?1 AND status != 'completed' AND status != 'skipped'",
+        params![project_id],
+        |row| row.get(0),
+    )
+}
+
 fn list_stories_by_status(conn: &Connection, project_id: &str, status: &str) -> Result<Vec<Story>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, project_id, title, description, acceptance_criteria, priority, status, \

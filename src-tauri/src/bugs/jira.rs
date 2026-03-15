@@ -148,7 +148,7 @@ pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<V
     let cloud_id = get_cloud_id(&client, &auth.access_token).await?;
 
     let jql = format!(
-        "project = {} AND issuetype = Bug ORDER BY updated DESC",
+        "project = {} AND issuetype = Bug AND statusCategory != Done ORDER BY updated DESC",
         config.project_key
     );
 

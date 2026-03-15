@@ -8,6 +8,7 @@ import {
   cancelLoop as apiCancelLoop,
   getQualityGates,
   setQualityGates as apiSetQualityGates,
+  setMaxIterations as apiSetMaxIterations,
   listen,
 } from "@/lib/tauri";
 import { useNotificationStore } from "./notificationStore";
@@ -29,6 +30,8 @@ interface LoopStoreState {
   reasoningLog: ReasoningEntry[];
   iterationCount: number;
   maxIterations: number;
+  /** Count of incomplete stories when the loop exhausted its iterations */
+  remainingStories: number;
   qualityGates: QualityGateConfig | null;
   loading: boolean;
   /** Human-readable description of what the loop is currently doing */
@@ -45,6 +48,8 @@ interface LoopStoreState {
   pauseLoop: () => Promise<void>;
   resumeLoop: () => Promise<void>;
   cancelLoop: () => Promise<void>;
+  /** Continue an exhausted loop by adding more iterations and restarting without re-decomposing. */
+  continueLoop: (projectId: string, projectPath: string, additionalIterations: number) => Promise<void>;
   handleEvent: (event: LoopEventType) => void;
 }
 
@@ -56,6 +61,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
   reasoningLog: [],
   iterationCount: 0,
   maxIterations: 10,
+  remainingStories: 0,
   qualityGates: null,
   loading: false,
   activityMessage: null,
@@ -143,6 +149,20 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
     }
   },
 
+  continueLoop: async (projectId, projectPath, additionalIterations) => {
+    try {
+      const { maxIterations } = get();
+      const newMax = maxIterations + additionalIterations;
+      set({ activityMessage: "Resuming loop…", phase: "agent" });
+      await apiSetMaxIterations(projectId, newMax);
+      await apiStartLoop(projectId, projectPath, undefined, undefined);
+    } catch (err) {
+      console.error("Failed to continue loop:", err);
+      set({ status: "exhausted", activityMessage: null, phase: "done" });
+      useNotificationStore.getState().showToast("error", "Failed to continue loop", String(err));
+    }
+  },
+
   handleEvent: (event) => {
     switch (event.type) {
       case "StatusChanged": {
@@ -151,6 +171,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
           running: "Executing stories…",
           paused: "Loop paused",
           idle: "Loop idle",
+          exhausted: "Iterations exhausted",
         };
         const phaseMap: Record<string, LoopPhase> = {
           planning: "planning",
@@ -159,6 +180,7 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
           idle: "idle",
           completed: "done",
           failed: "done",
+          exhausted: "done",
         };
         set({
           status: event.status,
@@ -244,6 +266,15 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
         break;
       case "LoopFailed":
         set({ status: "failed", activityMessage: `Loop failed: ${event.reason}`, phase: "done", activeSessionId: null });
+        break;
+      case "LoopExhausted":
+        set({
+          status: "exhausted",
+          remainingStories: event.incomplete,
+          activityMessage: `${event.incomplete} ${event.incomplete === 1 ? "story" : "stories"} remaining`,
+          phase: "done",
+          activeSessionId: null,
+        });
         break;
       case "ReasoningEntry":
         set((state) => ({

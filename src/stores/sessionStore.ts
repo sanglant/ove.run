@@ -444,16 +444,11 @@ function reorderScopedSessions(
   );
 }
 
-function getProjectSessionIds(sessions: AgentSession[], projectId: string): string[] {
-  return sessions
-    .filter((session) => session.projectId === projectId)
-    .map((session) => session.id);
-}
 
 interface SessionState {
   sessions: AgentSession[];
   activeSessionId: string | null;
-  projectLayouts: Record<string, TerminalProjectLayout>;
+  globalLayout: TerminalProjectLayout;
   addSession: (session: AgentSession) => void;
   removeSession: (id: string) => void;
   setActiveSession: (id: string | null) => void;
@@ -477,15 +472,15 @@ interface SessionState {
 export const useSessionStore = create<SessionState>((set, get) => ({
   sessions: [],
   activeSessionId: null,
-  projectLayouts: {},
+  globalLayout: createLayout(null),
 
   addSession: (session: AgentSession) => {
     set((state) => {
       const sessions = [...state.sessions, session];
-      const projectSessionIds = getProjectSessionIds(sessions, session.projectId);
+      const allSessionIds = sessions.map((s) => s.id);
       const currentLayout = normalizeLayout(
-        state.projectLayouts[session.projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
 
@@ -513,10 +508,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return {
         sessions,
         activeSessionId: session.id,
-        projectLayouts: {
-          ...state.projectLayouts,
-          [session.projectId]: layout,
-        },
+        globalLayout: layout,
       };
     });
     get().persistSessions();
@@ -525,38 +517,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   removeSession: (id: string) => {
     set((state) => {
       const sessions = state.sessions.filter((session) => session.id !== id);
-      const projectLayouts: Record<string, TerminalProjectLayout> = {};
-
-      for (const [projectId, layout] of Object.entries(state.projectLayouts)) {
-        projectLayouts[projectId] = normalizeLayout(
-          layout,
-          getProjectSessionIds(sessions, projectId),
-        );
-      }
+      const allSessionIds = sessions.map((s) => s.id);
 
       const activeSessionId =
         state.activeSessionId === id
           ? sessions[sessions.length - 1]?.id ?? null
           : state.activeSessionId;
 
+      let globalLayout = normalizeLayout(state.globalLayout, allSessionIds);
+
       if (activeSessionId) {
-        const activeSession = sessions.find((session) => session.id === activeSessionId);
-        if (activeSession) {
-          const projectSessionIds = getProjectSessionIds(sessions, activeSession.projectId);
-          const nextLayout = normalizeLayout(
-            projectLayouts[activeSession.projectId] ?? createLayout(null),
-            projectSessionIds,
-            activeSessionId,
-          );
-          const activePane = findPaneBySession(nextLayout.root, activeSessionId);
-          projectLayouts[activeSession.projectId] = {
-            ...nextLayout,
-            activePaneId: activePane?.id ?? nextLayout.activePaneId,
-          };
-        }
+        const activePane = findPaneBySession(globalLayout.root, activeSessionId);
+        globalLayout = {
+          ...globalLayout,
+          activePaneId: activePane?.id ?? globalLayout.activePaneId,
+        };
       }
 
-      return { sessions, activeSessionId, projectLayouts };
+      return { sessions, activeSessionId, globalLayout };
     });
     get().persistSessions();
   },
@@ -572,10 +550,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         return { activeSessionId: id };
       }
 
-      const projectSessionIds = getProjectSessionIds(state.sessions, session.projectId);
+      const allSessionIds = state.sessions.map((s) => s.id);
       const currentLayout = normalizeLayout(
-        state.projectLayouts[session.projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
       const existingPane = findPaneBySession(currentLayout.root, id);
@@ -588,46 +566,40 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       return {
         activeSessionId: id,
-        projectLayouts: {
-          ...state.projectLayouts,
-          [session.projectId]: nextLayout,
-        },
+        globalLayout: nextLayout,
       };
     });
   },
 
-  setLayoutMode: (projectId: string, mode: TerminalLayoutMode) => {
+  setLayoutMode: (_projectId: string, mode: TerminalLayoutMode) => {
     set((state) => {
-      const projectSessionIds = getProjectSessionIds(state.sessions, projectId);
+      const allSessionIds = state.sessions.map((s) => s.id);
       const currentLayout = normalizeLayout(
-        state.projectLayouts[projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
       const activePane = findPaneById(currentLayout.root, currentLayout.activePaneId);
 
       return {
         activeSessionId:
-          activePane?.sessionId && projectSessionIds.includes(activePane.sessionId)
+          activePane?.sessionId && allSessionIds.includes(activePane.sessionId)
             ? activePane.sessionId
             : state.activeSessionId,
-        projectLayouts: {
-          ...state.projectLayouts,
-          [projectId]: {
-            ...currentLayout,
-            mode,
-          },
+        globalLayout: {
+          ...currentLayout,
+          mode,
         },
       };
     });
   },
 
-  setPaneSession: (projectId: string, paneId: string, sessionId: string | null) => {
+  setPaneSession: (_projectId: string, paneId: string, sessionId: string | null) => {
     set((state) => {
-      const projectSessionIds = getProjectSessionIds(state.sessions, projectId);
+      const allSessionIds = state.sessions.map((s) => s.id);
       const baseLayout = normalizeLayout(
-        state.projectLayouts[projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
 
@@ -636,17 +608,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }
 
       if (sessionId) {
-        if (!projectSessionIds.includes(sessionId)) {
+        if (!allSessionIds.includes(sessionId)) {
           return state;
         }
 
         const nextLayout = placeSessionInLayout(baseLayout, sessionId, paneId);
         return {
           activeSessionId: sessionId,
-          projectLayouts: {
-            ...state.projectLayouts,
-            [projectId]: nextLayout,
-          },
+          globalLayout: nextLayout,
         };
       }
 
@@ -656,24 +625,21 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       }));
 
       return {
-        projectLayouts: {
-          ...state.projectLayouts,
-          [projectId]: {
-            ...baseLayout,
-            root,
-            activePaneId: paneId,
-          },
+        globalLayout: {
+          ...baseLayout,
+          root,
+          activePaneId: paneId,
         },
       };
     });
   },
 
-  focusPane: (projectId: string, paneId: string) => {
+  focusPane: (_projectId: string, paneId: string) => {
     set((state) => {
-      const projectSessionIds = getProjectSessionIds(state.sessions, projectId);
+      const allSessionIds = state.sessions.map((s) => s.id);
       const currentLayout = normalizeLayout(
-        state.projectLayouts[projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
       const panes = collectPanes(currentLayout.root);
@@ -687,65 +653,53 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       return {
         activeSessionId: paneSessionId ?? state.activeSessionId,
-        projectLayouts: {
-          ...state.projectLayouts,
-          [projectId]: {
-            ...currentLayout,
-            activePaneId: safePaneId,
-          },
+        globalLayout: {
+          ...currentLayout,
+          activePaneId: safePaneId,
         },
       };
     });
   },
 
-  setSplitRatio: (projectId: string, splitId: string, ratio: number) => {
+  setSplitRatio: (_projectId: string, splitId: string, ratio: number) => {
     set((state) => {
-      const currentLayout = state.projectLayouts[projectId];
-      if (!currentLayout) return state;
-
       return {
-        projectLayouts: {
-          ...state.projectLayouts,
-          [projectId]: {
-            ...currentLayout,
-            root: updateSplitNode(currentLayout.root, splitId, (split) => ({
-              ...split,
-              ratio: clampRatio(ratio),
-            })),
-          },
+        globalLayout: {
+          ...state.globalLayout,
+          root: updateSplitNode(state.globalLayout.root, splitId, (split) => ({
+            ...split,
+            ratio: clampRatio(ratio),
+          })),
         },
       };
     });
   },
 
   splitPane: (
-    projectId: string,
+    _projectId: string,
     paneId: string,
     zone: Exclude<TerminalPaneDropZone, "center">,
     sessionId: string,
   ) => {
     set((state) => {
-      const projectSessionIds = getProjectSessionIds(state.sessions, projectId);
-
-      if (!projectSessionIds.includes(sessionId)) {
+      // Accept any session that exists in the global sessions list
+      if (!state.sessions.some((s) => s.id === sessionId)) {
         return state;
       }
 
+      const allSessionIds = state.sessions.map((s) => s.id);
       const currentLayout = normalizeLayout(
-        state.projectLayouts[projectId] ?? createLayout(null),
-        projectSessionIds,
+        state.globalLayout,
+        allSessionIds,
         state.activeSessionId,
       );
       const nextLayout = splitPaneInLayout(currentLayout, paneId, zone, sessionId);
 
       return {
         activeSessionId: sessionId,
-        projectLayouts: {
-          ...state.projectLayouts,
-          [projectId]: {
-            ...nextLayout,
-            mode: "grid",
-          },
+        globalLayout: {
+          ...nextLayout,
+          mode: "grid",
         },
       };
     });
@@ -817,24 +771,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       set((state) => {
         const sessions = [...state.sessions, ...resumed];
-        const nextProjectLayouts = { ...state.projectLayouts };
+        const allSessionIds = sessions.map((s) => s.id);
+
+        let globalLayout = normalizeLayout(state.globalLayout, allSessionIds);
 
         for (const resumedSession of resumed) {
-          const projectSessionIds = getProjectSessionIds(sessions, resumedSession.projectId);
-          const currentLayout = normalizeLayout(
-            nextProjectLayouts[resumedSession.projectId] ?? createLayout(null),
-            projectSessionIds,
-          );
-          nextProjectLayouts[resumedSession.projectId] = placeSessionInLayout(
-            currentLayout,
-            resumedSession.id,
-          );
+          globalLayout = placeSessionInLayout(globalLayout, resumedSession.id);
         }
 
         return {
           sessions,
           activeSessionId: resumed[resumed.length - 1]?.id ?? state.activeSessionId,
-          projectLayouts: nextProjectLayouts,
+          globalLayout,
         };
       });
     } catch (err) {
@@ -843,3 +791,56 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 }));
+
+// ---------------------------------------------------------------------------
+// Migration helper: used by the Zustand persist middleware or manual hydration
+// to upgrade persisted state that still uses the old `projectLayouts` shape.
+// ---------------------------------------------------------------------------
+export function migratePersistedState(
+  persistedState: Record<string, unknown>,
+): Partial<SessionState> {
+  // If the persisted state already has a globalLayout, nothing to do.
+  if (persistedState.globalLayout) {
+    return persistedState as Partial<SessionState>;
+  }
+
+  // Migrate from projectLayouts -> globalLayout by merging all project
+  // layouts into a single layout. We simply start from an empty layout and
+  // place every session that we find in any project layout.
+  const projectLayouts = persistedState.projectLayouts as
+    | Record<string, TerminalProjectLayout>
+    | undefined;
+
+  if (!projectLayouts || Object.keys(projectLayouts).length === 0) {
+    return {
+      ...persistedState,
+      globalLayout: createLayout(null),
+    } as Partial<SessionState>;
+  }
+
+  // Collect all session IDs that were placed in any project layout, preserving
+  // order (iterate project layouts in insertion order).
+  const placedSessionIds: string[] = [];
+  const usedIds = new Set<string>();
+
+  for (const layout of Object.values(projectLayouts)) {
+    const panes = collectPanes(layout.root);
+    for (const pane of panes) {
+      if (pane.sessionId && !usedIds.has(pane.sessionId)) {
+        placedSessionIds.push(pane.sessionId);
+        usedIds.add(pane.sessionId);
+      }
+    }
+  }
+
+  let globalLayout = createLayout(null);
+  for (const sessionId of placedSessionIds) {
+    globalLayout = placeSessionInLayout(globalLayout, sessionId);
+  }
+
+  const migrated = { ...persistedState } as Record<string, unknown>;
+  migrated.globalLayout = globalLayout;
+  delete migrated.projectLayouts;
+
+  return migrated as Partial<SessionState>;
+}

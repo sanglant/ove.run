@@ -21,6 +21,7 @@ function initialState() {
     reasoningLog: [],
     iterationCount: 0,
     maxIterations: 10,
+    remainingStories: 0,
     qualityGates: null,
     loading: false,
     activityMessage: null,
@@ -95,7 +96,7 @@ describe("loopStore", () => {
       useLoopStore.getState().handleEvent({
         type: "StatusChanged",
         status: "unknown_status",
-      } as LoopEventType);
+      } as unknown as LoopEventType);
 
       const state = useLoopStore.getState();
       expect(state.status).toBe("unknown_status");
@@ -310,6 +311,47 @@ describe("loopStore", () => {
       expect(state.phase).toBe("done");
       expect(state.activeSessionId).toBeNull();
       expect(state.activityMessage).toContain("Max iterations reached");
+    });
+  });
+
+  describe("handleEvent: LoopExhausted", () => {
+    it("sets exhausted status, remainingStories count, done phase, and clears session", () => {
+      useLoopStore.setState({ activeSessionId: "some-session", maxIterations: 10 });
+
+      useLoopStore.getState().handleEvent({
+        type: "LoopExhausted",
+        incomplete: 3,
+      } as LoopEventType);
+
+      const state = useLoopStore.getState();
+      expect(state.status).toBe("exhausted");
+      expect(state.phase).toBe("done");
+      expect(state.remainingStories).toBe(3);
+      expect(state.activeSessionId).toBeNull();
+      expect(state.activityMessage).toContain("3");
+    });
+
+    it("uses singular 'story' when exactly one story remains", () => {
+      useLoopStore.getState().handleEvent({
+        type: "LoopExhausted",
+        incomplete: 1,
+      } as LoopEventType);
+
+      expect(useLoopStore.getState().activityMessage).toContain("1 story remaining");
+    });
+  });
+
+  describe("handleEvent: StatusChanged exhausted", () => {
+    it("maps exhausted status to done phase", () => {
+      useLoopStore.getState().handleEvent({
+        type: "StatusChanged",
+        status: "exhausted",
+      } as LoopEventType);
+
+      const state = useLoopStore.getState();
+      expect(state.status).toBe("exhausted");
+      expect(state.phase).toBe("done");
+      expect(state.activityMessage).toContain("exhausted");
     });
   });
 

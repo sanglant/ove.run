@@ -49,6 +49,7 @@ pub enum LoopEvent {
     StoriesUpdated { project_id: String },
     LoopCompleted,
     LoopFailed { reason: String },
+    LoopExhausted { incomplete: i64 },
     ReasoningEntry { action: String, reasoning: String },
 }
 
@@ -367,10 +368,17 @@ async fn run_loop_lifecycle(
 
         // Check if max iterations reached
         if arbiter_st.iteration_count >= arbiter_st.max_iterations {
-            let reason = format!("Max iterations ({}) reached", arbiter_st.max_iterations);
-            let _ = event_tx.send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() }).await;
-            let _ = event_tx.send(LoopEvent::LoopFailed { reason }).await;
-            set_status_best_effort(db, event_tx, project_id, "failed").await;
+            let incomplete = match lock_db(db) {
+                Ok(conn) => stories::count_incomplete_stories(&conn, project_id).unwrap_or(0),
+                Err(_) => 0,
+            };
+            if incomplete > 0 {
+                let _ = event_tx.send(LoopEvent::LoopExhausted { incomplete }).await;
+                set_status_best_effort(db, event_tx, project_id, "exhausted").await;
+            } else {
+                let _ = event_tx.send(LoopEvent::LoopCompleted).await;
+                set_status_best_effort(db, event_tx, project_id, "completed").await;
+            }
             return;
         }
 

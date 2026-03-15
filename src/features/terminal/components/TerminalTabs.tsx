@@ -37,7 +37,7 @@ const LAYOUT_OPTIONS: Array<{ mode: TerminalLayoutMode; label: string; icon: Rea
 export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTabsProps) {
   const {
     activeSessionId,
-    projectLayouts,
+    globalLayout,
     setActiveSession,
     setLayoutMode,
     reorderSessions,
@@ -49,10 +49,7 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
   const [dropSessionId, setDropSessionId] = useState<string | null>(null);
 
-  const currentLayoutMode =
-    activeProjectId && projectLayouts[activeProjectId]
-      ? projectLayouts[activeProjectId].mode
-      : "single";
+  const currentLayoutMode = globalLayout?.mode ?? "single";
 
   const handleTabClick = (session: AgentSession) => {
     setActiveProject(session.projectId);
@@ -72,8 +69,11 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     try {
       await killPty(session.id);
       removeSession(session.id);
-    } catch (err) {
-      const message = String(err);
+    } catch (err: unknown) {
+      // Tauri errors are serialized as { kind, message } objects
+      const message = typeof err === "object" && err !== null && "message" in err
+        ? String((err as { message: string }).message)
+        : String(err);
       if (message.includes("not found")) {
         removeSession(session.id);
         return;
@@ -130,10 +130,16 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     }
 
     if (!scopeProjectId) {
+      // Global / flat view — any session can be reordered against any other
       return true;
     }
 
-    return draggedSession.projectId === scopeProjectId && targetSession.projectId === scopeProjectId;
+    // Grouped view: allow reordering within the project group; the dragged
+    // session does not need to belong to scopeProjectId because we now support
+    // cross-project layouts. The only hard rule is that both the dragged and
+    // target session must exist in the sessions list (already guaranteed by
+    // getDraggedSession) and target must be in the displayed group.
+    return targetSession.projectId === scopeProjectId;
   };
 
   const handleTabDragOver = (

@@ -17,12 +17,26 @@ pub fn show_desktop_notification(#[allow(unused_variables)] app_handle: &AppHand
         let title = title.to_string();
         let body = body.to_string();
         std::thread::spawn(move || {
-            let _ = std::process::Command::new("notify-send")
+            match std::process::Command::new("notify-send")
                 .arg(&title)
                 .arg(&body)
                 .arg("-u")
                 .arg("normal")
-                .spawn();
+                .output()
+            {
+                Ok(output) => {
+                    if !output.status.success() {
+                        tracing::warn!(
+                            "[notifications] notify-send failed (exit {}): {}",
+                            output.status,
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[notifications] notify-send not available: {e}");
+                }
+            }
         });
     }
 

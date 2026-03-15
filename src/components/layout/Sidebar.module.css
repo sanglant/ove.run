@@ -30,7 +30,6 @@
 .logo {
   height: 18px;
   width: auto;
-  filter: invert(1);
 }
 
 .projectsScroll {

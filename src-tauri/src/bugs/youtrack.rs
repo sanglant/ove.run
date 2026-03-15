@@ -146,7 +146,7 @@ pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<V
     let base_url = config.base_url.as_ref().ok_or("YouTrack base_url is required")?;
     let client = Client::new();
 
-    let query = format!("project: {} type: Bug", config.project_key);
+    let query = format!("project: {} type: Bug State: Unresolved", config.project_key);
 
     let issues: Vec<YouTrackIssue> = client
         .get(format!("{}/api/issues", base_url))

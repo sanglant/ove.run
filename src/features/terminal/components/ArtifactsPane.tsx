@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, CheckCircle, XCircle } from "lucide-react";
 import { useLoopStore } from "@/stores/loopStore";
+import { useProjectStore } from "@/stores/projectStore";
 import type { Story, StoryStatus, GateResult } from "@/types";
 import classes from "./ArtifactsPane.module.css";
 
@@ -12,13 +13,29 @@ const DOT_CLASS: Record<StoryStatus, string> = {
   skipped: classes.dotSkipped,
 };
 
+const ADDITIONAL_ITERATIONS_OPTIONS = [5, 10, 20];
+
 export function ArtifactsPane() {
-  const { stories, status, iterationCount, maxIterations, gateResults, reasoningLog } = useLoopStore();
+  const { stories, status, iterationCount, maxIterations, remainingStories, gateResults, reasoningLog, arbiterState, continueLoop } = useLoopStore();
+  const { projects, activeProjectId } = useProjectStore();
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
 
   const completed = stories.filter((s) => s.status === "completed").length;
   const total = stories.length;
   const activeStory = stories.find((s) => s.status === "in_progress");
+
+  const activeProject = projects.find((p) => p.id === (activeProjectId ?? arbiterState?.project_id));
+
+  async function handleContinue(additionalIterations: number) {
+    if (!activeProject || !arbiterState) return;
+    setContinuing(true);
+    try {
+      await continueLoop(activeProject.id, activeProject.path, additionalIterations);
+    } finally {
+      setContinuing(false);
+    }
+  }
 
   return (
     <div className={classes.container}>
@@ -49,6 +66,27 @@ export function ArtifactsPane() {
                 gates={gateResults[story.id]}
               />
             ))}
+          </div>
+        )}
+
+        {status === "exhausted" && (
+          <div className={classes.exhaustedBanner}>
+            <div className={classes.exhaustedLabel}>
+              {remainingStories} {remainingStories === 1 ? "story" : "stories"} remaining — iterations exhausted
+            </div>
+            <div className={classes.exhaustedActions}>
+              <span className={classes.exhaustedHint}>Run more:</span>
+              {ADDITIONAL_ITERATIONS_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  className={classes.continueBtn}
+                  onClick={() => handleContinue(n)}
+                  disabled={continuing || !activeProject}
+                >
+                  +{n}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

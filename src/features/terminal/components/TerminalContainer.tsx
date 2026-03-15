@@ -306,7 +306,7 @@ export function TerminalContainer() {
   const {
     sessions,
     activeSessionId,
-    projectLayouts,
+    globalLayout,
     focusPane,
     setPaneSession,
     setSplitRatio,
@@ -323,21 +323,17 @@ export function TerminalContainer() {
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const projectSessions = sessions.filter((session) => session.projectId === activeProjectId);
-  const projectSessionIds = projectSessions.map((session) => session.id);
   const projectPathMap = new Map(projects.map((project) => [project.id, project.path]));
   const sessionMap = useMemo(() => new Map(sessions.map((session) => [session.id, session])), [sessions]);
-  const preferredProjectSessionId =
-    activeSessionId && projectSessionIds.includes(activeSessionId)
-      ? activeSessionId
-      : projectSessionIds[0] ?? null;
 
   const layout = useMemo(() => {
-    if (!activeProjectId) {
+    const allSessionIds = sessions.map((s) => s.id);
+    if (allSessionIds.length === 0) {
       return createFallbackLayout([]);
     }
 
-    return projectLayouts[activeProjectId] ?? createFallbackLayout(projectSessionIds, preferredProjectSessionId);
-  }, [activeProjectId, preferredProjectSessionId, projectLayouts, projectSessionIds]);
+    return globalLayout ?? createFallbackLayout(allSessionIds, activeSessionId);
+  }, [activeSessionId, globalLayout, sessions]);
 
   const renderedLayout = useMemo(() => buildRenderData(layout), [layout]);
   const paneCount = useMemo(() => countPanes(layout.root), [layout.root]);
@@ -389,8 +385,7 @@ export function TerminalContainer() {
 
   const handlePaneFocus = useCallback(
     (paneId: string) => {
-      if (!activeProjectId) return;
-      focusPane(activeProjectId, paneId);
+      focusPane(activeProjectId ?? "", paneId);
     },
     [activeProjectId, focusPane],
   );
@@ -407,7 +402,7 @@ export function TerminalContainer() {
 
   const handlePaneDragOver = useCallback(
     (event: DragEvent<HTMLElement>, paneId: string) => {
-      if (!activeProjectId || !isSessionDrag(event)) {
+      if (!isSessionDrag(event)) {
         return;
       }
 
@@ -425,16 +420,12 @@ export function TerminalContainer() {
           : { paneId, zone, sessionId: draggedSessionId || null },
       );
     },
-    [activeProjectId, canSplitPane],
+    [canSplitPane],
   );
 
   const handlePaneDrop = useCallback(
     (event: DragEvent<HTMLElement>, paneId: string) => {
       event.preventDefault();
-      if (!activeProjectId) {
-        clearPaneDragState();
-        return;
-      }
 
       const sessionId = readDraggedSessionId(event.dataTransfer);
       const session = sessionMap.get(sessionId);
@@ -447,14 +438,14 @@ export function TerminalContainer() {
       const splitEnabled = canSplitPane(paneId, sessionId);
       const zone = getPaneDropZone(event, splitEnabled);
       if (zone !== "center" && splitEnabled) {
-        splitPane(activeProjectId, paneId, zone, sessionId);
+        splitPane(session.projectId, paneId, zone, sessionId);
       } else {
-        setPaneSession(activeProjectId, paneId, sessionId);
+        setPaneSession(session.projectId, paneId, sessionId);
       }
 
       clearPaneDragState();
     },
-    [activeProjectId, canSplitPane, clearPaneDragState, sessionMap, setPaneSession, splitPane],
+    [canSplitPane, clearPaneDragState, sessionMap, setPaneSession, splitPane],
   );
 
   const handlePaneDragLeave = useCallback(
@@ -473,8 +464,6 @@ export function TerminalContainer() {
 
   const handleResizeStart = useCallback(
     (handle: RenderedHandle, event: MouseEvent<HTMLDivElement>) => {
-      if (!activeProjectId) return;
-
       event.preventDefault();
       event.stopPropagation();
       setActiveResizeSplitId(handle.splitId);
@@ -509,7 +498,7 @@ export function TerminalContainer() {
           Math.max(pointerOffset / totalSize, minFirstRatio),
           1 - minSecondRatio,
         );
-        setSplitRatio(activeProjectId, handle.splitId, nextRatio);
+        setSplitRatio("", handle.splitId, nextRatio);
       };
 
       const onMouseUp = () => {
@@ -521,10 +510,10 @@ export function TerminalContainer() {
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
     },
-    [activeProjectId, setSplitRatio],
+    [setSplitRatio],
   );
 
-  const isProjectEmpty = projectSessions.length === 0;
+  const isProjectEmpty = sessions.length === 0;
 
   return (
     <div className={classes.container}>
@@ -582,8 +571,8 @@ export function TerminalContainer() {
                 style={renderedPane ? paneRectToStyle(renderedPane.rect) : undefined}
                 data-focused={isFocused || undefined}
                 onMouseDown={() => {
-                  if (renderedPane && activeProjectId) {
-                    focusPane(activeProjectId, renderedPane.paneId);
+                  if (renderedPane) {
+                    focusPane(activeProjectId ?? "", renderedPane.paneId);
                   }
                 }}
                 onDragOver={(event) => {

@@ -197,7 +197,7 @@ export interface Memory {
 }
 
 export type TrustLevel = 1 | 2 | 3;
-export type LoopStatus = "idle" | "planning" | "running" | "paused" | "completed" | "failed";
+export type LoopStatus = "idle" | "planning" | "running" | "paused" | "completed" | "failed" | "exhausted";
 export type StoryStatus = "pending" | "in_progress" | "completed" | "failed" | "skipped";
 
 export interface ArbiterState {
@@ -246,4 +246,5 @@ export type LoopEventType =
   | { type: "CircuitBreakerTriggered"; reason: string }
   | { type: "LoopCompleted" }
   | { type: "LoopFailed"; reason: string }
+  | { type: "LoopExhausted"; incomplete: number }
   | { type: "ReasoningEntry"; action: string; reasoning: string };

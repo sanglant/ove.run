@@ -16,6 +16,7 @@ const STATUS_DOT_CLASS: Record<LoopStatus, string> = {
   paused: classes.dotYellow,
   completed: classes.dotGreen,
   failed: classes.dotRed,
+  exhausted: classes.dotYellow,
 };
 
 function formatTimestamp(iso: string | null): string {

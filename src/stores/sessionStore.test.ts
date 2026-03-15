@@ -10,7 +10,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 }));
 
 import { useSessionStore } from "./sessionStore";
-import type { AgentSession } from "@/types";
+import type { AgentSession, TerminalProjectLayout } from "@/types";
 
 function makeSession(id: string, projectId: string): AgentSession {
   return {
@@ -25,12 +25,20 @@ function makeSession(id: string, projectId: string): AgentSession {
   };
 }
 
+function getLayout(): TerminalProjectLayout {
+  return useSessionStore.getState().globalLayout;
+}
+
 describe("sessionStore", () => {
   beforeEach(() => {
     useSessionStore.setState({
       sessions: [],
       activeSessionId: null,
-      projectLayouts: {},
+      globalLayout: {
+        mode: "grid",
+        root: { type: "pane", id: "pane-0", sessionId: null },
+        activePaneId: "pane-0",
+      },
     });
   });
 
@@ -44,11 +52,11 @@ describe("sessionStore", () => {
       expect(state.activeSessionId).toBe("s1");
     });
 
-    it("creates a layout for the project", () => {
+    it("creates a layout entry for the session", () => {
       const session = makeSession("s1", "p1");
       useSessionStore.getState().addSession(session);
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       expect(layout).toBeDefined();
       expect(layout.root.type).toBe("pane");
       if (layout.root.type === "pane") {
@@ -65,14 +73,14 @@ describe("sessionStore", () => {
       expect(state.activeSessionId).toBe("s2");
     });
 
-    it("keeps sessions for different projects independent", () => {
+    it("places sessions from different projects into the same global layout", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p2"));
 
       const state = useSessionStore.getState();
       expect(state.sessions).toHaveLength(2);
-      expect(state.projectLayouts["p1"]).toBeDefined();
-      expect(state.projectLayouts["p2"]).toBeDefined();
+      // Both sessions share the single global layout
+      expect(state.globalLayout).toBeDefined();
       expect(state.activeSessionId).toBe("s2");
     });
   });
@@ -178,12 +186,12 @@ describe("sessionStore", () => {
 
       // After adding s1 then s2, s2 displaces s1 in the single pane.
       // The active pane contains s2. Split that pane using s1 (which is not yet in any pane).
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       const activePaneId = layout.activePaneId;
 
       useSessionStore.getState().splitPane("p1", activePaneId, "right", "s1");
 
-      const updated = useSessionStore.getState().projectLayouts["p1"];
+      const updated = getLayout();
       expect(updated.root.type).toBe("split");
     });
 
@@ -191,10 +199,10 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
 
-      const updated = useSessionStore.getState().projectLayouts["p1"];
+      const updated = getLayout();
       if (updated.root.type === "split") {
         expect(updated.root.flow).toBe("row");
       } else {
@@ -206,10 +214,10 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "bottom", "s1");
 
-      const updated = useSessionStore.getState().projectLayouts["p1"];
+      const updated = getLayout();
       if (updated.root.type === "split") {
         expect(updated.root.flow).toBe("column");
       } else {
@@ -217,15 +225,26 @@ describe("sessionStore", () => {
       }
     });
 
-    it("no-ops when sessionId is not in the project", () => {
+    it("no-ops when sessionId does not exist in the sessions list", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s-unknown");
 
-      const updated = useSessionStore.getState().projectLayouts["p1"];
+      const updated = getLayout();
       // Root should still be a pane — no split created
       expect(updated.root.type).toBe("pane");
+    });
+
+    it("allows splitting sessions from different projects into the same layout", () => {
+      useSessionStore.getState().addSession(makeSession("s1", "p1"));
+      useSessionStore.getState().addSession(makeSession("s2", "p2"));
+
+      const layout = getLayout();
+      useSessionStore.getState().splitPane("p2", layout.activePaneId, "right", "s1");
+
+      const updated = getLayout();
+      expect(updated.root.type).toBe("split");
     });
 
     it("does not split beyond 8 panes; falls back to placeSessionInLayout", () => {
@@ -240,30 +259,27 @@ describe("sessionStore", () => {
       }
 
       // Reset to a single-pane layout with s1, then grow via splitPane until 8 panes
-      useSessionStore.setState((state) => ({
-        projectLayouts: {
-          ...state.projectLayouts,
-          p1: {
-            mode: "grid" as const,
-            root: { type: "pane" as const, id: "base-pane", sessionId: "s1" },
-            activePaneId: "base-pane",
-          },
+      useSessionStore.setState({
+        globalLayout: {
+          mode: "grid" as const,
+          root: { type: "pane" as const, id: "base-pane", sessionId: "s1" },
+          activePaneId: "base-pane",
         },
-      }));
+      });
 
       // Split 7 more times to reach 8 panes total
       for (let i = 2; i <= 8; i++) {
-        const layout = useSessionStore.getState().projectLayouts["p1"];
+        const layout = getLayout();
         useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", `s${i}`);
       }
 
-      const layoutAt8 = useSessionStore.getState().projectLayouts["p1"];
+      const layoutAt8 = getLayout();
       expect(countPanes(layoutAt8.root)).toBe(8);
 
       // Now try to split with s9 — should not increase pane count beyond 8
       useSessionStore.getState().splitPane("p1", layoutAt8.activePaneId, "right", "s9");
 
-      const layoutAfter = useSessionStore.getState().projectLayouts["p1"];
+      const layoutAfter = getLayout();
       expect(countPanes(layoutAfter.root)).toBeLessThanOrEqual(8);
       // The root must still be a split tree (fallback placed s9, not reset layout)
       expect(layoutAfter.root.type).toBe("split");
@@ -275,17 +291,17 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
 
-      const afterSplit = useSessionStore.getState().projectLayouts["p1"];
+      const afterSplit = getLayout();
       if (afterSplit.root.type !== "split") {
         expect.fail("Expected a split root after splitPane");
       }
       const splitId = afterSplit.root.id;
       useSessionStore.getState().setSplitRatio("p1", splitId, 0.7);
 
-      const afterResize = useSessionStore.getState().projectLayouts["p1"];
+      const afterResize = getLayout();
       if (afterResize.root.type !== "split") {
         expect.fail("Expected a split root after setSplitRatio");
       }
@@ -296,16 +312,16 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
 
-      const afterSplit = useSessionStore.getState().projectLayouts["p1"];
+      const afterSplit = getLayout();
       if (afterSplit.root.type !== "split") {
         expect.fail("Expected a split root");
       }
       useSessionStore.getState().setSplitRatio("p1", afterSplit.root.id, 0.0);
 
-      const afterClamp = useSessionStore.getState().projectLayouts["p1"];
+      const afterClamp = getLayout();
       if (afterClamp.root.type !== "split") {
         expect.fail("Expected a split root");
       }
@@ -318,10 +334,10 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
 
-      const afterSplit = useSessionStore.getState().projectLayouts["p1"];
+      const afterSplit = getLayout();
       // Find the pane that holds s1
       function findPaneBySession(node: typeof afterSplit.root, sessionId: string): string | null {
         if (node.type === "pane") return node.sessionId === sessionId ? node.id : null;
@@ -333,7 +349,7 @@ describe("sessionStore", () => {
       useSessionStore.getState().focusPane("p1", s1PaneId!);
 
       const state = useSessionStore.getState();
-      expect(state.projectLayouts["p1"].activePaneId).toBe(s1PaneId);
+      expect(state.globalLayout.activePaneId).toBe(s1PaneId);
       expect(state.activeSessionId).toBe("s1");
     });
   });
@@ -387,12 +403,12 @@ describe("sessionStore", () => {
   });
 
   describe("setLayoutMode", () => {
-    it("changes the layout mode for a project", () => {
+    it("changes the layout mode", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
 
       useSessionStore.getState().setLayoutMode("p1", "single");
 
-      expect(useSessionStore.getState().projectLayouts["p1"].mode).toBe("single");
+      expect(getLayout().mode).toBe("single");
     });
   });
 
@@ -401,11 +417,11 @@ describe("sessionStore", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
       useSessionStore.getState().addSession(makeSession("s2", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
 
       // Find the pane that currently holds s2
-      const afterSplit = useSessionStore.getState().projectLayouts["p1"];
+      const afterSplit = getLayout();
       function findPaneBySession(node: typeof afterSplit.root, sessionId: string): string | null {
         if (node.type === "pane") return node.sessionId === sessionId ? node.id : null;
         return findPaneBySession(node.first, sessionId) ?? findPaneBySession(node.second, sessionId);
@@ -422,12 +438,12 @@ describe("sessionStore", () => {
     it("clears a pane session when null is passed", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));
 
-      const layout = useSessionStore.getState().projectLayouts["p1"];
+      const layout = getLayout();
       const paneId = layout.activePaneId;
 
       useSessionStore.getState().setPaneSession("p1", paneId, null);
 
-      const updated = useSessionStore.getState().projectLayouts["p1"];
+      const updated = getLayout();
       if (updated.root.type === "pane") {
         expect(updated.root.sessionId).toBeNull();
       } else {
