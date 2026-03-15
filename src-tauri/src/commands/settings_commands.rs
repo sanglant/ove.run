@@ -22,6 +22,7 @@ pub async fn update_settings(
     Ok(())
 }
 
+#[allow(unreachable_code)]
 #[tauri::command]
 pub async fn reset_database(app: tauri::AppHandle) -> Result<(), AppError> {
     use tauri::Manager;

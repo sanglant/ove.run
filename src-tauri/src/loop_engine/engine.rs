@@ -597,18 +597,18 @@ async fn run_loop_lifecycle(
         // Wait for: (a) agent process exit, (b) a loop command, or (c) timeout
         let agent_timeout = tokio::time::Duration::from_secs(60 * 10); // 10 minute cap per story
 
-        let cancelled = if let Some(exit_rx) = exit_rx {
+        let outcome = if let Some(exit_rx) = exit_rx {
             tokio::select! {
                 _ = exit_rx => {
                     // PTY process exited naturally — proceed to quality gates
-                    false
+                    AgentWaitOutcome::ProceedToGates
                 }
                 cmd = cmd_rx.recv() => {
                     handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
                 _ = tokio::time::sleep(agent_timeout) => {
                     // Timeout — proceed to quality gates
-                    false
+                    AgentWaitOutcome::ProceedToGates
                 }
             }
         } else {
@@ -618,13 +618,15 @@ async fn run_loop_lifecycle(
                     handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
                 _ = tokio::time::sleep(agent_timeout) => {
-                    false
+                    AgentWaitOutcome::ProceedToGates
                 }
             }
         };
 
-        if cancelled {
-            continue;
+        match outcome {
+            AgentWaitOutcome::ExitLifecycle => return,
+            AgentWaitOutcome::SkipToNextIteration => continue,
+            AgentWaitOutcome::ProceedToGates => {}
         }
 
         // Cleanup session if still alive
@@ -791,13 +793,17 @@ async fn run_loop_lifecycle(
 // Helper: shared Pause/Cancel handling inside the agent-wait select arms
 // ---------------------------------------------------------------------------
 
+/// What the caller should do after handling a command received during agent wait.
+enum AgentWaitOutcome {
+    /// Agent finished or timed out — proceed to quality gates.
+    ProceedToGates,
+    /// Paused then resumed — skip quality gates and retry the story.
+    SkipToNextIteration,
+    /// Cancelled (or channel closed) — exit the lifecycle entirely.
+    ExitLifecycle,
+}
+
 /// Handles a LoopCommand received while waiting for the agent to finish.
-/// Returns `true` if the story was cancelled/paused-then-resumed-as-skip
-/// (meaning the outer loop should `continue` to the next story),
-/// or `false` if execution should fall through to quality gates.
-///
-/// Note: this function takes ownership of the cmd Option because it comes
-/// directly out of `cmd_rx.recv()`.
 async fn handle_agent_wait_cmd(
     cmd: Option<LoopCommand>,
     db: &DbPool,
@@ -806,7 +812,7 @@ async fn handle_agent_wait_cmd(
     session_id: &str,
     project_id: &str,
     cmd_rx: &mut mpsc::Receiver<LoopCommand>,
-) -> bool {
+) -> AgentWaitOutcome {
     match cmd {
         Some(LoopCommand::Pause) => {
             set_status_best_effort(db, event_tx, project_id, "paused").await;
@@ -820,24 +826,11 @@ async fn handle_agent_wait_cmd(
                 match cmd_rx.recv().await {
                     Some(LoopCommand::Resume) => {
                         set_status_best_effort(db, event_tx, project_id, "running").await;
-                        return true; // re-run story from top of loop
+                        return AgentWaitOutcome::SkipToNextIteration;
                     }
                     Some(LoopCommand::Cancel) | None => {
                         set_status_best_effort(db, event_tx, project_id, "idle").await;
-                        // Signal full exit via a dedicated sentinel — we cannot `return`
-                        // from run_loop_lifecycle here, so we use a special path.
-                        // The caller checks: if handle_agent_wait_cmd returns true it
-                        // `continue`s; the session was already killed and status is idle.
-                        // We need to actually exit the lifecycle, so we park indefinitely
-                        // on a channel that will never receive — the outer task will be
-                        // dropped when the cmd_rx sender is closed.
-                        loop {
-                            match cmd_rx.recv().await {
-                                None => return true,
-                                Some(LoopCommand::Cancel) => return true,
-                                _ => {}
-                            }
-                        }
+                        return AgentWaitOutcome::ExitLifecycle;
                     }
                     _ => {}
                 }
@@ -849,15 +842,93 @@ async fn handle_agent_wait_cmd(
                 let mut pm = pty_manager.write().await;
                 let _ = pm.kill(session_id);
             }
-            // Park until the channel closes; outer loop will exit when cmd_rx closes.
-            loop {
-                match cmd_rx.recv().await {
-                    None => return true,
-                    Some(LoopCommand::Cancel) => return true,
-                    _ => {}
-                }
-            }
+            AgentWaitOutcome::ExitLifecycle
         }
-        _ => false,
+        _ => AgentWaitOutcome::ProceedToGates,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_story(title: &str, desc: &str, ac: Option<&str>) -> Story {
+        Story {
+            id: "s1".to_string(),
+            project_id: "p1".to_string(),
+            title: title.to_string(),
+            description: desc.to_string(),
+            acceptance_criteria: ac.map(|s| s.to_string()),
+            priority: 0,
+            status: "pending".to_string(),
+            depends_on_json: "[]".to_string(),
+            iteration_attempts: 0,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn build_story_prompt_basic() {
+        let story = make_story("Fix login", "The login form is broken", None);
+        let prompt = build_story_prompt(&story, "", "");
+        assert!(prompt.contains("# Task: Fix login"));
+        assert!(prompt.contains("## Description\nThe login form is broken"));
+        assert!(!prompt.contains("Acceptance Criteria"));
+        assert!(!prompt.contains("Relevant Context"));
+        assert!(!prompt.contains("Project Context"));
+    }
+
+    #[test]
+    fn build_story_prompt_with_acceptance_criteria() {
+        let story = make_story("Fix login", "Broken", Some("- Users can log in\n- Error message shown"));
+        let prompt = build_story_prompt(&story, "", "");
+        assert!(prompt.contains("## Acceptance Criteria\n- Users can log in\n- Error message shown"));
+    }
+
+    #[test]
+    fn build_story_prompt_skips_empty_acceptance_criteria() {
+        let story = make_story("Fix login", "Broken", Some(""));
+        let prompt = build_story_prompt(&story, "", "");
+        assert!(!prompt.contains("Acceptance Criteria"));
+    }
+
+    #[test]
+    fn build_story_prompt_with_memories() {
+        let story = make_story("Fix login", "Broken", None);
+        let prompt = build_story_prompt(&story, "- Auth uses JWT tokens", "");
+        assert!(prompt.contains("## Relevant Context from Memory\n- Auth uses JWT tokens"));
+    }
+
+    #[test]
+    fn build_story_prompt_with_l0_context() {
+        let story = make_story("Fix login", "Broken", None);
+        let prompt = build_story_prompt(&story, "", "- auth: Handles authentication");
+        assert!(prompt.contains("## Project Context Summaries\n- auth: Handles authentication"));
+    }
+
+    #[test]
+    fn build_story_prompt_all_sections() {
+        let story = make_story("Fix login", "Broken", Some("Must work"));
+        let prompt = build_story_prompt(&story, "mem1", "ctx1");
+        assert!(prompt.contains("# Task: Fix login"));
+        assert!(prompt.contains("## Description\nBroken"));
+        assert!(prompt.contains("## Acceptance Criteria\nMust work"));
+        assert!(prompt.contains("## Relevant Context from Memory\nmem1"));
+        assert!(prompt.contains("## Project Context Summaries\nctx1"));
+    }
+
+    #[test]
+    fn build_story_prompt_sections_separated_by_double_newline() {
+        let story = make_story("T", "D", Some("AC"));
+        let prompt = build_story_prompt(&story, "M", "L");
+        // All sections should be separated by double newlines
+        let sections: Vec<&str> = prompt.split("\n\n").collect();
+        // Expected: "# Task: T", "", "## Description\nD", "## Acceptance Criteria\nAC",
+        //           "## Relevant Context from Memory\nM", "## Project Context Summaries\nL"
+        assert!(sections.len() >= 5, "Expected at least 5 sections separated by \\n\\n, got {}", sections.len());
     }
 }

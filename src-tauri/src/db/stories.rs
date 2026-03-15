@@ -155,3 +155,228 @@ fn list_stories_by_status(conn: &Connection, project_id: &str, status: &str) -> 
     let rows = stmt.query_map(params![project_id, status], row_to_story)?;
     rows.collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=OFF;").unwrap(); // skip FK for isolated tests
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS stories (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                acceptance_criteria TEXT,
+                priority INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'pending',
+                depends_on_json TEXT DEFAULT '[]',
+                iteration_attempts INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            );"
+        ).unwrap();
+        conn
+    }
+
+    fn make_story(id: &str, project_id: &str, status: &str, deps: &[&str]) -> Story {
+        Story {
+            id: id.to_string(),
+            project_id: project_id.to_string(),
+            title: format!("Story {}", id),
+            description: "desc".to_string(),
+            acceptance_criteria: None,
+            priority: 0,
+            status: status.to_string(),
+            depends_on_json: serde_json::to_string(
+                &deps.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            ).unwrap(),
+            iteration_attempts: 0,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn create_and_get_story() {
+        let conn = test_db();
+        let story = make_story("s1", "p1", "pending", &[]);
+        create_story(&conn, &story).unwrap();
+        let fetched = get_story(&conn, "s1").unwrap();
+        assert_eq!(fetched.id, "s1");
+        assert_eq!(fetched.title, "Story s1");
+        assert_eq!(fetched.status, "pending");
+    }
+
+    #[test]
+    fn list_stories_by_project() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &[])).unwrap();
+        create_story(&conn, &make_story("s3", "p2", "pending", &[])).unwrap();
+        let stories = list_stories(&conn, "p1").unwrap();
+        assert_eq!(stories.len(), 2);
+    }
+
+    #[test]
+    fn update_story_status_works() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        update_story_status(&conn, "s1", "completed").unwrap();
+        let story = get_story(&conn, "s1").unwrap();
+        assert_eq!(story.status, "completed");
+    }
+
+    #[test]
+    fn increment_story_attempts_works() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        increment_story_attempts(&conn, "s1").unwrap();
+        increment_story_attempts(&conn, "s1").unwrap();
+        let story = get_story(&conn, "s1").unwrap();
+        assert_eq!(story.iteration_attempts, 2);
+    }
+
+    #[test]
+    fn get_next_story_returns_first_pending() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &[])).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_some());
+        assert_eq!(next.unwrap().id, "s1");
+    }
+
+    #[test]
+    fn get_next_story_skips_completed() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "completed", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &[])).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_some());
+        assert_eq!(next.unwrap().id, "s2");
+    }
+
+    #[test]
+    fn get_next_story_respects_dependencies() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &["s2"])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &[])).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_some());
+        // s1 depends on s2, s2 has no deps → s2 should be next
+        assert_eq!(next.unwrap().id, "s2");
+    }
+
+    #[test]
+    fn get_next_story_allows_completed_deps() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &["s2"])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "completed", &[])).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_some());
+        // s2 is completed, so s1's dependency is satisfied
+        assert_eq!(next.unwrap().id, "s1");
+    }
+
+    #[test]
+    fn get_next_story_returns_none_when_all_blocked() {
+        let conn = test_db();
+        // Circular dependency: s1 depends on s2, s2 depends on s1
+        create_story(&conn, &make_story("s1", "p1", "pending", &["s2"])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &["s1"])).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_none());
+    }
+
+    #[test]
+    fn get_next_story_returns_none_when_empty() {
+        let conn = test_db();
+        let next = get_next_story(&conn, "p1").unwrap();
+        assert!(next.is_none());
+    }
+
+    #[test]
+    fn all_stories_complete_true_when_all_completed() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "completed", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "completed", &[])).unwrap();
+        assert!(all_stories_complete(&conn, "p1").unwrap());
+    }
+
+    #[test]
+    fn all_stories_complete_true_with_skipped() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "completed", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "skipped", &[])).unwrap();
+        assert!(all_stories_complete(&conn, "p1").unwrap());
+    }
+
+    #[test]
+    fn all_stories_complete_false_when_pending() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "completed", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "pending", &[])).unwrap();
+        assert!(!all_stories_complete(&conn, "p1").unwrap());
+    }
+
+    #[test]
+    fn all_stories_complete_true_when_empty() {
+        let conn = test_db();
+        // No stories at all = vacuously complete
+        assert!(all_stories_complete(&conn, "p1").unwrap());
+    }
+
+    #[test]
+    fn all_stories_complete_false_when_failed() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "failed", &[])).unwrap();
+        assert!(!all_stories_complete(&conn, "p1").unwrap());
+    }
+
+    #[test]
+    fn delete_story_works() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        delete_story(&conn, "s1").unwrap();
+        assert!(get_story(&conn, "s1").is_err());
+    }
+
+    #[test]
+    fn delete_project_stories_removes_all() {
+        let conn = test_db();
+        create_story(&conn, &make_story("s1", "p1", "pending", &[])).unwrap();
+        create_story(&conn, &make_story("s2", "p1", "completed", &[])).unwrap();
+        create_story(&conn, &make_story("s3", "p2", "pending", &[])).unwrap();
+        delete_project_stories(&conn, "p1").unwrap();
+        assert_eq!(list_stories(&conn, "p1").unwrap().len(), 0);
+        assert_eq!(list_stories(&conn, "p2").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn create_stories_batch_works() {
+        let conn = test_db();
+        let stories = vec![
+            make_story("s1", "p1", "pending", &[]),
+            make_story("s2", "p1", "pending", &[]),
+        ];
+        create_stories_batch(&conn, &stories).unwrap();
+        assert_eq!(list_stories(&conn, "p1").unwrap().len(), 2);
+    }
+
+    #[test]
+    fn get_next_story_respects_priority_ordering() {
+        let conn = test_db();
+        let mut low = make_story("s1", "p1", "pending", &[]);
+        low.priority = 1;
+        low.created_at = "2026-01-01T00:00:00Z".to_string();
+        let mut high = make_story("s2", "p1", "pending", &[]);
+        high.priority = 10;
+        high.created_at = "2026-01-02T00:00:00Z".to_string();
+        create_story(&conn, &low).unwrap();
+        create_story(&conn, &high).unwrap();
+        let next = get_next_story(&conn, "p1").unwrap().unwrap();
+        // Higher priority should come first (ORDER BY priority DESC)
+        assert_eq!(next.id, "s2");
+    }
+}

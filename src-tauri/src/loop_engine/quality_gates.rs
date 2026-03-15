@@ -62,3 +62,133 @@ async fn run_gate(name: &str, command: &str, cwd: &str) -> GateResult {
 pub fn all_gates_passed(results: &[GateResult]) -> bool {
     results.iter().all(|r| r.passed)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn gate(name: &str, passed: bool) -> GateResult {
+        GateResult {
+            name: name.to_string(),
+            passed,
+            output: String::new(),
+        }
+    }
+
+    #[test]
+    fn all_gates_passed_empty() {
+        // Empty gates = vacuously true (no gates configured)
+        assert!(all_gates_passed(&[]));
+    }
+
+    #[test]
+    fn all_gates_passed_all_pass() {
+        let results = vec![gate("build", true), gate("test", true), gate("lint", true)];
+        assert!(all_gates_passed(&results));
+    }
+
+    #[test]
+    fn all_gates_passed_one_fails() {
+        let results = vec![gate("build", true), gate("test", false), gate("lint", true)];
+        assert!(!all_gates_passed(&results));
+    }
+
+    #[test]
+    fn all_gates_passed_all_fail() {
+        let results = vec![gate("build", false), gate("test", false)];
+        assert!(!all_gates_passed(&results));
+    }
+
+    #[test]
+    fn all_gates_passed_single_pass() {
+        assert!(all_gates_passed(&[gate("build", true)]));
+    }
+
+    #[test]
+    fn all_gates_passed_single_fail() {
+        assert!(!all_gates_passed(&[gate("build", false)]));
+    }
+
+    #[tokio::test]
+    async fn run_gate_empty_command() {
+        let result = run_gate("test", "", "/tmp").await;
+        assert!(!result.passed);
+        assert_eq!(result.output, "Empty command");
+    }
+
+    #[tokio::test]
+    async fn run_gate_successful_command() {
+        let result = run_gate("echo", "echo hello", "/tmp").await;
+        assert!(result.passed);
+        assert!(result.output.contains("hello"));
+    }
+
+    #[tokio::test]
+    async fn run_gate_failing_command() {
+        let result = run_gate("test", "false", "/tmp").await;
+        assert!(!result.passed);
+    }
+
+    #[tokio::test]
+    async fn run_gate_nonexistent_command() {
+        let result = run_gate("test", "nonexistent_command_xyz_12345", "/tmp").await;
+        assert!(!result.passed);
+        assert!(result.output.contains("Failed to run"));
+    }
+
+    #[tokio::test]
+    async fn run_quality_gates_no_commands_configured() {
+        let config = QualityGateConfig::default();
+        let results = run_quality_gates(&config, "/tmp").await;
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn run_quality_gates_with_build_command() {
+        let config = QualityGateConfig {
+            build_command: Some("echo build-ok".to_string()),
+            lint_command: None,
+            typecheck_command: None,
+            test_command: None,
+            arbiter_judge: false,
+        };
+        let results = run_quality_gates(&config, "/tmp").await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "build");
+        assert!(results[0].passed);
+    }
+
+    #[tokio::test]
+    async fn run_quality_gates_multiple_commands() {
+        let config = QualityGateConfig {
+            build_command: Some("echo build".to_string()),
+            lint_command: Some("echo lint".to_string()),
+            typecheck_command: Some("echo typecheck".to_string()),
+            test_command: Some("echo test".to_string()),
+            arbiter_judge: false,
+        };
+        let results = run_quality_gates(&config, "/tmp").await;
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0].name, "build");
+        assert_eq!(results[1].name, "lint");
+        assert_eq!(results[2].name, "typecheck");
+        assert_eq!(results[3].name, "test");
+        assert!(results.iter().all(|r| r.passed));
+    }
+
+    #[tokio::test]
+    async fn run_quality_gates_mixed_results() {
+        let config = QualityGateConfig {
+            build_command: Some("echo ok".to_string()),
+            lint_command: None,
+            typecheck_command: None,
+            test_command: Some("false".to_string()),
+            arbiter_judge: false,
+        };
+        let results = run_quality_gates(&config, "/tmp").await;
+        assert_eq!(results.len(), 2);
+        assert!(results[0].passed);  // build
+        assert!(!results[1].passed); // test
+        assert!(!all_gates_passed(&results));
+    }
+}
