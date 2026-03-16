@@ -10,6 +10,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification } from "@/lib/tauri";
+import { toBytes } from "@/lib/pty-utils";
 import { listen } from "@tauri-apps/api/event";
 import { detectStatusFromOutput } from "@/lib/patterns";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
@@ -117,7 +118,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
 
         if (session.initialPrompt) {
           setTimeout(async () => {
-            const bytes = Array.from(new TextEncoder().encode(session.initialPrompt + "\r"));
+            const bytes = toBytes(session.initialPrompt + "\r");
             await writePty(session.id, bytes);
           }, 2000);
         }
@@ -140,7 +141,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         background: "#090909",
         foreground: "#e8e8f0",
         cursor: "#6c7ee1",
-        cursorAccent: "#090909",
+        cursorAccent: "#e8e8f0",
         selectionBackground: "#2e2e3e",
         black: "#111114",
         red: "#e5737f",
@@ -179,7 +180,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
     // Handle user input
     term.onData((data) => {
       if (!spawnedRef.current) return;
-      const bytes = Array.from(new TextEncoder().encode(data));
+      const bytes = toBytes(data);
       writePty(session.id, bytes).catch((err) => {
         console.error("writePty error:", err);
       });
@@ -260,7 +261,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
                 parsedOptions: [],
                 allowFreeInput: false,
                 timestamp: new Date().toISOString(),
-                arbiterEnabled: false,
+                arbiterEnabled: !!project?.arbiter_enabled,
               });
             }
           }

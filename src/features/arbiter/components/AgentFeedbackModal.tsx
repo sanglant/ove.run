@@ -18,8 +18,8 @@ import {
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { writePty } from "@/lib/tauri";
 import { arbiterAnswer } from "@/lib/arbiter";
+import { sendKeys, toBytes } from "@/lib/pty-utils";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import type { FeedbackItem } from "@/types";
@@ -66,24 +66,7 @@ function FeedbackModalContent({
   const handleSendKeys = useCallback(
     async (keys: number[]) => {
       try {
-        const keypresses: number[][] = [];
-        let i = 0;
-        while (i < keys.length) {
-          if (keys[i] === 0x1b && keys[i + 1] === 0x5b && i + 2 < keys.length) {
-            keypresses.push(keys.slice(i, i + 3));
-            i += 3;
-          } else {
-            keypresses.push([keys[i]]);
-            i += 1;
-          }
-        }
-
-        for (let k = 0; k < keypresses.length; k++) {
-          await writePty(item.sessionId, keypresses[k]);
-          if (k < keypresses.length - 1) {
-            await new Promise((r) => setTimeout(r, 50));
-          }
-        }
+        await sendKeys(item.sessionId, keys);
       } catch (err) {
         console.error("Failed to write to PTY:", err);
       }
@@ -95,7 +78,7 @@ function FeedbackModalContent({
 
   const handleFreeTextSubmit = useCallback(() => {
     if (!freeText.trim()) return;
-    const bytes = Array.from(new TextEncoder().encode(freeText + "\r"));
+    const bytes = toBytes(freeText + "\r");
     handleSendKeys(bytes);
   }, [freeText, handleSendKeys]);
 

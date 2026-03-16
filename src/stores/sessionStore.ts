@@ -12,6 +12,7 @@ import type {
   TerminalSplitLayoutNode,
 } from "@/types";
 import { saveSessions, loadSessions } from "@/lib/tauri";
+import { collectPanes, countPanes, findPaneById } from "@/lib/layout";
 import { useNotificationStore } from "./notificationStore";
 
 const MAX_GRID_PANES = 8;
@@ -61,32 +62,6 @@ function createLayout(initialSessionId: string | null = null): TerminalProjectLa
     root,
     activePaneId: root.id,
   };
-}
-
-function collectPanes(
-  node: TerminalLayoutNode,
-  panes: TerminalPaneLayoutNode[] = [],
-): TerminalPaneLayoutNode[] {
-  if (node.type === "pane") {
-    panes.push(node);
-    return panes;
-  }
-
-  collectPanes(node.first, panes);
-  collectPanes(node.second, panes);
-  return panes;
-}
-
-function countPanes(node: TerminalLayoutNode): number {
-  return node.type === "pane" ? 1 : countPanes(node.first) + countPanes(node.second);
-}
-
-function findPaneById(node: TerminalLayoutNode, paneId: string): TerminalPaneLayoutNode | null {
-  if (node.type === "pane") {
-    return node.id === paneId ? node : null;
-  }
-
-  return findPaneById(node.first, paneId) ?? findPaneById(node.second, paneId);
 }
 
 function findPaneBySession(node: TerminalLayoutNode, sessionId: string): TerminalPaneLayoutNode | null {
@@ -713,11 +688,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   updateSessionStatus: (id: string, status: AgentStatus) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === id ? { ...session, status } : session,
-      ),
-    }));
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id);
+      if (!session || session.status === status) return state;
+      return {
+        sessions: state.sessions.map((s) =>
+          s.id === id ? { ...s, status } : s,
+        ),
+      };
+    });
   },
 
   updateSessionYolo: (id: string, yoloMode: boolean) => {

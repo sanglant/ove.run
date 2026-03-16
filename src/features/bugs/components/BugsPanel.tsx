@@ -4,8 +4,7 @@ import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useProjectStore } from "@/stores/projectStore";
 import { useBugsStore } from "@/stores/bugsStore";
 import { startBugOauth, checkBugAuth, disconnectBugProvider } from "@/lib/tauri";
-import { useTourStore } from "@/stores/tourStore";
-import { useTour } from "@/hooks/useTour";
+import { useAutoTour } from "@/hooks/useAutoTour";
 import { ProviderSetup } from "./ProviderSetup";
 import { BugDetailView } from "./BugDetailView";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
@@ -47,16 +46,7 @@ export function BugsPanel() {
     reset,
   } = useBugsStore();
 
-  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
-  const { startPanelTour } = useTour();
-
-  useEffect(() => {
-    if (!hasSeenHomeTour || hasPanelTourBeenSeen("bugs")) return;
-    markPanelTourSeen("bugs");
-    const timer = setTimeout(() => { startPanelTour("bugs"); }, 1000);
-    return () => { clearTimeout(timer); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useAutoTour("bugs");
 
   const [search, setSearch] = useState("");
   const [connecting, setConnecting] = useState(false);

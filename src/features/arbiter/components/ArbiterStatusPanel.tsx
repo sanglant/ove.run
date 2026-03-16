@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useArbiterStore } from "@/stores/arbiterStore";
 import { TRUST_LEVEL_LABELS } from "@/types";
 import type { TrustLevel, LoopStatus } from "@/types";
+import { formatRelativeTime } from "@/lib/formatTime";
 import { TrustLevelSelector } from "./TrustLevelSelector";
 import classes from "./ArbiterStatusPanel.module.css";
 
@@ -21,15 +22,7 @@ const STATUS_DOT_CLASS: Record<LoopStatus, string> = {
 
 function formatTimestamp(iso: string | null): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return d.toLocaleDateString();
+  return formatRelativeTime(iso);
 }
 
 export function ArbiterStatusPanel({ projectId }: ArbiterStatusPanelProps) {

@@ -521,21 +521,9 @@ async fn run_loop_lifecycle(
 
         let prompt = build_story_prompt(&story, &memories_text, &l0_text);
 
-        // Retrieve yolo mode from agent settings
-        let yolo_mode = match lock_db(db) {
-            Ok(conn) => {
-                let settings = load_app_settings(&conn);
-                settings
-                    .agents
-                    .get(&agent_type_key)
-                    .map(|s| s.default_yolo_mode)
-                    .unwrap_or(false)
-            }
-            Err(e) => {
-                tracing::warn!("[loop_engine] yolo_mode load failed: {e}; defaulting to false");
-                false
-            }
-        };
+        // Loop engine always enables yolo mode — agents run autonomously
+        // with no human to approve permission prompts.
+        let yolo_mode = true;
 
         // Build spawn args (used for CliFlag/PositionalArg delivery; for
         // InteractiveInput the args do not include the prompt)

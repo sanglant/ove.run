@@ -1,12 +1,10 @@
 import type { ParsedOption } from "@/types";
+import { toBytes } from "@/lib/pty-utils";
+import { stripAnsi } from "@/lib/patterns";
 
 interface ParseResult {
   options: ParsedOption[];
   allowFreeInput: boolean;
-}
-
-function toBytes(str: string): number[] {
-  return Array.from(new TextEncoder().encode(str));
 }
 
 // Matches a single ANSI escape sequence at position i in a string.
@@ -110,8 +108,6 @@ export function cleanTerminalOutput(raw: string): string {
   return cleaned;
 }
 
-// eslint-disable-next-line no-control-regex
-const ANSI_RE = /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
 
 // Arrow key escape sequences for navigating Ink SelectInput menus
 const ARROW_DOWN = [0x1b, 0x5b, 0x42]; // ESC [ B
@@ -192,7 +188,7 @@ function parseArrowMenu(text: string): ParseResult | null {
 export function parseFeedbackOptions(output: string): ParseResult {
   // Strip ANSI codes, then trim trailing spaces per line (Claude Code / Ink pads
   // every line to full terminal width; without per-line trim, 500 chars ≈ 4 lines).
-  const stripped = output.replace(ANSI_RE, "");
+  const stripped = stripAnsi(output);
   const trimmed = stripped.split("\n").map((l) => l.trimEnd()).join("\n").trim();
   const lastChunk = trimmed.slice(-500);
 

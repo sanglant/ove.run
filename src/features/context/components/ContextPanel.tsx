@@ -4,8 +4,7 @@ import { SegmentedControl, TextInput, Modal, Text } from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
 import { useSessionStore } from "@/stores/sessionStore";
-import { useTourStore } from "@/stores/tourStore";
-import { useTour } from "@/hooks/useTour";
+import { useAutoTour } from "@/hooks/useAutoTour";
 import {
   generateContextSummary,
   setProjectDefaultContext,
@@ -33,16 +32,7 @@ export function ContextPanel() {
   const { units, loading, filter, searchQuery, setFilter, setSearchQuery, loadUnits, addUnit, editUnit, removeUnit, duplicateUnit } = useContextStore();
   const { sessions, activeSessionId } = useSessionStore();
 
-  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
-  const { startPanelTour } = useTour();
-
-  useEffect(() => {
-    if (!hasSeenHomeTour || hasPanelTourBeenSeen("knowledge")) return;
-    markPanelTourSeen("knowledge");
-    const timer = setTimeout(() => { startPanelTour("knowledge"); }, 1000);
-    return () => { clearTimeout(timer); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useAutoTour("knowledge");
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ContextUnit | null>(null);

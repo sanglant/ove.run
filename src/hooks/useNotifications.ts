@@ -4,7 +4,7 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import type { NotificationItem } from "@/types";
 
 export function useNotifications() {
-  const { addNotification, unreadCount } = useNotificationStore();
+  const { addNotification, notifications } = useNotificationStore();
 
   useEffect(() => {
     let unlisten: (() => void) | null = null;
@@ -27,5 +27,5 @@ export function useNotifications() {
     };
   }, [addNotification]);
 
-  return { unreadCount };
+  return { unreadCount: notifications.filter((n) => !n.read).length };
 }

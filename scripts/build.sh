@@ -4,7 +4,9 @@
 # Outputs go to ./release/<target>/
 #
 # Usage:
-#   ./scripts/build.sh              # build for current OS
+#   ./scripts/build.sh              # bump patch + build for current OS
+#   BUMP=minor ./scripts/build.sh   # bump minor + build
+#   BUMP=2.0.0 ./scripts/build.sh   # set exact version + build
 #   ./scripts/build.sh --target x86_64-pc-windows-msvc   # cross-compile (requires toolchain)
 #
 # Supported targets (must be built on each respective OS or via CI):
@@ -22,7 +24,10 @@ if [[ "${1:-}" == "--target" && -n "${2:-}" ]]; then
     TARGET_FLAG="--target $2"
 fi
 
-echo "==> Building ove.run release..."
+# Auto-bump patch version
+"$ROOT/scripts/bump-version.sh" "${BUMP:-patch}"
+VERSION=$(grep -oP '"version":\s*"\K[^"]+' "$ROOT/package.json" | head -1)
+echo "==> Building ove.run v$VERSION..."
 
 # Build with Tauri (this runs beforeBuildCommand automatically)
 # Allow partial failures (e.g. AppImage may fail if linuxdeploy isn't installed)

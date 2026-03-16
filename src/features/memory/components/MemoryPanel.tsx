@@ -24,18 +24,13 @@ export function MemoryPanel() {
 
   useEffect(() => {
     if (!activeProjectId) return;
-    void loadMemories(activeProjectId);
-    void loadConsolidations(activeProjectId);
-  }, [activeProjectId, loadMemories, loadConsolidations]);
-
-  useEffect(() => {
-    if (!activeProjectId) return;
     if (searchQuery.trim()) {
       void search(searchQuery, activeProjectId);
     } else {
       void loadMemories(activeProjectId);
     }
-  }, [searchQuery, activeProjectId, search, loadMemories]);
+    void loadConsolidations(activeProjectId);
+  }, [activeProjectId, searchQuery, search, loadMemories, loadConsolidations]);
 
   if (!activeProjectId) {
     return (

@@ -3,8 +3,7 @@ import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
 import { Modal, TextInput, Text, Switch } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
-import { useTourStore } from "@/stores/tourStore";
-import { useTour } from "@/hooks/useTour";
+import { useAutoTour } from "@/hooks/useAutoTour";
 import { useProjectStore } from "@/stores/projectStore";
 import {
   listNotes,
@@ -19,17 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import cn from "clsx";
 import classes from "./NotesPanel.module.css";
 
-function formatRelativeDate(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
-
-  if (diffDays <= 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+import { formatRelativeTime } from "@/lib/formatTime";
 
 function formatAbsoluteDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -43,16 +32,7 @@ function formatAbsoluteDate(iso: string): string {
 export function NotesPanel() {
   const { activeProjectId } = useProjectStore();
 
-  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
-  const { startPanelTour } = useTour();
-
-  useEffect(() => {
-    if (!hasSeenHomeTour || hasPanelTourBeenSeen("notes")) return;
-    markPanelTourSeen("notes");
-    const timer = setTimeout(() => { startPanelTour("notes"); }, 1000);
-    return () => { clearTimeout(timer); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useAutoTour("notes");
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -358,7 +338,7 @@ export function NotesPanel() {
                   >
                     <div className={classes.cardMetaRow}>
                       <span className={classes.cardChip}>Markdown note</span>
-                      <span className={classes.cardDate}>{formatRelativeDate(note.updated_at)}</span>
+                      <span className={classes.cardDate}>{formatRelativeTime(note.updated_at)}</span>
                     </div>
                     <span className={classes.cardTitle}>{note.title}</span>
                     <span className={classes.cardDescription}>

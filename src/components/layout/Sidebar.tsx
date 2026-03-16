@@ -90,7 +90,8 @@ export function Sidebar() {
   const { projects, activeProjectId, setActiveProject, updateProject, removeProject } = useProjectStore();
   const { sessions, activeSessionId, setActiveSession, removeSession } = useSessionStore();
   const { activePanel, setActivePanel } = useUiStore();
-  const { unreadCount } = useNotificationStore();
+  const { notifications } = useNotificationStore();
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set(),
@@ -399,7 +400,7 @@ export function Sidebar() {
                     aria-label={`New agent session for ${project.name}`}
                     className={cn(classes.iconButton, classes.revealOnHover)}
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                   </button>
                 </div>
 

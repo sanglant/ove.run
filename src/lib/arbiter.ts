@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { arbiterReview, writePty, listAgentTypes, searchMemories, extractMemories, checkConsolidation, listSessionContext } from "@/lib/tauri";
+import { arbiterReview, listAgentTypes, searchMemories, extractMemories, checkConsolidation, listSessionContext } from "@/lib/tauri";
+import { sendKeys, sendText } from "@/lib/pty-utils";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { stripAnsi } from "@/lib/patterns";
@@ -124,6 +125,33 @@ export async function arbiterAnswer(
   }
 }
 
+/**
+ * Process an agent completion event — extract memories and consolidate.
+ * Unlike arbiterAnswer, this doesn't send any input back to the agent.
+ */
+export async function arbiterProcessCompletion(
+  item: FeedbackItem,
+  projectPath: string,
+): Promise<void> {
+  const { sessionId, output, projectId } = item;
+
+  try {
+    await extractMemories(projectId, sessionId, output, projectPath);
+    await checkConsolidation(projectId, projectPath);
+  } catch (err) {
+    console.error("Arbiter completion processing failed:", err);
+  }
+
+  const session = useSessionStore.getState().sessions.find((s) => s.id === sessionId);
+  useNotificationStore.getState().addNotification({
+    id: uuidv4(),
+    title: "Agent Finished",
+    body: `${session?.label ?? "Session"}: work completed, memories extracted`,
+    sessionId,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 interface ArbiterResult {
   answer?: string;
   answerText?: string;
@@ -177,27 +205,3 @@ function parseArbiterResponse(response: string, _options: ParsedOption[]): Arbit
   return result;
 }
 
-async function sendKeys(sessionId: string, keys: number[]): Promise<void> {
-  const keypresses: number[][] = [];
-  let i = 0;
-  while (i < keys.length) {
-    if (keys[i] === 0x1b && keys[i + 1] === 0x5b && i + 2 < keys.length) {
-      keypresses.push(keys.slice(i, i + 3));
-      i += 3;
-    } else {
-      keypresses.push([keys[i]]);
-      i += 1;
-    }
-  }
-  for (let k = 0; k < keypresses.length; k++) {
-    await writePty(sessionId, keypresses[k]);
-    if (k < keypresses.length - 1) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
-  }
-}
-
-async function sendText(sessionId: string, text: string): Promise<void> {
-  const bytes = Array.from(new TextEncoder().encode(text + "\r"));
-  await sendKeys(sessionId, bytes);
-}

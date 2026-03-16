@@ -16,14 +16,20 @@ pub enum MemoryWorkerEvent {
 const CONSOLIDATION_THRESHOLD: i64 = 10;
 const CONSOLIDATION_BATCH: usize = 20;
 
-const CONSOLIDATION_PROMPT_TEMPLATE: &str = r#"You are synthesizing a set of memories from an AI coding agent session into higher-level insights.
+const CONSOLIDATION_PROMPT_TEMPLATE: &str = r#"You are distilling a set of memories from AI coding agent sessions. Your job is to separate signal from noise and produce a compact summary that preserves only what matters for future work.
 
 Memories to consolidate:
 {memories}
 
+Discard memories that are:
+- Routine operations anyone could re-derive from the code
+- Temporary state that is no longer relevant
+- Duplicate or near-duplicate of another memory
+- Low-importance details that don't affect future decisions
+
 Respond with exactly two lines:
-SUMMARY: <a concise summary of the key themes and facts across these memories, 2-3 sentences>
-INSIGHT: <the single most important actionable insight or pattern, 1 sentence>"#;
+SUMMARY: <distilled summary of decisions, patterns, and facts worth keeping — 2-3 sentences, no filler>
+INSIGHT: <the single most actionable takeaway for future sessions, 1 sentence>"#;
 
 pub async fn run_memory_worker(db: DbPool, mut rx: mpsc::Receiver<MemoryWorkerEvent>) {
     while let Some(event) = rx.recv().await {

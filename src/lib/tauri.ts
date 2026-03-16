@@ -338,3 +338,15 @@ export async function getSandboxCapabilities(): Promise<SandboxCapabilities> {
 export async function resetDatabase(): Promise<void> {
   return invoke("reset_database");
 }
+
+export interface UpdateInfo {
+  current_version: string;
+  latest_version: string;
+  update_available: boolean;
+  release_url: string;
+  release_notes: string | null;
+}
+
+export async function checkForUpdates(): Promise<UpdateInfo> {
+  return invoke("check_for_updates");
+}

@@ -15,6 +15,8 @@ import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
 import { ArtifactsPane } from "./ArtifactsPane";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
+import { AgentFeedbackToast } from "@/features/arbiter/components/AgentFeedbackToast";
+import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import type {
@@ -24,7 +26,9 @@ import type {
   TerminalProjectLayout,
   TerminalSplitFlow,
 } from "@/types";
+import { collectPanes, countPanes, findPaneById } from "@/lib/layout";
 import classes from "./TerminalContainer.module.css";
+import toastClasses from "@/features/arbiter/components/AgentFeedbackToast.module.css";
 
 const SESSION_DRAG_MIME = "application/x-ove-run-session";
 const MAX_GRID_PANES = 8;
@@ -79,32 +83,6 @@ function createFallbackLayout(
     root,
     activePaneId: root.id,
   };
-}
-
-function collectPanes(
-  node: TerminalLayoutNode,
-  panes: TerminalPaneLayoutNode[] = [],
-): TerminalPaneLayoutNode[] {
-  if (node.type === "pane") {
-    panes.push(node);
-    return panes;
-  }
-
-  collectPanes(node.first, panes);
-  collectPanes(node.second, panes);
-  return panes;
-}
-
-function countPanes(node: TerminalLayoutNode): number {
-  return node.type === "pane" ? 1 : countPanes(node.first) + countPanes(node.second);
-}
-
-function findPaneById(node: TerminalLayoutNode, paneId: string): TerminalPaneLayoutNode | null {
-  if (node.type === "pane") {
-    return node.id === paneId ? node : null;
-  }
-
-  return findPaneById(node.first, paneId) ?? findPaneById(node.second, paneId);
 }
 
 function getPaneMinUnits(node: TerminalLayoutNode, flow: TerminalSplitFlow): number {
@@ -313,6 +291,8 @@ export function TerminalContainer() {
     splitPane,
   } = useSessionStore();
   const { activeProjectId, projects } = useProjectStore();
+  const feedbackQueue = useAgentFeedbackStore((s) => s.queue);
+  const dismissFeedback = useAgentFeedbackStore((s) => s.dismissCurrent);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [paneDragState, setPaneDragState] = useState<PaneDragState>({
     paneId: null,
@@ -673,6 +653,24 @@ export function TerminalContainer() {
                 onMouseDown={(event) => handleResizeStart(handle, event)}
               />
             ))}
+
+          {/* Agent feedback toasts anchored to visible terminal panes */}
+          {feedbackQueue.map((item, idx) => {
+            const pane = visiblePaneBySessionId.get(item.sessionId);
+            if (!pane) return null;
+            return (
+              <div
+                key={`feedback-${item.id}`}
+                className={toastClasses.paneAnchor}
+                style={paneRectToStyle(pane.rect)}
+              >
+                <AgentFeedbackToast
+                  item={item}
+                  onDismiss={idx === 0 ? dismissFeedback : () => {}}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {isProjectEmpty && (

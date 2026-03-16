@@ -277,18 +277,19 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
         });
         break;
       case "ReasoningEntry":
-        set((state) => ({
-          reasoningLog: [
-            ...state.reasoningLog,
-            {
-              action: event.action,
-              reasoning: event.reasoning,
-              timestamp: new Date().toISOString(),
-            },
-          ],
-          activityMessage: `Arbiter: ${event.action}`,
-          phase: event.action === "JudgeCompletion" ? "judging" as const : state.phase,
-        }));
+        set((state) => {
+          const entry = {
+            action: event.action,
+            reasoning: event.reasoning,
+            timestamp: new Date().toISOString(),
+          };
+          const log = [...state.reasoningLog, entry];
+          return {
+            reasoningLog: log.length > 100 ? log.slice(-100) : log,
+            activityMessage: `Arbiter: ${event.action}`,
+            phase: event.action === "JudgeCompletion" ? "judging" as const : state.phase,
+          };
+        });
         break;
     }
   },
@@ -296,18 +297,24 @@ export const useLoopStore = create<LoopStoreState>((set, get) => ({
 
 export function initLoopListener(): () => void {
   let unlisten: (() => void) | null = null;
+  let cancelled = false;
 
   listen<LoopEventType>("loop-event", (tauriEvent) => {
     useLoopStore.getState().handleEvent(tauriEvent.payload);
   })
     .then((fn) => {
-      unlisten = fn;
+      if (cancelled) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     })
     .catch((err) => {
       console.error("Failed to subscribe to loop events:", err);
     });
 
   return () => {
+    cancelled = true;
     if (unlisten) unlisten();
   };
 }

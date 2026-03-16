@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBar } from "@/components/layout/StatusBar";
@@ -12,7 +12,10 @@ import { ToastContainer } from "@/components/ui/ToastContainer";
 import { StatsPanel } from "@/features/stats/components/StatsPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
-import { AgentFeedbackModal } from "@/features/arbiter/components/AgentFeedbackModal";
+import { AgentFeedbackToast } from "@/features/arbiter/components/AgentFeedbackToast";
+import toastClasses from "@/features/arbiter/components/AgentFeedbackToast.module.css";
+import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
+import { collectPanes } from "@/lib/layout";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
@@ -29,7 +32,9 @@ export default function App() {
   const { loadProjects } = useProjectStore();
   const { loadSettings, loadSandboxCapabilities } = useSettingsStore();
   const { activePanel, setActivePanel, sidebarCollapsed } = useUiStore();
-  const { loadPersistedSessions } = useSessionStore();
+  const { loadPersistedSessions, globalLayout } = useSessionStore();
+  const feedbackQueue = useAgentFeedbackStore((s) => s.queue);
+  const dismissFeedback = useAgentFeedbackStore((s) => s.dismissCurrent);
 
   // Initialize global notification listener
   useNotifications();
@@ -68,6 +73,22 @@ export default function App() {
 
     return () => clearTimeout(timeout);
   }, [startHomeTour, setHomeTourSeen]);
+
+  // Feedback items whose sessions are not visible in the terminal layout
+  // (either terminal panel is inactive, or session isn't in the current layout)
+  const visibleSessionIds = useMemo(() => {
+    if (!globalLayout) return new Set<string>();
+    const panes = collectPanes(globalLayout.root);
+    return new Set(panes.map((p) => p.sessionId).filter(Boolean) as string[]);
+  }, [globalLayout]);
+
+  const floatingFeedback = useMemo(
+    () =>
+      feedbackQueue.filter(
+        (item) => activePanel !== "terminal" || !visibleSessionIds.has(item.sessionId),
+      ),
+    [feedbackQueue, activePanel, visibleSessionIds],
+  );
 
   return (
     <div className={classes.root}>
@@ -151,8 +172,19 @@ export default function App() {
         <SettingsModal onClose={() => setActivePanel("terminal")} />
       )}
 
-      {/* Agent feedback modal — always rendered, visibility driven by store queue */}
-      <AgentFeedbackModal />
+      {/* Agent feedback toasts for sessions not visible in the terminal layout */}
+      {floatingFeedback.length > 0 && (
+        <div className={toastClasses.fixedAnchor}>
+          {floatingFeedback.map((item, idx) => (
+            <AgentFeedbackToast
+              key={item.id}
+              item={item}
+              onDismiss={idx === 0 ? dismissFeedback : () => {}}
+              showFocusButton
+            />
+          ))}
+        </div>
+      )}
 
       {/* Toast notifications — rendered as a fixed overlay */}
       <ToastContainer />

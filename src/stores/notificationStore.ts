@@ -2,9 +2,10 @@ import { create } from "zustand";
 import { v4 as uuid } from "uuid";
 import type { NotificationItem, ToastItem, ToastLevel } from "@/types";
 
+const MAX_NOTIFICATIONS = 500;
+
 interface NotificationState {
   notifications: NotificationItem[];
-  unreadCount: number;
   toasts: ToastItem[];
   addNotification: (notification: Omit<NotificationItem, "read">) => void;
   markRead: (id: string) => void;
@@ -16,36 +17,31 @@ interface NotificationState {
 
 export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
-  unreadCount: 0,
   toasts: [],
 
   addNotification: (notification) => {
     const item: NotificationItem = { ...notification, read: false };
     set((state) => ({
-      notifications: [item, ...state.notifications],
-      unreadCount: state.unreadCount + 1,
+      notifications: [item, ...state.notifications].slice(0, MAX_NOTIFICATIONS),
     }));
   },
 
   markRead: (id: string) => {
-    set((state) => {
-      const notifications = state.notifications.map((n) =>
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
         n.id === id ? { ...n, read: true } : n,
-      );
-      const unreadCount = notifications.filter((n) => !n.read).length;
-      return { notifications, unreadCount };
-    });
+      ),
+    }));
   },
 
   markAllRead: () => {
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
-      unreadCount: 0,
     }));
   },
 
   clearAll: () => {
-    set({ notifications: [], unreadCount: 0 });
+    set({ notifications: [] });
   },
 
   showToast: (level: ToastLevel, title: string, body?: string, onClick?: () => void) => {

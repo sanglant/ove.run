@@ -1,0 +1,193 @@
+/* Toast card */
+.toast {
+  width: 320px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-bright);
+  animation: slideIn 200ms ease-out;
+  overflow: hidden;
+  box-shadow: 0 8px 24px color-mix(in srgb, black 40%, transparent);
+}
+
+/* Header row */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dismiss {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.dismiss:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+/* Output area */
+.output {
+  font-family: JetBrains Mono, Cascadia Code, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  padding: 8px 10px;
+}
+
+/* Arbiter timer */
+.timer {
+  padding: 4px 10px 6px;
+}
+
+/* Option buttons */
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.optionButton {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.optionButton:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: var(--accent);
+}
+
+/* Free text input */
+.inputRow {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.input {
+  flex: 1;
+  font-family: JetBrains Mono, Cascadia Code, monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.sendButton {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  border-radius: 4px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.sendButton:hover {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.sendButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Focus terminal button */
+.focusButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.focusButton:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* Pane-anchored wrapper (inside workspaceSurface) */
+.paneAnchor {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 8px;
+}
+
+.paneAnchor > * {
+  pointer-events: auto;
+}
+
+/* Fixed wrapper (for non-visible sessions) */
+.fixedAnchor {
+  position: fixed;
+  bottom: 36px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.fixedAnchor > * {
+  pointer-events: auto;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

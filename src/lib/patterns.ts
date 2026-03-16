@@ -15,7 +15,12 @@ export function stripAnsi(text: string): string {
  * Convert a Rust-style regex pattern to a JavaScript RegExp.
  * Strips (?i) inline flags and converts them to the JS 'i' flag.
  */
+const regexCache = new Map<string, RegExp | null>();
+
 function toJsRegExp(pattern: string): RegExp | null {
+  const cached = regexCache.get(pattern);
+  if (cached !== undefined) return cached;
+
   let flags = "";
   let source = pattern;
 
@@ -30,11 +35,14 @@ function toJsRegExp(pattern: string): RegExp | null {
     return "";
   });
 
+  let result: RegExp | null;
   try {
-    return new RegExp(source, flags);
+    result = new RegExp(source, flags);
   } catch {
-    return null;
+    result = null;
   }
+  regexCache.set(pattern, result);
+  return result;
 }
 
 /**

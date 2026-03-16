@@ -13,7 +13,8 @@ import classes from "./StatusBar.module.css";
 export function StatusBar() {
   const { sessions } = useSessionStore();
   const { projects, activeProjectId } = useProjectStore();
-  const { unreadCount } = useNotificationStore();
+  const { notifications } = useNotificationStore();
+  const unreadCount = notifications.filter((n) => !n.read).length;
   const { activePanel, setActivePanel } = useUiStore();
 
   const activeProject = projects.find((p) => p.id === activeProjectId);

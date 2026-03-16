@@ -9,7 +9,7 @@ use crate::state::{AppState, Consolidation, Memory};
 
 use super::project_commands::run_arbiter_cli;
 
-const EXTRACTION_PROMPT_TEMPLATE: &str = r#"Analyze the following terminal output from an AI coding agent and extract important facts, decisions, and patterns.
+const EXTRACTION_PROMPT_TEMPLATE: &str = r#"Analyze the following terminal output from an AI coding agent. Extract ONLY information that would be valuable in future sessions — things a developer would want to remember days or weeks later.
 
 Terminal output:
 {terminal_output}
@@ -17,11 +17,28 @@ Terminal output:
 For each fact, respond with one line in this format:
 MEMORY: {content} | IMPORTANCE: {0.0-1.0} | ENTITIES: {comma-separated} | TOPICS: {comma-separated} | VISIBILITY: {private|public}
 
+EXTRACT:
+- Architectural decisions and their rationale
+- Non-obvious configuration or environment requirements
+- Discovered bugs, gotchas, or workarounds
+- Agreed-upon conventions or patterns
+- Dependency choices and why alternatives were rejected
+
+DO NOT EXTRACT:
+- Routine operations (file reads, installs, test runs, builds)
+- Progress updates or status messages
+- Obvious facts derivable from the code itself
+- Temporary debugging steps
+- Generic error messages without resolution context
+
 Rules:
-- Extract decisions, facts, errors, patterns
 - VISIBILITY "public" for project-wide decisions, "private" for session-specific
-- IMPORTANCE: 1.0 = critical, 0.5 = useful, 0.1 = minor
-- Only extract genuinely useful information"#;
+- IMPORTANCE: 1.0 = critical decision, 0.7 = useful context, 0.4 = minor detail
+- Prefer fewer high-quality memories over many low-quality ones
+- If nothing worth remembering happened, respond with: NO_MEMORIES"#;
+
+/// Minimum importance score to persist a memory. Anything below is noise.
+const MIN_IMPORTANCE_THRESHOLD: f64 = 0.3;
 
 #[tauri::command]
 pub async fn list_memories(
@@ -171,6 +188,11 @@ pub async fn extract_memories(
             continue;
         }
 
+        let importance = importance.clamp(0.0, 1.0);
+        if importance < MIN_IMPORTANCE_THRESHOLD {
+            continue;
+        }
+
         let mem = Memory {
             id: Uuid::new_v4().to_string(),
             project_id: project_id.clone(),
@@ -180,7 +202,7 @@ pub async fn extract_memories(
             summary: None,
             entities_json,
             topics_json,
-            importance: importance.clamp(0.0, 1.0),
+            importance,
             consolidated: false,
             created_at: now.clone(),
         };
