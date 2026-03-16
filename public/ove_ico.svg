@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.3 (fcd0343856, 2026-01-01)"
+   sodipodi:docname="ove_app.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showguides="true"
+     inkscape:zoom="0.37037037"
+     inkscape:cx="521.1"
+     inkscape:cy="618.3"
+     inkscape:window-width="1608"
+     inkscape:window-height="963"
+     inkscape:window-x="40"
+     inkscape:window-y="30"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g38">
+    <sodipodi:guide
+       position="0,512"
+       orientation="0,-1"
+       id="guide1"
+       inkscape:locked="false" />
+    <sodipodi:guide
+       position="512,1024"
+       orientation="1,0"
+       id="guide2"
+       inkscape:locked="false" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <rect
+       x="585.90002"
+       y="747.90002"
+       width="386.10001"
+       height="243"
+       id="rect3" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g38">
+      <rect
+         style="fill:#000000;fill-opacity:1;stroke-width:40;stroke-opacity:0.388316"
+         id="rect1"
+         width="1024"
+         height="1024"
+         x="0"
+         y="0"
+         ry="315.89999" />
+      <g
+         id="g2"
+         style="fill:#d4943c;fill-opacity:1"
+         transform="translate(-15.72419,16.09442)">
+        <path
+           id="path8"
+           style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:250.619;stroke-opacity:0.388316"
+           d="M 527.72419,174.78141 A 256.00024,256.00024 0 0 0 271.71861,430.78699 256.00024,256.00024 0 0 0 527.72419,686.78141 256.00024,256.00024 0 0 0 783.71861,430.78699 256.00024,256.00024 0 0 0 527.72419,174.78141 Z m 0,126.87582 A 129.12283,129.12283 0 0 1 656.8428,430.78699 129.12283,129.12283 0 0 1 527.72419,559.90558 129.12283,129.12283 0 0 1 398.60568,430.78699 129.12283,129.12283 0 0 1 527.72419,301.65723 Z" />
+        <path
+           id="path2"
+           style="fill:#d4943c;fill-opacity:1;stroke-width:280.839;stroke-opacity:0.388316"
+           d="m 399.72419,750.78135 h 256 v 127.99989 h -256 z" />
+      </g>
+    </g>
+  </g>
+</svg>
