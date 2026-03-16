@@ -31,7 +31,7 @@ export const homeTour: DriveStep[] = [
   {
     element: '[data-tour="sidebar-knowledge"]',
     popover: {
-      title: "Knowledge",
+      title: "Context",
       description: "Manage system prompts and context files for agents.",
       side: "top",
       align: "center",

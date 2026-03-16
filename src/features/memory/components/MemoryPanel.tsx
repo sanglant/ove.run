@@ -1,33 +1,26 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Brain, Search } from "lucide-react";
 import { SegmentedControl, TextInput, Text } from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useMemoryStore } from "@/stores/memoryStore";
 import { MemoryCard } from "./MemoryCard";
 import { ConsolidationCard } from "./ConsolidationCard";
+import { EmptyState } from "@/components/ui/EmptyState";
 import classes from "./MemoryPanel.module.css";
 
 type Tab = "memories" | "consolidations";
-type VisibilityFilter = "all" | "public" | "private";
 
 const TAB_OPTIONS = [
   { label: "Memories", value: "memories" },
-  { label: "Consolidations", value: "consolidations" },
-];
-
-const VISIBILITY_OPTIONS = [
-  { label: "All", value: "all" },
-  { label: "Public", value: "public" },
-  { label: "Private", value: "private" },
+  { label: "Summaries", value: "consolidations" },
 ];
 
 export function MemoryPanel() {
   const { activeProjectId } = useProjectStore();
-  const { memories, consolidations, loading, loadMemories, loadConsolidations, search, toggleVisibility, removeMemory } = useMemoryStore();
+  const { memories, consolidations, loading, loadMemories, loadConsolidations, search, removeMemory } = useMemoryStore();
 
   const [tab, setTab] = useState<Tab>("memories");
   const [searchQuery, setSearchQuery] = useState("");
-  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all");
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -44,17 +37,13 @@ export function MemoryPanel() {
     }
   }, [searchQuery, activeProjectId, search, loadMemories]);
 
-  const visibleMemories = useMemo(() => {
-    if (visibilityFilter === "all") return memories;
-    return memories.filter((m) => m.visibility === visibilityFilter);
-  }, [memories, visibilityFilter]);
-
   if (!activeProjectId) {
     return (
-      <div className={classes.emptyState}>
-        <Brain size={42} strokeWidth={1} className={classes.emptyIcon} />
-        <p>Select a project to view agent memories.</p>
-      </div>
+      <EmptyState
+        icon={<Brain size={40} strokeWidth={1} />}
+        title="Select a project to view agent memories"
+        description="Memories are extracted automatically as agents work"
+      />
     );
   }
 
@@ -107,32 +96,15 @@ export function MemoryPanel() {
               }}
               aria-label="Search memories"
             />
-
-            <SegmentedControl
-              data={VISIBILITY_OPTIONS}
-              value={visibilityFilter}
-              onChange={(v) => setVisibilityFilter(v as VisibilityFilter)}
-              size="xs"
-              fullWidth
-              styles={{
-                root: {
-                  marginTop: 10,
-                  backgroundColor: "var(--bg-tertiary)",
-                  border: "1px solid var(--border)",
-                },
-                label: { fontSize: 11, fontWeight: 500 },
-                indicator: { backgroundColor: "var(--bg-elevated)" },
-              }}
-            />
           </>
         )}
       </div>
 
-      <div className={classes.list} role="list" aria-label={tab === "memories" ? "Memories" : "Consolidations"}>
+      <div className={classes.list} role="list" aria-label={tab === "memories" ? "Memories" : "Summaries"}>
         {loading ? (
-          <div className={classes.listMessage}>Loading…</div>
+          <div className={classes.listMessage}>Loading memories…</div>
         ) : tab === "memories" ? (
-          visibleMemories.length === 0 ? (
+          memories.length === 0 ? (
             <div className={classes.listEmpty}>
               <Brain size={28} strokeWidth={1} className={classes.emptyListIcon} />
               <p>{searchQuery ? "No matching memories." : "No memories yet."}</p>
@@ -143,14 +115,12 @@ export function MemoryPanel() {
           ) : (
             <>
               <Text size="xs" c="var(--text-secondary)" className={classes.statsLine}>
-                {visibleMemories.length} {visibleMemories.length === 1 ? "memory" : "memories"}
-                {visibilityFilter !== "all" ? ` · ${visibilityFilter}` : ""}
+                {memories.length} {memories.length === 1 ? "memory" : "memories"}
               </Text>
-              {visibleMemories.map((memory) => (
+              {memories.map((memory) => (
                 <MemoryCard
                   key={memory.id}
                   memory={memory}
-                  onToggleVisibility={toggleVisibility}
                   onDelete={removeMemory}
                 />
               ))}
@@ -160,13 +130,13 @@ export function MemoryPanel() {
           consolidations.length === 0 ? (
             <div className={classes.listEmpty}>
               <Brain size={28} strokeWidth={1} className={classes.emptyListIcon} />
-              <p>No consolidations yet.</p>
-              <span>Consolidations are created when enough memories accumulate.</span>
+              <p>No summaries yet.</p>
+              <span>As memories build up, they're summarized into concise takeaways.</span>
             </div>
           ) : (
             <>
               <Text size="xs" c="var(--text-secondary)" className={classes.statsLine}>
-                {consolidations.length} {consolidations.length === 1 ? "consolidation" : "consolidations"}
+                {consolidations.length} {consolidations.length === 1 ? "summary" : "summaries"}
               </Text>
               {consolidations.map((c) => (
                 <ConsolidationCard key={c.id} consolidation={c} />

@@ -17,24 +17,84 @@ import {
   Text,
   Stack,
   Select,
-  Divider,
 } from "@mantine/core";
 import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS, INPUT_STYLES, BUTTON_STYLES, switchStyles } from "@/constants/styles";
-import { SectionTitle } from "@/components/ui/SectionTitle";
 import { ModalFooter } from "@/components/ui/ModalFooter";
 import classes from "./SettingsModal.module.css";
+
+const SELECT_STYLES = {
+  input: {
+    ...INPUT_STYLES.input,
+    fontSize: "12px",
+  },
+  label: {
+    ...INPUT_STYLES.label,
+  },
+  dropdown: {
+    backgroundColor: "var(--bg-secondary)",
+    borderColor: "var(--border)",
+  },
+  option: {
+    fontSize: "12px",
+    color: "var(--text-primary)",
+    "&[data-selected]": { backgroundColor: "var(--accent)" },
+    "&[data-hovered]": { backgroundColor: "var(--bg-tertiary)" },
+  },
+};
+
+const TEXTAREA_MONO_STYLES = {
+  input: {
+    ...INPUT_STYLES.input,
+    fontFamily: "monospace",
+    resize: "none" as const,
+    fontSize: "12px",
+  },
+};
+
+const TEXTINPUT_MONO_STYLES = {
+  input: {
+    ...INPUT_STYLES.input,
+    fontFamily: "monospace",
+    fontSize: "12px",
+  },
+};
+
+const TABS_STYLES = {
+  tab: {
+    color: "var(--text-secondary)",
+    fontSize: "12px",
+    "&:hover": {
+      color: "var(--text-primary)",
+      backgroundColor: "var(--bg-tertiary)",
+    },
+    "&[data-active]": {
+      color: "var(--bg-primary)",
+      backgroundColor: "var(--accent)",
+    },
+  },
+  list: {
+    marginBottom: "16px",
+    borderBottom: "1px solid var(--border)",
+  },
+};
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
 type AgentTab = AgentType;
+type TopTab = "global" | "agents" | "data";
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, updateSettings } = useSettingsStore();
   const [draft, setDraft] = useState<AppSettings>(JSON.parse(JSON.stringify(settings)));
+  const [activeTab, setActiveTab] = useState<TopTab>("global");
   const [activeAgentTab, setActiveAgentTab] = useState<AgentTab>("claude");
   const [saving, setSaving] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [opened, setOpened] = useState(false);
+  useEffect(() => { setOpened(true); }, []);
   const [newEnvKey, setNewEnvKey] = useState("");
   const [newEnvVal, setNewEnvVal] = useState("");
   const [arbiterModelOptions, setArbiterModelOptions] = useState<string[]>([]);
@@ -123,7 +183,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   return (
     <Modal
-      opened={true}
+      opened={opened}
       onClose={onClose}
       title="Settings"
       size="lg"
@@ -145,13 +205,20 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         },
       }}
     >
-      {/* Content */}
-      <Stack gap="xl" className={classes.content}>
-        {/* Global settings */}
-        <section>
-          <SectionTitle mb={16}>
-            Global
-          </SectionTitle>
+      <Tabs
+        value={activeTab}
+        onChange={(v) => setActiveTab(v as TopTab)}
+        styles={TABS_STYLES}
+        className={classes.content}
+      >
+        <Tabs.List>
+          <Tabs.Tab value="global">Global</Tabs.Tab>
+          <Tabs.Tab value="agents">Agents</Tabs.Tab>
+          <Tabs.Tab value="data">Data</Tabs.Tab>
+        </Tabs.List>
+
+        {/* Global tab */}
+        <Tabs.Panel value="global">
           <Stack gap="sm">
             {/* Font family */}
             <Group justify="space-between" align="center">
@@ -161,6 +228,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               <TextInput
                 value={draft.global.font_family}
                 onChange={(e) => handleGlobalChange("font_family", e.target.value)}
+                size="xs"
                 className={classes.inputWidth208}
                 styles={INPUT_STYLES}
               />
@@ -174,6 +242,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               <NumberInput
                 min={8}
                 max={32}
+                size="xs"
                 value={draft.global.font_size}
                 onChange={(val) =>
                   handleGlobalChange("font_size", typeof val === "number" ? val : parseInt(String(val), 10))
@@ -192,6 +261,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 min={100}
                 max={100000}
                 step={1000}
+                size="xs"
                 value={draft.global.terminal_scrollback}
                 onChange={(val) =>
                   handleGlobalChange(
@@ -241,12 +311,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   Arbiter Timeout
                 </Text>
                 <Text size="xs" className={classes.settingHint}>
-                  Seconds before Arbiter auto-answers
+                  Wait time before Arbiter answers automatically
                 </Text>
               </div>
               <NumberInput
-                min={5}
+                min={1}
                 max={120}
+                size="xs"
                 value={draft.global.arbiter_timeout_seconds}
                 onChange={(val) =>
                   handleGlobalChange(
@@ -266,35 +337,20 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   Arbiter Provider
                 </Text>
                 <Text size="xs" className={classes.settingHint}>
-                  CLI agent tool used by Arbiter
+                  Which agent CLI the Arbiter uses
                 </Text>
               </div>
               <Select
                 data={providerOptions}
                 value={draft.global.arbiter_provider || "claude"}
+                size="xs"
                 onChange={(val) => {
                   handleGlobalChange("arbiter_provider", val ?? "claude");
-                  // Reset model when provider changes
                   handleGlobalChange("arbiter_model", "");
                 }}
                 allowDeselect={false}
                 className={classes.inputWidth208}
-                styles={{
-                  input: {
-                    ...INPUT_STYLES.input,
-                    fontSize: "12px",
-                  },
-                  dropdown: {
-                    backgroundColor: "var(--bg-secondary)",
-                    borderColor: "var(--border)",
-                  },
-                  option: {
-                    fontSize: "12px",
-                    color: "var(--text-primary)",
-                    "&[data-selected]": { backgroundColor: "var(--accent)" },
-                    "&[data-hovered]": { backgroundColor: "var(--bg-tertiary)" },
-                  },
-                }}
+                styles={SELECT_STYLES}
               />
             </Group>
 
@@ -306,7 +362,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     Arbiter Model
                   </Text>
                   <Text size="xs" className={classes.settingHint}>
-                    Model alias for Arbiter decisions
+                    AI model the Arbiter uses
                   </Text>
                 </div>
                 <Select
@@ -315,58 +371,23 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     ...arbiterModelOptions.map((m) => ({ value: m, label: m })),
                   ]}
                   value={draft.global.arbiter_model || ""}
+                  size="xs"
                   onChange={(val) => handleGlobalChange("arbiter_model", val ?? "")}
                   allowDeselect={false}
                   className={classes.inputWidth208}
-                  styles={{
-                    input: {
-                      ...INPUT_STYLES.input,
-                      fontSize: "12px",
-                    },
-                    dropdown: {
-                      backgroundColor: "var(--bg-secondary)",
-                      borderColor: "var(--border)",
-                    },
-                    option: {
-                      fontSize: "12px",
-                      color: "var(--text-primary)",
-                      "&[data-selected]": { backgroundColor: "var(--accent)" },
-                      "&[data-hovered]": { backgroundColor: "var(--bg-tertiary)" },
-                    },
-                  }}
+                  styles={SELECT_STYLES}
                 />
               </Group>
             )}
           </Stack>
-        </section>
+        </Tabs.Panel>
 
-        {/* Agent settings */}
-        <section>
-          <SectionTitle mb={16}>
-            Agent Settings
-          </SectionTitle>
-
+        {/* Agents tab */}
+        <Tabs.Panel value="agents">
           <Tabs
             value={activeAgentTab}
             onChange={(v) => setActiveAgentTab(v as AgentTab)}
-            styles={{
-              tab: {
-                color: "var(--text-secondary)",
-                fontSize: "12px",
-                "&:hover": {
-                  color: "var(--text-primary)",
-                  backgroundColor: "var(--bg-tertiary)",
-                },
-                "&[data-active]": {
-                  color: "var(--bg-primary)",
-                  backgroundColor: "var(--accent)",
-                },
-              },
-              list: {
-                marginBottom: "16px",
-                borderBottom: "1px solid var(--border)",
-              },
-            }}
+            styles={TABS_STYLES}
           >
             <Tabs.List>
               <Tabs.Tab value="claude">Claude</Tabs.Tab>
@@ -382,7 +403,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   <Group justify="space-between" align="flex-start">
                     <div>
                       <Text size="sm" className={classes.settingLabel}>
-                        Default YOLO Mode
+                        Default Auto-approve
                       </Text>
                       <Text size="xs" className={classes.settingHint}>
                         Skip confirmation prompts by default
@@ -423,14 +444,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         handleCustomArgsChange(activeAgentTab, e.target.value)
                       }
                       placeholder={"--verbose\n--no-cache"}
-                      styles={{
-                        input: {
-                          ...INPUT_STYLES.input,
-                          fontFamily: "monospace",
-                          resize: "none" as const,
-                          fontSize: "12px",
-                        },
-                      }}
+                      styles={TEXTAREA_MONO_STYLES}
                     />
                   </div>
 
@@ -467,14 +481,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         value={newEnvKey}
                         onChange={(e) => setNewEnvKey(e.target.value)}
                         placeholder="KEY"
+                        size="xs"
                         className={classes.flex1}
-                        styles={{
-                          input: {
-                            ...INPUT_STYLES.input,
-                            fontFamily: "monospace",
-                            fontSize: "12px",
-                          },
-                        }}
+                        styles={TEXTINPUT_MONO_STYLES}
                       />
                       <Text size="xs" c="var(--text-secondary)">
                         =
@@ -483,14 +492,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         value={newEnvVal}
                         onChange={(e) => setNewEnvVal(e.target.value)}
                         placeholder="value"
+                        size="xs"
                         className={classes.flex1}
-                        styles={{
-                          input: {
-                            ...INPUT_STYLES.input,
-                            fontFamily: "monospace",
-                            fontSize: "12px",
-                          },
-                        }}
+                        styles={TEXTINPUT_MONO_STYLES}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleAddEnvVar(activeAgentTab);
                         }}
@@ -509,29 +513,77 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </Tabs.Panel>
             ))}
           </Tabs>
-        </section>
+        </Tabs.Panel>
 
-        {/* Data section */}
-        <section>
-          <Divider my="md" color="var(--border)" />
-          <Text size="sm" fw={600} c="var(--text-primary)" mb="xs">Data</Text>
-          <Text size="xs" c="var(--text-secondary)" mb="sm">
-            Reset the database to start fresh. This deletes all projects, sessions, memories, and context.
-          </Text>
+        {/* Data tab */}
+        <Tabs.Panel value="data">
+          <Stack gap="sm">
+            <Text size="xs" c="var(--text-secondary)">
+              Reset the database to start fresh. This deletes all projects, sessions, memories, and context.
+            </Text>
+            <div>
+              <Button
+                variant="outline"
+                color="red"
+                size="xs"
+                onClick={() => setShowResetConfirm(true)}
+              >
+                Reset database
+              </Button>
+            </div>
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
+
+      {/* Reset database confirmation */}
+      <Modal
+        opened={showResetConfirm}
+        onClose={() => !resetting && setShowResetConfirm(false)}
+        title="Reset database"
+        centered
+        size="sm"
+        overlayProps={MODAL_OVERLAY_PROPS}
+        transitionProps={MODAL_TRANSITION_PROPS}
+        styles={{
+          ...MODAL_STYLES,
+          body: { ...MODAL_STYLES.body, padding: 20 },
+        }}
+      >
+        <Text size="sm" c="var(--text-secondary)" mb="md">
+          This will delete all data and restart the app. This cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap={8}>
           <Button
-            variant="outline"
+            variant="subtle"
+            size="xs"
+            onClick={() => setShowResetConfirm(false)}
+            disabled={resetting}
+            styles={BUTTON_STYLES.subtle}
+          >
+            Cancel
+          </Button>
+          <Button
             color="red"
             size="xs"
             onClick={() => {
-              if (window.confirm("This will delete all data and restart the app. This cannot be undone. Continue?")) {
-                resetDatabase();
-              }
+              setResetting(true);
+              resetDatabase().catch(() => {
+                // App restarts after reset — ignore connection errors
+              });
+            }}
+            disabled={resetting}
+            styles={{
+              root: {
+                backgroundColor: "var(--danger)",
+                color: "var(--bg-primary)",
+                "&:hover": { backgroundColor: "color-mix(in srgb, var(--danger) 85%, white)" },
+              },
             }}
           >
-            Reset database
+            {resetting ? "Restarting…" : "Reset database"}
           </Button>
-        </section>
-      </Stack>
+        </Group>
+      </Modal>
 
       {/* Footer */}
       <ModalFooter>

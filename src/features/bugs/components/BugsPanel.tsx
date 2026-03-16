@@ -4,9 +4,12 @@ import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useProjectStore } from "@/stores/projectStore";
 import { useBugsStore } from "@/stores/bugsStore";
 import { startBugOauth, checkBugAuth, disconnectBugProvider } from "@/lib/tauri";
+import { useTourStore } from "@/stores/tourStore";
+import { useTour } from "@/hooks/useTour";
 import { ProviderSetup } from "./ProviderSetup";
 import { BugDetailView } from "./BugDetailView";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { BugItem } from "../types";
 import cn from "clsx";
 import classes from "./BugsPanel.module.css";
@@ -43,6 +46,17 @@ export function BugsPanel() {
     clearSelection,
     reset,
   } = useBugsStore();
+
+  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
+  const { startPanelTour } = useTour();
+
+  useEffect(() => {
+    if (!hasSeenHomeTour || hasPanelTourBeenSeen("bugs")) return;
+    markPanelTourSeen("bugs");
+    const timer = setTimeout(() => { startPanelTour("bugs"); }, 1000);
+    return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [search, setSearch] = useState("");
   const [connecting, setConnecting] = useState(false);
@@ -127,10 +141,10 @@ export function BugsPanel() {
 
   if (!activeProjectId) {
     return (
-      <div className={classes.emptyState}>
-        <Bug size={34} strokeWidth={1} className={classes.emptyIcon} />
-        <p>Select a project to view its bug tracker.</p>
-      </div>
+      <EmptyState
+        icon={<Bug size={40} strokeWidth={1} />}
+        title="Select a project to view its bug tracker"
+      />
     );
   }
 
@@ -278,14 +292,14 @@ export function BugsPanel() {
               onClick={() => void handleConnect()}
               disabled={connecting}
             >
-              {connecting ? "Waiting for authentication…" : "Connect with OAuth"}
+              {connecting ? "Waiting for authentication…" : "Sign in"}
             </button>
             <button
               type="button"
               className={classes.removeButton}
               onClick={() => void handleDisconnect()}
             >
-              Remove configuration
+              Disconnect
             </button>
           </div>
         ) : selectedBug ? (
@@ -294,10 +308,10 @@ export function BugsPanel() {
             onDelegate={handleDelegate}
           />
         ) : (
-          <div className={classes.emptyState}>
-            <Bug size={42} strokeWidth={1} className={classes.emptyIcon} />
-            <p>Select a bug to view its details.</p>
-          </div>
+          <EmptyState
+            icon={<Bug size={40} strokeWidth={1} />}
+            title="Select a bug to view details"
+          />
         )}
       </main>
 

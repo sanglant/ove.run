@@ -50,6 +50,8 @@ function FeedbackModalContent({
 
   const [freeText, setFreeText] = useState("");
   const [timeLeft, setTimeLeft] = useState(arbiterTimeoutMs);
+  const [opened, setOpened] = useState(false);
+  useEffect(() => { setOpened(true); }, []);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const triggeredRef = useRef(false);
 
@@ -189,7 +191,7 @@ function FeedbackModalContent({
 
   return (
     <Modal
-      opened
+      opened={opened}
       onClose={onDismiss}
       title={modalTitle}
       size="lg"

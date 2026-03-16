@@ -10,6 +10,8 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import cn from "clsx";
 import classes from "./GitPanel.module.css";
+import { useTourStore } from "@/stores/tourStore";
+import { useTour } from "@/hooks/useTour";
 
 const FILE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   M: { label: "M", color: "var(--warning)" },
@@ -42,6 +44,17 @@ export function GitPanel() {
   } = useGit({ projectPath: activeProject?.path ?? null });
 
   const [selectedFile, setSelectedFile] = useState<GitFileStatus | null>(null);
+
+  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
+  const { startPanelTour } = useTour();
+
+  useEffect(() => {
+    if (!hasSeenHomeTour || hasPanelTourBeenSeen("git")) return;
+    markPanelTourSeen("git");
+    const timer = setTimeout(() => { startPanelTour("git"); }, 1000);
+    return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setSelectedFile(null);
@@ -245,7 +258,7 @@ export function GitPanel() {
 
           {loading && (
             <div className={classes.emptyFiles}>
-              Loading...
+              Loading changes…
             </div>
           )}
         </div>

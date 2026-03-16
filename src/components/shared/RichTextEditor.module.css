@@ -96,7 +96,7 @@
 .root :global(.ProseMirror) code {
   font-family: "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.85em;
-  background: rgba(135, 131, 120, 0.15);
+  background: color-mix(in srgb, var(--text-secondary) 15%, transparent);
   border-radius: 3px;
   padding: 0.2em 0.4em;
   color: #eb5757;
@@ -198,7 +198,7 @@
   top: 1px;
   width: 5px;
   height: 9px;
-  border: 2px solid white;
+  border: 2px solid var(--text-primary);
   border-top: none;
   border-left: none;
   transform: rotate(45deg);
@@ -305,7 +305,7 @@
 
 .toolbarBtn:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .toolbarBtn:disabled {
@@ -315,12 +315,12 @@
 
 .toolbarBtnActive {
   color: var(--accent-glow);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .toolbarBtnActive:hover:not(:disabled) {
   color: var(--accent-glow);
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
 }
 
 /* Text style select */
@@ -357,7 +357,7 @@
 
 .styleSelect:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .styleSelect:focus-visible {
@@ -394,12 +394,12 @@
 
 .bubbleBtn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .bubbleBtnActive {
   color: var(--accent-glow);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .bubbleDivider {
@@ -445,11 +445,11 @@
 }
 
 .slashItem:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .slashItemActive {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .slashItemIcon {
@@ -516,7 +516,7 @@
 
 .blockHandleBtn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .blockHandleDrag {
@@ -542,4 +542,37 @@
   pointer-events: none;
   z-index: 101;
   transition: opacity 80ms ease;
+}
+
+/* ── Prompt editor (arbiter initial prompt) ──────────────────────────────── */
+
+.promptEditor {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  min-height: 60px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  cursor: text;
+}
+
+.promptEditor:focus-within {
+  border-color: var(--accent);
+}
+
+.promptEditor :global(.ProseMirror) {
+  outline: none;
+  min-height: 40px;
+}
+
+.promptEditor :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  pointer-events: none;
+  float: left;
+  height: 0;
 }

@@ -102,6 +102,12 @@
   color: var(--text-primary);
 }
 
+.fileButton:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-accent);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
 .fileButtonSelected {
   background: var(--bg-tertiary);
   color: var(--text-primary);

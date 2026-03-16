@@ -7,6 +7,7 @@ import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { oveRunTheme, cssResolver } from "@/theme";
 import { BUTTON_STYLES } from "@/constants/styles";
 import { panelTours, homeTour } from "@/constants/tours";
+import { useTourStore } from "@/stores/tourStore";
 
 function filterAvailableSteps(steps: DriveStep[]): DriveStep[] {
   return steps.filter((step) => {
@@ -22,6 +23,7 @@ export function useTour() {
   const [isRunning, setIsRunning] = useState(false);
   const driverRef = useRef<Driver | null>(null);
   const popoverRootRef = useRef<Root | null>(null);
+  const { markPanelTourSeen } = useTourStore();
 
   const cleanupPopoverRoot = useCallback(() => {
     if (popoverRootRef.current) {
@@ -149,9 +151,10 @@ export function useTour() {
     (panelName: string) => {
       const steps = panelTours[panelName];
       if (!steps) return;
+      markPanelTourSeen(panelName);
       startTour(steps);
     },
-    [startTour],
+    [startTour, markPanelTourSeen],
   );
 
   const startHomeTour = useCallback(

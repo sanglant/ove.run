@@ -150,6 +150,7 @@ export const oveRunTheme = createTheme({
   primaryColor: "accent",
   fontFamily: "Geist, sans-serif",
   fontFamilyMonospace: "Geist Mono, JetBrains Mono, Cascadia Code, monospace",
+  headings: { fontFamily: "Outfit, Geist, sans-serif" },
   defaultRadius: "sm",
 });
 

@@ -300,10 +300,6 @@
   line-height: 1.6;
 }
 
-.emptyIcon {
-  opacity: 0.35;
-}
-
 .listEmpty {
   padding: 28px 14px;
   border-radius: 10px;

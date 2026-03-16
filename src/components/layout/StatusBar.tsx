@@ -63,7 +63,7 @@ export function StatusBar() {
       )}
 
       {/* Right section */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div className={classes.rightSection}>
         {hasTour && (
           <ActionIcon
             variant="subtle"

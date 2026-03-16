@@ -74,7 +74,7 @@
 
 .confirmButtonEnable {
   background-color: var(--danger);
-  color: white;
+  color: var(--text-primary);
 }
 
 .confirmButtonDisable {

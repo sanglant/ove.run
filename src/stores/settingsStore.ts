@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     notifications_enabled: true,
     minimize_to_tray: false,
     terminal_scrollback: 10000,
-    arbiter_timeout_seconds: 20,
+    arbiter_timeout_seconds: 3,
     arbiter_provider: "",
     arbiter_model: "",
   },

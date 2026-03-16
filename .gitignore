@@ -35,3 +35,6 @@ src-tauri/gen/schemas/
 
 # Worktrees
 .worktrees/
+
+# personal docs
+docs/

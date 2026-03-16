@@ -94,7 +94,7 @@ export function ContextAssignments({ sessionId, projectId, allUnits }: ContextAs
           style={{ height: 24, padding: "0 9px", fontSize: 11 }}
           onClick={() => void handleApplyDefaults()}
           disabled={applyingDefaults}
-          title="Apply project default context units to this session"
+          title="Apply project defaults to this session"
         >
           <Star size={10} style={{ marginRight: 3, display: "inline-block", verticalAlign: "middle" }} />
           {applyingDefaults ? "Applying…" : "Defaults"}
@@ -136,12 +136,12 @@ export function ContextAssignments({ sessionId, projectId, allUnits }: ContextAs
 
       {assigned.length === 0 && (
         <Text size="xs" c="var(--text-secondary)" style={{ fontStyle: "italic", padding: "2px 0 6px" }}>
-          No context units assigned.
+          No context assigned.
         </Text>
       )}
 
       <Select
-        placeholder="Assign a context unit…"
+        placeholder="Assign context…"
         data={selectOptions}
         value={null}
         onChange={(v) => void handleAssign(v)}
@@ -156,7 +156,7 @@ export function ContextAssignments({ sessionId, projectId, allUnits }: ContextAs
             fontSize: 11,
           },
         }}
-        aria-label="Assign context unit to session"
+        aria-label="Assign context to session"
         leftSection={<Plus size={11} />}
         comboboxProps={{ withinPortal: true }}
       />

@@ -149,11 +149,13 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+  transition: transform 200ms ease;
 }
 
 .closeButton:hover {
   background: color-mix(in srgb, var(--danger) 18%, transparent);
   color: var(--text-primary);
+  transform: rotate(90deg);
 }
 
 .twoLineLabel {

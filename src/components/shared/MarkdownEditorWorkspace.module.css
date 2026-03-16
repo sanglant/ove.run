@@ -28,7 +28,7 @@
   gap: 2px;
   padding: 3px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
   border: 1px solid var(--border);
   margin-right: auto;
 }
@@ -56,12 +56,12 @@
 
 .modeButton:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .modeButtonActive {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 
 .chromeButton,
@@ -85,13 +85,13 @@
 
 .chromeButton:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
 }
 
 .saveButton {
   padding: 0 12px;
   background: var(--accent);
-  color: white;
+  color: var(--text-primary);
   border-color: var(--accent);
   font-size: 12px;
   font-weight: 600;
@@ -140,7 +140,7 @@
   gap: 6px;
   padding: 3px 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-secondary);
   font-size: 10px;
   font-weight: 600;
@@ -180,7 +180,7 @@
 }
 
 .titleEditable:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
 }
 
 .titleInput {

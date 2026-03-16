@@ -20,6 +20,7 @@ import {
 } from "@/lib/tauri";
 import type { Note, ContextUnit, Memory, Consolidation, ArbiterState, Story } from "@/types";
 import { AGENT_META } from "@/constants/agents";
+import { EmptyState } from "@/components/ui/EmptyState";
 import cn from "clsx";
 import classes from "./StatsPanel.module.css";
 
@@ -131,10 +132,10 @@ export function StatsPanel() {
 
   if (!activeProjectId || !activeProject) {
     return (
-      <div className={classes.emptyState}>
-        <BarChart3 size={42} strokeWidth={1} className={classes.emptyIcon} />
-        <p>Select a project to view usage stats.</p>
-      </div>
+      <EmptyState
+        icon={<BarChart3 size={40} strokeWidth={1} />}
+        title="Select a project to view usage stats"
+      />
     );
   }
 
@@ -177,16 +178,16 @@ export function StatsPanel() {
             <span className={classes.statCardLabel}>Notes</span>
             <span className={classes.statCardValue}>{stats.notes.length}</span>
           </div>
-          <div className={classes.statCard} aria-label={`${stats.contextUnits.length} context units`}>
-            <span className={classes.statCardLabel}>Context Units</span>
+          <div className={classes.statCard} aria-label={`${stats.contextUnits.length} context entries`}>
+            <span className={classes.statCardLabel}>Context Entries</span>
             <span className={classes.statCardValue}>{stats.contextUnits.length}</span>
           </div>
           <div className={classes.statCard} aria-label={`${stats.memories.length} memories`}>
             <span className={classes.statCardLabel}>Memories</span>
             <span className={classes.statCardValue}>{stats.memories.length}</span>
           </div>
-          <div className={classes.statCard} aria-label={`${stats.consolidations.length} consolidations`}>
-            <span className={classes.statCardLabel}>Consolidations</span>
+          <div className={classes.statCard} aria-label={`${stats.consolidations.length} summaries`}>
+            <span className={classes.statCardLabel}>Summaries</span>
             <span className={classes.statCardValue}>{stats.consolidations.length}</span>
           </div>
         </div>
@@ -336,7 +337,7 @@ export function StatsPanel() {
               <span className={classes.statusCount}>{stats.notes.length}</span>
             </div>
             <div className={classes.statusItem}>
-              <span className={classes.statusLabel}>In Context</span>
+              <span className={classes.statusLabel}>Shared with agents</span>
               <span className={classes.statusCount}>{notesInContext}</span>
             </div>
           </div>
@@ -350,24 +351,18 @@ export function StatsPanel() {
           </div>
           <div className={classes.memoryBar}>
             <div className={classes.memoryBarRow}>
-              <span className={classes.memoryBarLabel}>Raw memories</span>
+              <span className={classes.memoryBarLabel}>Memories</span>
               <span className={classes.memoryBarValue}>{stats.memories.length}</span>
             </div>
             <div className={classes.memoryBarRow}>
-              <span className={classes.memoryBarLabel}>Consolidated</span>
+              <span className={classes.memoryBarLabel}>Summarized</span>
               <span className={classes.memoryBarValue}>
                 {stats.memories.filter((m) => m.consolidated).length}
               </span>
             </div>
             <div className={classes.memoryBarRow}>
-              <span className={classes.memoryBarLabel}>Consolidation summaries</span>
+              <span className={classes.memoryBarLabel}>Memory summaries</span>
               <span className={classes.memoryBarValue}>{stats.consolidations.length}</span>
-            </div>
-            <div className={classes.memoryBarRow}>
-              <span className={classes.memoryBarLabel}>Public memories</span>
-              <span className={classes.memoryBarValue}>
-                {stats.memories.filter((m) => m.visibility === "public").length}
-              </span>
             </div>
           </div>
         </div>

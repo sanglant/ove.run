@@ -69,6 +69,28 @@ export function ArtifactsPane() {
           </div>
         )}
 
+        {status === "completed" && (
+          <div className={classes.completionBanner}>
+            <div className={classes.completionLeft}>
+              <svg
+                className={classes.checkmark}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <polyline className={classes.checkmarkPath} points="4,13 9,18 20,7" />
+              </svg>
+              <div className={classes.completionText}>
+                <span className={classes.completionHeadline}>Loop complete</span>
+                <span className={classes.completionMeta}>
+                  {completed}/{total} {total === 1 ? "story" : "stories"} delivered
+                  {" · "}
+                  {iterationCount} {iterationCount === 1 ? "iteration" : "iterations"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {status === "exhausted" && (
           <div className={classes.exhaustedBanner}>
             <div className={classes.exhaustedLabel}>
@@ -130,7 +152,16 @@ function StoryCard({
     <div
       className={classes.storyCard}
       data-active={story.status === "in_progress"}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
       onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
     >
       <div className={classes.storyRow}>
         <div className={`${classes.dot} ${DOT_CLASS[story.status]}`} />
@@ -145,17 +176,17 @@ function StoryCard({
       {expanded && (
         <>
           {story.description && (
-            <div className={classes.storyDesc} style={{ WebkitLineClamp: "unset" }}>
+            <div className={`${classes.storyDesc} ${classes.storyDescExpanded}`}>
               {story.description}
             </div>
           )}
           {story.acceptance_criteria && (
-            <div className={classes.storyDesc} style={{ WebkitLineClamp: "unset", marginTop: 4 }}>
+            <div className={`${classes.storyDesc} ${classes.storyDescCriteria}`}>
               <strong>Criteria:</strong> {story.acceptance_criteria}
             </div>
           )}
           {gates && gates.length > 0 && (
-            <div style={{ marginTop: 6 }}>
+            <div className={classes.gatesContainer}>
               {gates.map((g, i) => (
                 <div key={i} className={classes.gateRow}>
                   {g.passed ? (

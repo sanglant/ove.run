@@ -4,6 +4,8 @@ import { SegmentedControl, TextInput, Modal, Text } from "@mantine/core";
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
 import { useSessionStore } from "@/stores/sessionStore";
+import { useTourStore } from "@/stores/tourStore";
+import { useTour } from "@/hooks/useTour";
 import {
   generateContextSummary,
   setProjectDefaultContext,
@@ -14,7 +16,8 @@ import type { ContextUnit, ContextUnitType } from "@/types";
 import { ContextUnitCard } from "./ContextUnitCard";
 import { ContextUnitEditor } from "./ContextUnitEditor";
 import { ContextAssignments } from "./ContextAssignments";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
+import { EmptyState } from "@/components/ui/EmptyState";
 import classes from "./ContextPanel.module.css";
 
 const FILTER_OPTIONS = [
@@ -29,6 +32,17 @@ export function ContextPanel() {
   const { activeProjectId, projects } = useProjectStore();
   const { units, loading, filter, searchQuery, setFilter, setSearchQuery, loadUnits, addUnit, editUnit, removeUnit, duplicateUnit } = useContextStore();
   const { sessions, activeSessionId } = useSessionStore();
+
+  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
+  const { startPanelTour } = useTour();
+
+  useEffect(() => {
+    if (!hasSeenHomeTour || hasPanelTourBeenSeen("knowledge")) return;
+    markPanelTourSeen("knowledge");
+    const timer = setTimeout(() => { startPanelTour("knowledge"); }, 1000);
+    return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ContextUnit | null>(null);
@@ -157,10 +171,10 @@ export function ContextPanel() {
 
   if (!activeProjectId) {
     return (
-      <div className={classes.emptyState}>
-        <BookOpen size={42} strokeWidth={1} className={classes.emptyIcon} />
-        <p>Select a project to manage context units.</p>
-      </div>
+      <EmptyState
+        icon={<BookOpen size={40} strokeWidth={1} />}
+        title="Select a project to manage context"
+      />
     );
   }
 
@@ -184,8 +198,8 @@ export function ContextPanel() {
             type="button"
             className={classes.addButton}
             onClick={handleOpenCreate}
-            aria-label="Add context unit"
-            title="Add context unit"
+            aria-label="Add context entry"
+            title="Add context entry"
           >
             <Plus size={14} />
             <span>Add</span>
@@ -193,7 +207,7 @@ export function ContextPanel() {
         </div>
 
         <TextInput
-          placeholder="Search context units…"
+          placeholder="Search context…"
           leftSection={<Search size={13} />}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -207,7 +221,7 @@ export function ContextPanel() {
               fontSize: 12,
             },
           }}
-          aria-label="Search context units"
+          aria-label="Search context"
         />
 
         <SegmentedControl
@@ -228,15 +242,15 @@ export function ContextPanel() {
         />
       </div>
 
-      <div className={classes.list} role="list" aria-label="Context units">
+      <div className={classes.list} role="list" aria-label="Context entries">
         {loading ? (
-          <div className={classes.listMessage}>Loading context units…</div>
+          <div className={classes.listMessage}>Loading context…</div>
         ) : visibleUnits.length === 0 ? (
           <div className={classes.listEmpty}>
             <BookOpen size={28} strokeWidth={1} className={classes.emptyListIcon} />
-            <p>{searchQuery || filter !== "all" ? "No matching context units." : "No context units yet."}</p>
+            <p>{searchQuery || filter !== "all" ? "No matches." : "No context yet."}</p>
             {!searchQuery && filter === "all" && (
-              <span>Add a persona, skill, knowledge block, or reference.</span>
+              <span>Add a persona, skill, knowledge entry, or reference.</span>
             )}
           </div>
         ) : (
@@ -268,10 +282,11 @@ export function ContextPanel() {
       <Modal
         opened={!!pendingDelete}
         onClose={() => !deleting && setPendingDelete(null)}
-        title="Delete context unit"
+        title="Delete context entry"
         centered
         size="sm"
         overlayProps={MODAL_OVERLAY_PROPS}
+        transitionProps={MODAL_TRANSITION_PROPS}
         styles={{
           ...MODAL_STYLES,
           body: { ...MODAL_STYLES.body, padding: 20 },
@@ -295,7 +310,7 @@ export function ContextPanel() {
             onClick={() => void handleDelete()}
             disabled={deleting}
           >
-            {deleting ? "Deleting…" : "Delete"}
+            {deleting ? "Deleting…" : "Delete entry"}
           </button>
         </div>
       </Modal>

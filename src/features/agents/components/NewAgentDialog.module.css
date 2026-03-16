@@ -12,3 +12,8 @@
   cursor: pointer;
   transition: border-color 0.15s, background-color 0.15s;
 }
+
+.agentCard:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-accent);
+}

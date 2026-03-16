@@ -49,7 +49,7 @@ use commands::loop_commands::{
     start_loop, pause_loop, resume_loop, cancel_loop,
     get_loop_state, set_quality_gates, get_quality_gates, set_max_iterations,
 };
-use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_projects, remove_project, update_project};
+use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_project_files, list_projects, remove_project, update_project};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::sandbox_commands::get_sandbox_capabilities;
@@ -210,6 +210,7 @@ pub fn run() {
             add_project,
             remove_project,
             update_project,
+            list_project_files,
             arbiter_review,
             list_cli_models,
             // Notes commands

@@ -80,6 +80,50 @@ pub async fn update_project(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn list_project_files(
+    project_path: String,
+    max_files: Option<usize>,
+) -> Result<Vec<String>, AppError> {
+    use ignore::WalkBuilder;
+    use std::path::Path;
+
+    let root = Path::new(&project_path);
+    if !root.is_dir() {
+        return Err(AppError::Other(format!("Not a directory: {}", project_path)));
+    }
+
+    let limit = max_files.unwrap_or(5000);
+    let mut files: Vec<String> = Vec::new();
+
+    let walker = WalkBuilder::new(root)
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .max_depth(Some(8))
+        .build();
+
+    for entry in walker {
+        if files.len() >= limit {
+            break;
+        }
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        if entry.path() == root {
+            continue;
+        }
+        if let Ok(rel) = entry.path().strip_prefix(root) {
+            files.push(rel.to_string_lossy().to_string());
+        }
+    }
+
+    files.sort();
+    Ok(files)
+}
+
 /// Core arbiter CLI subprocess call — usable without Tauri State.
 /// Runs the CLI tool with `-p <prompt>` in a temp directory.
 pub async fn run_arbiter_cli(

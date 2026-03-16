@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Modal, TextInput, Select, Textarea, Text } from "@mantine/core";
 import { v4 as uuidv4 } from "uuid";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import type { ContextUnit, ContextUnitType, ContextScope } from "@/types";
 import classes from "./ContextPanel.module.css";
@@ -118,10 +118,11 @@ export function ContextUnitEditor({ opened, unit, projectId, onSave, onClose }: 
     <Modal
       opened={opened}
       onClose={onClose}
-      title={isEdit ? "Edit context unit" : "New context unit"}
+      title={isEdit ? "Edit context entry" : "New context entry"}
       centered
       size="xl"
       overlayProps={MODAL_OVERLAY_PROPS}
+      transitionProps={MODAL_TRANSITION_PROPS}
       styles={{
         ...MODAL_STYLES,
         body: { ...MODAL_STYLES.body, padding: 20, display: "flex", flexDirection: "column", gap: 14 },

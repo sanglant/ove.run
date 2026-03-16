@@ -144,9 +144,9 @@
 }
 
 .priorityHigh {
-  background: rgba(255, 140, 80, 0.12);
-  color: #f97316;
-  border: 1px solid rgba(255, 140, 80, 0.22);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 22%, transparent);
 }
 
 .priorityMedium {

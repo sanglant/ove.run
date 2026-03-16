@@ -223,7 +223,7 @@ impl Default for QualityGateConfig {
 }
 
 fn default_arbiter_timeout() -> u32 {
-    20
+    3
 }
 
 impl Default for AppSettings {
@@ -236,7 +236,7 @@ impl Default for AppSettings {
                 notifications_enabled: true,
                 minimize_to_tray: true,
                 terminal_scrollback: 10000,
-                arbiter_timeout_seconds: 20,
+                arbiter_timeout_seconds: 3,
                 arbiter_provider: String::new(),
                 arbiter_model: String::new(),
             },
@@ -270,7 +270,7 @@ mod tests {
         assert!(settings.global.notifications_enabled);
         assert!(settings.global.minimize_to_tray);
         assert_eq!(settings.global.terminal_scrollback, 10000);
-        assert_eq!(settings.global.arbiter_timeout_seconds, 20);
+        assert_eq!(settings.global.arbiter_timeout_seconds, 3);
     }
 
     #[test]

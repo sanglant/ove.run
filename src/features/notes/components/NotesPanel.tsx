@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
 import { Modal, TextInput, Text, Switch } from "@mantine/core";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
+import { useTourStore } from "@/stores/tourStore";
+import { useTour } from "@/hooks/useTour";
 import { useProjectStore } from "@/stores/projectStore";
 import {
   listNotes,
@@ -13,6 +15,7 @@ import {
   setNoteContextToggle,
 } from "@/lib/tauri";
 import type { Note } from "@/types";
+import { EmptyState } from "@/components/ui/EmptyState";
 import cn from "clsx";
 import classes from "./NotesPanel.module.css";
 
@@ -39,6 +42,17 @@ function formatAbsoluteDate(iso: string): string {
 
 export function NotesPanel() {
   const { activeProjectId } = useProjectStore();
+
+  const { hasSeenHomeTour, hasPanelTourBeenSeen, markPanelTourSeen } = useTourStore();
+  const { startPanelTour } = useTour();
+
+  useEffect(() => {
+    if (!hasSeenHomeTour || hasPanelTourBeenSeen("notes")) return;
+    markPanelTourSeen("notes");
+    const timer = setTimeout(() => { startPanelTour("notes"); }, 1000);
+    return () => { clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -230,10 +244,10 @@ export function NotesPanel() {
 
   if (!activeProjectId) {
     return (
-      <div className={classes.emptyState}>
-        <StickyNote size={34} strokeWidth={1} className={classes.emptyIcon} />
-        <p>Select a project to open your notes workspace.</p>
-      </div>
+      <EmptyState
+        icon={<StickyNote size={40} strokeWidth={1} />}
+        title="Select a project to open your notes workspace"
+      />
     );
   }
 
@@ -348,7 +362,7 @@ export function NotesPanel() {
                     </div>
                     <span className={classes.cardTitle}>{note.title}</span>
                     <span className={classes.cardDescription}>
-                      Last touched {formatAbsoluteDate(note.updated_at)}
+                      Last edited {formatAbsoluteDate(note.updated_at)}
                     </span>
                     <div
                       onClick={(e) => e.stopPropagation()}
@@ -438,10 +452,11 @@ export function NotesPanel() {
             placeholder="Start writing your note…"
           />
         ) : (
-          <div className={classes.emptyState}>
-            <StickyNote size={42} strokeWidth={1} className={classes.emptyIcon} />
-            <p>Select a note to enter the editor workspace.</p>
-          </div>
+          <EmptyState
+            icon={<StickyNote size={40} strokeWidth={1} />}
+            title="Select a note to start editing"
+            description="Pick from the list or create a new note"
+          />
         )}
       </main>
 
@@ -452,6 +467,7 @@ export function NotesPanel() {
         centered
         size="sm"
         overlayProps={MODAL_OVERLAY_PROPS}
+        transitionProps={MODAL_TRANSITION_PROPS}
         styles={{
           ...MODAL_STYLES,
           body: { ...MODAL_STYLES.body, padding: 20 },

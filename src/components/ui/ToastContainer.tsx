@@ -43,7 +43,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className={classes.container}>
+    <div className={classes.container} aria-live="polite" aria-atomic="false">
       {toasts.map((toast) => {
         const Icon = ICONS[toast.level];
         return (
@@ -51,6 +51,7 @@ export function ToastContainer() {
             key={toast.id}
             className={classes.toast}
             data-level={toast.level}
+            role={toast.level === "error" ? "alert" : "status"}
             onClick={() => dismissToast(toast.id)}
           >
             <Icon size={16} className={classes.icon} color={COLORS[toast.level]} />

@@ -5,7 +5,6 @@ import classes from "./MemoryPanel.module.css";
 
 interface MemoryCardProps {
   memory: Memory;
-  onToggleVisibility: (id: string, visibility: "private" | "public") => void;
   onDelete: (id: string) => void;
 }
 
@@ -33,11 +32,10 @@ function formatDate(iso: string): string {
   }
 }
 
-export function MemoryCard({ memory, onToggleVisibility, onDelete }: MemoryCardProps) {
+export function MemoryCard({ memory, onDelete }: MemoryCardProps) {
   const imp = importanceLabel(memory.importance);
   const entities = parseJsonTags(memory.entities_json);
   const topics = parseJsonTags(memory.topics_json);
-  const isPublic = memory.visibility === "public";
 
   return (
     <div className={classes.card}>
@@ -47,8 +45,8 @@ export function MemoryCard({ memory, onToggleVisibility, onDelete }: MemoryCardP
             {imp.label}
           </Badge>
           {memory.consolidated && (
-            <Tooltip label="Consolidated into a summary" position="top" withArrow>
-              <span className={classes.consolidatedBadge} aria-label="Consolidated">
+            <Tooltip label="Included in a summary" position="top" withArrow>
+              <span className={classes.consolidatedBadge} aria-label="Summarized">
                 <CheckCircle size={11} />
               </span>
             </Tooltip>
@@ -56,16 +54,6 @@ export function MemoryCard({ memory, onToggleVisibility, onDelete }: MemoryCardP
         </div>
 
         <div className={classes.cardActions}>
-          <Tooltip label={isPublic ? "Set private" : "Set public"} position="top" withArrow>
-            <button
-              type="button"
-              className={`${classes.visibilityButton} ${isPublic ? classes.visibilityPublic : classes.visibilityPrivate}`}
-              onClick={() => onToggleVisibility(memory.id, isPublic ? "private" : "public")}
-              aria-label={isPublic ? "Set private" : "Set public"}
-            >
-              {isPublic ? "public" : "private"}
-            </button>
-          </Tooltip>
           <Tooltip label="Delete memory" position="top" withArrow>
             <ActionIcon
               variant="subtle"

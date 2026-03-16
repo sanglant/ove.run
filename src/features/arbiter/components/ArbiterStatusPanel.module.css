@@ -123,21 +123,21 @@
 }
 
 .dotBlue {
-  background: #3b82f6;
-  box-shadow: 0 0 5px #3b82f640;
+  background: color-mix(in srgb, var(--accent) 40%, #7ab3e0);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--accent) 40%, #7ab3e0 25%);
 }
 
 .dotGreen {
-  background: #22c55e;
-  box-shadow: 0 0 5px #22c55e40;
+  background: var(--success);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 .dotYellow {
-  background: #eab308;
-  box-shadow: 0 0 5px #eab30840;
+  background: var(--warning);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
 .dotRed {
-  background: #ef4444;
-  box-shadow: 0 0 5px #ef444440;
+  background: var(--danger);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--danger) 40%, transparent);
 }

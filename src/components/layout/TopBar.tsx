@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Group, Modal, Alert, Text } from "@mantine/core";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS } from "@/constants/styles";
+import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getStatusMeta } from "@/constants/agents";
 import { AgentBadge } from "@/components/ui/AgentBadge";
@@ -66,15 +66,15 @@ export function TopBar() {
               aria-pressed={activeSession.yoloMode}
               title={
                 activeSession.yoloMode
-                  ? "YOLO mode active — click to disable (will respawn)"
-                  : "Enable YOLO mode (will respawn)"
+                  ? "Auto-approve active — click to disable (will respawn)"
+                  : "Enable auto-approve (will respawn)"
               }
               className={cn(classes.yoloButton, activeSession.yoloMode && classes.yoloButtonActive)}
             >
               {activeSession.yoloMode && (
                 <AlertTriangle size={10} className={classes.flexShrink0} />
               )}
-              YOLO
+              Auto
             </button>
           )}
         </Group>
@@ -84,10 +84,11 @@ export function TopBar() {
       <Modal
         opened={showYoloWarning && !!activeSession}
         onClose={() => setShowYoloWarning(false)}
-        title={activeSession?.yoloMode ? "Disable YOLO Mode" : "Enable YOLO Mode"}
+        title={activeSession?.yoloMode ? "Disable Auto-approve" : "Enable Auto-approve"}
         centered
         size="sm"
         overlayProps={MODAL_OVERLAY_PROPS}
+        transitionProps={MODAL_TRANSITION_PROPS}
         styles={{
           ...MODAL_STYLES,
           body: { ...MODAL_STYLES.body, padding: 20 },
@@ -106,8 +107,8 @@ export function TopBar() {
               }}
             >
               {activeSession.yoloMode
-                ? "Disabling YOLO mode will respawn the agent process without the bypass flag."
-                : "YOLO mode bypasses all confirmation prompts. The agent will be respawned with the danger flag. Proceed with caution."}
+                ? "Disabling auto-approve will respawn the agent process without the bypass flag."
+                : "Auto-approve bypasses all confirmation prompts. The agent will be respawned with the bypass flag. Proceed with caution."}
             </Alert>
 
             <Group justify="flex-end" gap={8}>
@@ -121,7 +122,7 @@ export function TopBar() {
                 onClick={handleYoloConfirm}
                 className={cn(classes.confirmButton, activeSession.yoloMode ? classes.confirmButtonDisable : classes.confirmButtonEnable)}
               >
-                {activeSession.yoloMode ? "Disable" : "Enable YOLO"}
+                {activeSession.yoloMode ? "Disable" : "Enable"}
               </button>
             </Group>
           </>

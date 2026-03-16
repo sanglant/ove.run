@@ -23,7 +23,7 @@ export const AGENT_META: Record<string, AgentMeta> = {
 export const STATUS_META: Record<string, StatusMeta> = {
   starting:    { label: "Starting",    color: "var(--warning)" },
   idle:        { label: "Idle",        color: "var(--text-secondary)" },
-  working:     { label: "Working",     color: "var(--accent)",   className: "animate-pulse-glow" },
+  working:     { label: "Working",     color: "var(--accent)" },
   needs_input: { label: "Needs Input", color: "var(--warning)",  className: "animate-status-pulse" },
   finished:    { label: "Finished",    color: "var(--success)" },
   error:       { label: "Error",       color: "var(--danger)" },

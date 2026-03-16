@@ -166,7 +166,7 @@
 
 .dangerButton {
   background: var(--danger);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .dangerButton:hover:not(:disabled) {
@@ -213,8 +213,7 @@
   line-height: 1.5;
 }
 
-.emptyListIcon,
-.emptyIcon {
+.emptyListIcon {
   opacity: 0.35;
 }
 
@@ -329,7 +328,7 @@
 }
 
 .deleteButton:hover {
-  background: rgba(229, 115, 127, 0.12);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
 .editorArea {

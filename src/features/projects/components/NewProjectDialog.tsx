@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FolderOpen } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useProjectStore } from "@/stores/projectStore";
@@ -22,6 +22,8 @@ interface NewProjectDialogProps {
 export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
+  const [opened, setOpened] = useState(false);
+  useEffect(() => { setOpened(true); }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +70,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps) {
 
   return (
     <Modal
-      opened={true}
+      opened={opened}
       onClose={onClose}
       title="Add Project"
       centered

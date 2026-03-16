@@ -226,6 +226,12 @@
   color: var(--text-primary);
 }
 
+.sectionToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-accent);
+  border-radius: 4px;
+}
+
 .sectionContent {
   padding: 8px 10px;
   border-radius: 8px;
@@ -300,7 +306,7 @@
 
 .dangerButton {
   background: var(--danger);
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .dangerButton:hover:not(:disabled) {
@@ -362,26 +368,3 @@
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
-/* ── Empty state (no project selected) ──────────────────── */
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 12px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  text-align: center;
-  padding: 24px;
-}
-
-.emptyState p {
-  margin: 0;
-  max-width: 30ch;
-  line-height: 1.6;
-}
-
-.emptyIcon {
-  opacity: 0.35;
-}

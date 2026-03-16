@@ -448,19 +448,11 @@ export function TerminalContainer() {
     [canSplitPane, clearPaneDragState, sessionMap, setPaneSession, splitPane],
   );
 
-  const handlePaneDragLeave = useCallback(
-    (event: DragEvent<HTMLElement>, paneId: string) => {
-      const relatedTarget = event.relatedTarget;
-      if (relatedTarget instanceof Node && event.currentTarget.contains(relatedTarget)) {
-        return;
-      }
-
-      setPaneDragState((state) =>
-        state.paneId === paneId ? { paneId: null, zone: null, sessionId: null } : state,
-      );
-    },
-    [],
-  );
+  // dragLeave is intentionally NOT used for pane drag state management.
+  // Cross-pane transitions are handled by dragOver (updates paneId), and
+  // drag-end cleanup is handled by the global dragend/drop listeners.
+  // Using dragLeave causes flashing because the terminal's canvas/DOM
+  // elements fire spurious dragLeave events with null relatedTarget.
 
   const handleResizeStart = useCallback(
     (handle: RenderedHandle, event: MouseEvent<HTMLDivElement>) => {
@@ -529,19 +521,26 @@ export function TerminalContainer() {
             const isFocused = pane.paneId === layout.activePaneId;
             const isArtifacts = pane.paneType === "artifacts";
             const isEmpty = !pane.sessionId && !isArtifacts;
+            const paneSession = pane.sessionId ? sessionMap.get(pane.sessionId) : undefined;
+            const paneLabel = isArtifacts
+              ? "Arbiter artifacts pane"
+              : paneSession
+                ? `${paneSession.label} pane`
+                : "Empty pane";
 
             return (
               <div
                 key={`surface-${pane.paneId}`}
                 className={classes.paneSurface}
                 style={paneRectToStyle(pane.rect)}
+                role="region"
+                aria-label={paneLabel}
                 data-focused={isFocused || undefined}
                 data-empty={isEmpty || undefined}
                 data-drag-over={paneDragState.paneId === pane.paneId || undefined}
                 onClick={() => handlePaneFocus(pane.paneId)}
                 onDragOver={(event) => handlePaneDragOver(event, pane.paneId)}
                 onDrop={(event) => handlePaneDrop(event, pane.paneId)}
-                onDragLeave={(event) => handlePaneDragLeave(event, pane.paneId)}
               >
                 {isArtifacts ? (
                   <ArtifactsPane />
@@ -585,11 +584,6 @@ export function TerminalContainer() {
                     handlePaneDrop(event, renderedPane.paneId);
                   }
                 }}
-                onDragLeave={(event) => {
-                  if (renderedPane) {
-                    handlePaneDragLeave(event, renderedPane.paneId);
-                  }
-                }}
               >
                 <TerminalPanel
                   session={session}
@@ -631,7 +625,6 @@ export function TerminalContainer() {
                     onDragStart={(event) => handlePaneHandleDragStart(event, session.id)}
                     onDragOver={(event) => handlePaneDragOver(event, pane.paneId)}
                     onDrop={(event) => handlePaneDrop(event, pane.paneId)}
-                    onDragLeave={(event) => handlePaneDragLeave(event, pane.paneId)}
                     onDragEnd={clearPaneDragState}
                     title={`Drag ${session.label} to move or split panes`}
                   >

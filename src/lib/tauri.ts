@@ -96,6 +96,10 @@ export async function updateProject(project: Project): Promise<void> {
   return invoke("update_project", { updatedProject: project });
 }
 
+export async function listProjectFiles(projectPath: string, maxFiles?: number): Promise<string[]> {
+  return invoke("list_project_files", { projectPath, maxFiles });
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return invoke("get_settings");
 }

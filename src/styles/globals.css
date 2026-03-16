@@ -1,3 +1,12 @@
+/* ─── Fonts ──────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/outfit.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* ─── Reset ─────────────────────────────────────────────────────────────────── */
 
 *,
@@ -31,6 +40,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Outfit", "Geist", sans-serif;
 }
 
 /* ─── Selection ──────────────────────────────────────────────────────────────── */
@@ -105,23 +118,19 @@ body {
   background-size: 200px 200px;
 }
 
-/* ─── Keyframe Animations ────────────────────────────────────────────────────── */
+/* ─── Button Press Feel ──────────────────────────────────────────────────────── */
 
 /*
-  pulse-glow — for "working" status dots.
-  Layers an opacity fade with a colour shift between accent and accent-glow
-  so the dot visually breathes without jarring movement.
+  Gives all interactive button elements a subtle 0.5px downward nudge on press.
+  This is intentionally micro-scale — enough to register as tactile without being
+  visible as a layout shift. Works alongside any component-level transforms.
 */
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 50%, transparent);
-  }
-  50% {
-    opacity: 0.6;
-    box-shadow: 0 0 10px 3px color-mix(in srgb, var(--accent-glow) 40%, transparent);
-  }
+button:not(:disabled):active,
+[role="button"]:not(:disabled):active {
+  transform: translateY(0.5px);
 }
+
+/* ─── Keyframe Animations ────────────────────────────────────────────────────── */
 
 /*
   fade-in — 200ms opacity reveal for panel transitions.
@@ -159,10 +168,6 @@ body {
 
 /* ─── Animation Utility Classes ──────────────────────────────────────────────── */
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
 .animate-fade-in {
   animation: fade-in 200ms ease-out both;
 }
@@ -175,8 +180,33 @@ body {
   animation: status-pulse 1.4s ease-in-out infinite;
 }
 
-/* ─── Arbiter Glow ──────────────────────────────────────────────────────────── */
+/* ─── Reduced Motion ─────────────────────────────────────────────────────────── */
 
-.arbiter-glow {
-  box-shadow: 0 0 1px var(--arbiter), 0 0 12px rgba(78, 205, 196, 0.3);
+/*
+  WCAG 2.1 SC 2.3.3 (AAA) / SC 2.3.1 (AA for seizure-triggering content).
+  Collapse all durations to near-zero so nothing moves, scrolls, or flickers.
+  The !important override is intentional: this is a user accessibility preference
+  that must win over any component-level animation declaration.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /*
+    .animate-status-pulse signals "needs input" — a meaningful state, not
+    decorative motion. With animation collapsed, swap to a persistent glow
+    so the indicator remains visible without any movement.
+  */
+  .animate-status-pulse {
+    animation: none !important;
+    opacity: 1;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
 }
+
