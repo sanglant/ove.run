@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Build ove.run for the current platform.
-# Outputs go to ./release/<target>/
+# Outputs go to ./releases/
 #
 # Usage:
 #   ./scripts/build.sh              # bump patch + build for current OS
@@ -33,8 +33,9 @@ echo "==> Building ove.run v$VERSION..."
 # Allow partial failures (e.g. AppImage may fail if linuxdeploy isn't installed)
 pnpm tauri build $TARGET_FLAG 2>&1 || echo "==> Warning: build exited non-zero (some bundle formats may have failed)"
 
-# Collect artifacts into ./release/
-RELEASE_DIR="$ROOT/release"
+# Collect artifacts into ./releases/ (clean first to avoid stale versions)
+RELEASE_DIR="$ROOT/releases"
+rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
 BUNDLE_DIR="$ROOT/src-tauri/target/release/bundle"
@@ -44,13 +45,14 @@ if [[ -n "$TARGET_FLAG" ]]; then
 fi
 
 echo ""
-echo "==> Copying artifacts to ./release/"
+echo "==> Collecting v$VERSION artifacts to ./releases/"
 
 # Copy whatever bundle types were produced
 for fmt in deb rpm appimage dmg msi nsis; do
     SRC="$BUNDLE_DIR/$fmt"
     if [[ -d "$SRC" ]]; then
-        cp -v "$SRC"/* "$RELEASE_DIR/" 2>/dev/null || true
+        # Only copy files matching current version
+        find "$SRC" -maxdepth 1 -type f -name "*${VERSION}*" -exec cp -v {} "$RELEASE_DIR/" \;
     fi
 done
 
@@ -66,5 +68,5 @@ elif [[ -f "$BINARY.exe" ]]; then
 fi
 
 echo ""
-echo "==> Build complete. Artifacts in ./release/:"
+echo "==> Build complete. v$VERSION artifacts in ./releases/:"
 ls -lh "$RELEASE_DIR/"
