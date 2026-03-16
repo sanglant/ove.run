@@ -11,3 +11,4 @@ pub mod pty_commands;
 pub mod session_commands;
 pub mod sandbox_commands;
 pub mod settings_commands;
+pub mod update_commands;

@@ -54,6 +54,7 @@ use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
 use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::sandbox_commands::get_sandbox_capabilities;
 use commands::settings_commands::{get_settings, update_settings, reset_database};
+use commands::update_commands::check_for_updates;
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
 
@@ -278,6 +279,8 @@ pub fn run() {
             set_max_iterations,
             // Sandbox commands
             get_sandbox_capabilities,
+            // Update commands
+            check_for_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -10,7 +10,7 @@ interface NotificationState {
   markRead: (id: string) => void;
   markAllRead: () => void;
   clearAll: () => void;
-  showToast: (level: ToastLevel, title: string, body?: string) => void;
+  showToast: (level: ToastLevel, title: string, body?: string, onClick?: () => void) => void;
   dismissToast: (id: string) => void;
 }
 
@@ -48,13 +48,14 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     set({ notifications: [], unreadCount: 0 });
   },
 
-  showToast: (level: ToastLevel, title: string, body?: string) => {
+  showToast: (level: ToastLevel, title: string, body?: string, onClick?: () => void) => {
     const toast: ToastItem = {
       id: uuid(),
       level,
       title,
       body,
       duration: level === "error" ? 8000 : 4000,
+      onClick,
     };
     set((state) => ({ toasts: [...state.toasts, toast] }));
   },

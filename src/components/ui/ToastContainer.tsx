@@ -52,7 +52,10 @@ export function ToastContainer() {
             className={classes.toast}
             data-level={toast.level}
             role={toast.level === "error" ? "alert" : "status"}
-            onClick={() => dismissToast(toast.id)}
+            onClick={() => {
+              toast.onClick?.();
+              dismissToast(toast.id);
+            }}
           >
             <Icon size={16} className={classes.icon} color={COLORS[toast.level]} />
             <div className={classes.content}>

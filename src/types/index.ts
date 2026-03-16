@@ -138,6 +138,7 @@ export interface ToastItem {
   title: string;
   body?: string;
   duration?: number;
+  onClick?: () => void;
 }
 
 export interface ParsedOption {

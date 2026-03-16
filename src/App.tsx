@@ -18,6 +18,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useUpdateChecker } from "@/hooks/useUpdateChecker";
 import { useTour } from "@/hooks/useTour";
 import { useTourStore } from "@/stores/tourStore";
 import { initLoopListener } from "@/stores/loopStore";
@@ -32,6 +33,7 @@ export default function App() {
 
   // Initialize global notification listener
   useNotifications();
+  useUpdateChecker();
 
   useEffect(() => {
     const cleanup = initLoopListener();
