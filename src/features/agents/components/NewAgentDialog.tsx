@@ -141,7 +141,7 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
         units
           .filter((u) => u.type === "skill" || u.type === "persona" || u.type === "knowledge")
           .map((u) => ({
-            id: u.id,
+            id: u.bundled_slug ?? u.name.toLowerCase().replace(/\s+/g, "-"),
             title: u.name,
             description: u.l0_summary ?? undefined,
             icon: <Sparkles size={14} />,
@@ -206,10 +206,11 @@ export function NewAgentDialog({ projectId, onClose, initialLabel, initialPrompt
       centered
       overlayProps={MODAL_OVERLAY_PROPS}
       transitionProps={MODAL_TRANSITION_PROPS}
+      size={arbiterEnabled ? "lg" : "md"}
       styles={{
         ...MODAL_STYLES,
-        content: { ...MODAL_STYLES.content, width: "420px" },
-        body: { maxHeight: "calc(100vh - 160px)", overflowY: "auto" },
+        content: { ...MODAL_STYLES.content, ...(arbiterEnabled ? {} : { width: "420px" }) },
+        body: { ...MODAL_STYLES.body, maxHeight: "calc(100vh - 160px)", overflowY: "auto" },
       }}
     >
       {/* Body */}

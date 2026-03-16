@@ -548,31 +548,115 @@
 
 .promptEditor {
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--bg-tertiary);
-  min-height: 60px;
-  max-height: 160px;
-  overflow-y: auto;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--text-primary);
-  line-height: 1.5;
-  cursor: text;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .promptEditor:focus-within {
   border-color: var(--accent);
 }
 
-.promptEditor :global(.ProseMirror) {
-  outline: none;
-  min-height: 40px;
+.promptToolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, var(--bg-elevated));
+  flex-shrink: 0;
 }
 
-.promptEditor :global(.ProseMirror p.is-editor-empty:first-child::before) {
+.promptToolbarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 80ms, background-color 80ms;
+}
+
+.promptToolbarBtn:hover {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.promptToolbarBtnActive {
+  color: var(--accent-glow);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.promptToolbarDivider {
+  width: 1px;
+  height: 14px;
+  margin: 0 4px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.promptEditorBody {
+  flex: 1;
+  min-height: 120px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  cursor: text;
+}
+
+.promptEditorBody :global(.ProseMirror) {
+  outline: none;
+  box-shadow: none;
+  min-height: 100px;
+}
+
+.promptEditorBody :global(.ProseMirror:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+.promptEditorBody :global(.ProseMirror p.is-editor-empty:first-child::before) {
   content: attr(data-placeholder);
   color: var(--text-secondary);
   pointer-events: none;
   float: left;
   height: 0;
+}
+
+.promptEditorBody :global(.ProseMirror h1),
+.promptEditorBody :global(.ProseMirror h2),
+.promptEditorBody :global(.ProseMirror h3) {
+  font-family: "Outfit", "Geist", sans-serif;
+  margin-top: 0.6em;
+  margin-bottom: 0.3em;
+}
+
+.promptEditorBody :global(.ProseMirror h1) { font-size: 1.3em; }
+.promptEditorBody :global(.ProseMirror h2) { font-size: 1.15em; }
+.promptEditorBody :global(.ProseMirror h3) { font-size: 1em; }
+
+.promptEditorBody :global(.ProseMirror ul),
+.promptEditorBody :global(.ProseMirror ol) {
+  padding-left: 1.4em;
+}
+
+.promptEditorBody :global(.ProseMirror ul[data-type="taskList"]) {
+  padding-left: 0;
+  list-style: none;
+}
+
+.promptEditorBody :global(.ProseMirror code) {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.9em;
 }

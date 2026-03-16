@@ -966,6 +966,7 @@ export function RichTextEditor({
   onEditorReadyRef.current = onEditorReady;
 
   const isExternalUpdate = useRef(false);
+  const isSelfUpdate = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
 
@@ -1004,6 +1005,7 @@ export function RichTextEditor({
         const md = (
           editor.storage as Record<string, any>
         ).markdown.getMarkdown() as string;
+        isSelfUpdate.current = true;
         onContentChangeRef.current(md);
       }, 150);
     },
@@ -1033,10 +1035,11 @@ export function RichTextEditor({
     if (content === prevContentRef.current) return;
     prevContentRef.current = content;
 
-    const currentMd = (
-      editor.storage as Record<string, any>
-    ).markdown.getMarkdown() as string;
-    if (currentMd === content) return;
+    // Skip if this content change was caused by our own onUpdate callback
+    if (isSelfUpdate.current) {
+      isSelfUpdate.current = false;
+      return;
+    }
 
     isExternalUpdate.current = true;
     editor.commands.setContent(content);

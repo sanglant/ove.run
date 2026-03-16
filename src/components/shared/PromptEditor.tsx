@@ -1,11 +1,25 @@
 import { useEffect, useRef } from "react";
 import { useEditor, EditorContent, Extension } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Markdown } from "tiptap-markdown";
 import Suggestion from "@tiptap/suggestion";
 import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
 import { createRoot } from "react-dom/client";
+import {
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  Code,
+  List,
+  ListOrdered,
+  ListTodo,
+} from "lucide-react";
+import type { Editor } from "@tiptap/react";
 import styles from "./RichTextEditor.module.css";
 
 const fileMentionPluginKey = new PluginKey("fileMention");
@@ -20,7 +34,7 @@ export interface SuggestionItem {
   icon: React.ReactNode;
 }
 
-// --- Shared autocomplete menu (reuses slashMenu CSS) ---
+// --- Autocomplete menu with scroll-into-view and mousedown close ---
 
 interface AutocompleteMenuProps {
   items: SuggestionItem[];
@@ -29,8 +43,19 @@ interface AutocompleteMenuProps {
 }
 
 function AutocompleteMenu({ items, onSelect, selectedIndex }: AutocompleteMenuProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Scroll the active item into view on every selectedIndex change
+  useEffect(() => {
+    if (!listRef.current) return;
+    const active = listRef.current.querySelector("[data-active='true']") as HTMLElement | null;
+    if (active) {
+      active.scrollIntoView({ block: "nearest" });
+    }
+  }, [selectedIndex]);
+
   return (
-    <div className={styles.slashMenu}>
+    <div className={styles.slashMenu} ref={listRef}>
       {items.length === 0 && (
         <div className={styles.slashEmpty}>No results</div>
       )}
@@ -38,8 +63,12 @@ function AutocompleteMenu({ items, onSelect, selectedIndex }: AutocompleteMenuPr
         <button
           type="button"
           key={item.id}
+          data-active={index === selectedIndex}
           className={`${styles.slashItem} ${index === selectedIndex ? styles.slashItemActive : ""}`}
-          onClick={() => onSelect(item)}
+          onMouseDown={(e) => {
+            e.preventDefault(); // prevent blur before selection fires
+            onSelect(item);
+          }}
         >
           <span className={styles.slashItemIcon}>{item.icon}</span>
           <span className={styles.slashItemText}>
@@ -62,6 +91,19 @@ function createSuggestionRenderer() {
   let selectedIndex = 0;
   let currentItems: SuggestionItem[] = [];
   let currentCommand: ((item: SuggestionItem) => void) | null = null;
+  let onClickOutside: ((e: MouseEvent) => void) | null = null;
+
+  function cleanup() {
+    if (onClickOutside) {
+      document.removeEventListener("mousedown", onClickOutside, true);
+      onClickOutside = null;
+    }
+    if (root) { root.unmount(); root = null; }
+    if (popup) { popup.remove(); popup = null; }
+    selectedIndex = 0;
+    currentItems = [];
+    currentCommand = null;
+  }
 
   function renderMenu() {
     if (!root || !currentCommand) return;
@@ -77,7 +119,7 @@ function createSuggestionRenderer() {
   return {
     onStart: (props: SuggestionProps<SuggestionItem, SuggestionItem>) => {
       popup = document.createElement("div");
-      popup.style.position = "absolute";
+      popup.style.position = "fixed";
       popup.style.zIndex = "9999";
       document.body.appendChild(popup);
       root = createRoot(popup);
@@ -92,6 +134,21 @@ function createSuggestionRenderer() {
         }
       }
       renderMenu();
+
+      // Close on click outside the popup
+      onClickOutside = (e: MouseEvent) => {
+        if (popup && !popup.contains(e.target as Node)) {
+          // Delete the trigger text and close
+          props.editor.commands.focus();
+          cleanup();
+        }
+      };
+      // Use setTimeout so the opening click doesn't immediately close it
+      setTimeout(() => {
+        if (onClickOutside) {
+          document.addEventListener("mousedown", onClickOutside, true);
+        }
+      }, 0);
     },
     onUpdate: (props: SuggestionProps<SuggestionItem, SuggestionItem>) => {
       currentItems = props.items;
@@ -126,13 +183,7 @@ function createSuggestionRenderer() {
       if (event.key === "Escape") return true;
       return false;
     },
-    onExit: () => {
-      if (root) { root.unmount(); root = null; }
-      if (popup) { popup.remove(); popup = null; }
-      selectedIndex = 0;
-      currentItems = [];
-      currentCommand = null;
-    },
+    onExit: cleanup,
   };
 }
 
@@ -183,13 +234,80 @@ function createSkillMention(skillsRef: React.RefObject<SuggestionItem[]>) {
               .slice(0, 15);
           },
           command: ({ editor, range, props: item }) => {
-            editor.chain().focus().deleteRange(range).insertContent(`/${item.title} `).run();
+            // Insert the slug (stored in id) not the display title
+            editor.chain().focus().deleteRange(range).insertContent(`/${item.id} `).run();
           },
           render: createSuggestionRenderer,
         }),
       ];
     },
   });
+}
+
+// --- Mini toolbar for the prompt editor ---
+
+function PromptToolbar({ editor }: { editor: Editor }) {
+  return (
+    <div className={styles.promptToolbar}>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("bold") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
+        title="Bold"
+      >
+        <Bold size={13} />
+      </button>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("italic") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
+        title="Italic"
+      >
+        <Italic size={13} />
+      </button>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("underline") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
+        title="Underline"
+      >
+        <UnderlineIcon size={13} />
+      </button>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("code") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleCode().run(); }}
+        title="Inline code"
+      >
+        <Code size={13} />
+      </button>
+      <span className={styles.promptToolbarDivider} />
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("bulletList") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBulletList().run(); }}
+        title="Bullet list"
+      >
+        <List size={13} />
+      </button>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("orderedList") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleOrderedList().run(); }}
+        title="Ordered list"
+      >
+        <ListOrdered size={13} />
+      </button>
+      <button
+        type="button"
+        className={`${styles.promptToolbarBtn} ${editor.isActive("taskList") ? styles.promptToolbarBtnActive : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleTaskList().run(); }}
+        title="Task list"
+      >
+        <ListTodo size={13} />
+      </button>
+    </div>
+  );
 }
 
 // --- Main component ---
@@ -226,37 +344,31 @@ export function PromptEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: false,
-        bulletList: false,
-        orderedList: false,
-        blockquote: false,
+        heading: { levels: [1, 2, 3] },
         codeBlock: false,
         horizontalRule: false,
       }),
+      Underline,
+      TaskList,
+      TaskItem.configure({ nested: false }),
       Placeholder.configure({ placeholder }),
+      Markdown.configure({ html: false }),
       fileMention.current,
       skillMention.current,
     ],
     content: value || "",
     onUpdate: ({ editor }) => {
-      onChangeRef.current(editor.getText());
+      const md = (editor.storage as Record<string, any>).markdown.getMarkdown() as string;
+      onChangeRef.current(md);
     },
   });
 
-  // Sync external value changes
-  const prevValue = useRef(value);
-  useEffect(() => {
-    if (!editor) return;
-    if (value === prevValue.current) return;
-    prevValue.current = value;
-    if (editor.getText() !== value) {
-      editor.commands.setContent(value || "");
-    }
-  }, [value, editor]);
-
   return (
     <div className={`${styles.promptEditor} ${className ?? ""}`}>
-      <EditorContent editor={editor} />
+      {editor && <PromptToolbar editor={editor} />}
+      <div className={styles.promptEditorBody}>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
