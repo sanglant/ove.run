@@ -5,4 +5,5 @@
   flex-shrink: 0;
   display: inline-block;
   background-color: var(--dot-color);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--dot-color) 50%, transparent);
 }

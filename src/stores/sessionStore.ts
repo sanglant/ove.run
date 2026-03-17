@@ -108,6 +108,32 @@ function replacePane(
   };
 }
 
+function removeArtifactsPanes(node: TerminalLayoutNode): TerminalLayoutNode | null {
+  if (node.type === "pane") {
+    return node.paneType === "artifacts" ? null : node;
+  }
+
+  const nextFirst = removeArtifactsPanes(node.first);
+  if (!nextFirst) {
+    return removeArtifactsPanes(node.second);
+  }
+
+  const nextSecond = removeArtifactsPanes(node.second);
+  if (!nextSecond) {
+    return nextFirst;
+  }
+
+  if (nextFirst === node.first && nextSecond === node.second) {
+    return node;
+  }
+
+  return {
+    ...node,
+    first: nextFirst,
+    second: nextSecond,
+  };
+}
+
 function removePane(node: TerminalLayoutNode, paneId: string): TerminalLayoutNode | null {
   if (node.type === "pane") {
     return node.id === paneId ? null : node;
@@ -491,6 +517,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   removeSession: (id: string) => {
     set((state) => {
+      const removedSession = state.sessions.find((session) => session.id === id);
       const sessions = state.sessions.filter((session) => session.id !== id);
       const allSessionIds = sessions.map((s) => s.id);
 
@@ -499,7 +526,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           ? sessions[sessions.length - 1]?.id ?? null
           : state.activeSessionId;
 
-      let globalLayout = normalizeLayout(state.globalLayout, allSessionIds);
+      // Clean up artifacts panes when an arbiter session is removed
+      let layoutToNormalize = state.globalLayout;
+      if (removedSession?.arbiterEnabled) {
+        const cleaned = removeArtifactsPanes(layoutToNormalize.root);
+        if (cleaned) {
+          layoutToNormalize = { ...layoutToNormalize, root: cleaned };
+        }
+      }
+
+      let globalLayout = normalizeLayout(layoutToNormalize, allSessionIds);
 
       if (activeSessionId) {
         const activePane = findPaneBySession(globalLayout.root, activeSessionId);
@@ -591,6 +627,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         return {
           activeSessionId: sessionId,
           globalLayout: nextLayout,
+        };
+      }
+
+      // Remove the empty pane from the layout if there are other panes
+      const panes = collectPanes(baseLayout.root);
+      if (panes.length > 1) {
+        const root = removePane(baseLayout.root, paneId) ?? createPane(null);
+        const remainingPanes = collectPanes(root);
+        const nextActivePaneId = remainingPanes[0]?.id ?? baseLayout.activePaneId;
+        const nextActiveSessionId = remainingPanes[0]?.sessionId ?? state.activeSessionId;
+
+        return {
+          activeSessionId: nextActiveSessionId,
+          globalLayout: {
+            ...baseLayout,
+            root,
+            activePaneId: nextActivePaneId,
+          },
         };
       }
 

@@ -5,8 +5,8 @@
   height: 24px;
   padding-left: 12px;
   padding-right: 12px;
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 3%, var(--bg-secondary)), var(--bg-secondary));
+  border-top: 1px solid color-mix(in srgb, var(--accent) 10%, var(--border));
   flex-shrink: 0;
   font-size: 10px;
 }

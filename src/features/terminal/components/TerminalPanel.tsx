@@ -60,6 +60,10 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   // Keep lastStatusRef in sync with external status changes (e.g. modal setting "working")
   lastStatusRef.current = session.status;
 
+  // Track user typing to suppress feedback/arbiter while composing input
+  const lastUserInputRef = useRef(0);
+  const USER_TYPING_DEBOUNCE_MS = 2000;
+
   // Grace period: suppress feedback modal AND arbiter auto-answer for resumed
   // sessions on startup.  Terminal may already show a stale needs_input prompt
   // that shouldn't trigger a modal or arbiter action.
@@ -140,8 +144,8 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
       theme: {
         background: "#090909",
         foreground: "#e8e8f0",
-        cursor: "#6c7ee1",
-        cursorAccent: "#e8e8f0",
+        cursor: "#d4a56a",
+        cursorAccent: "#090909",
         selectionBackground: "#2e2e3e",
         black: "#111114",
         red: "#e5737f",
@@ -180,6 +184,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
     // Handle user input
     term.onData((data) => {
       if (!spawnedRef.current) return;
+      lastUserInputRef.current = Date.now();
       const bytes = toBytes(data);
       writePty(session.id, bytes).catch((err) => {
         console.error("writePty error:", err);
@@ -232,9 +237,10 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
             }
           }
 
-          // Enqueue feedback — skip entirely during startup grace period
-          // for resumed sessions to avoid stale prompts triggering modals
-          if (!feedbackSuppressedRef.current) {
+          // Enqueue feedback — skip during startup grace period and while
+          // the user is actively typing to avoid interrupting input composition
+          const isUserTyping = Date.now() - lastUserInputRef.current < USER_TYPING_DEBOUNCE_MS;
+          if (!feedbackSuppressedRef.current && !isUserTyping) {
             const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
             const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
 

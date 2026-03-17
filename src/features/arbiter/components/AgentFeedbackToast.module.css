@@ -1,6 +1,6 @@
 /* Toast card */
 .toast {
-  width: 320px;
+  width: 400px;
   border-radius: 8px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-bright);
@@ -156,9 +156,9 @@
   z-index: 8;
   pointer-events: none;
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
 }
 
 .paneAnchor > * {
