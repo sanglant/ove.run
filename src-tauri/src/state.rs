@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Serialize, Deserialize};
 use ts_rs::TS;
 
 use crate::db::init::DbPool;
@@ -11,9 +11,11 @@ pub struct AppState {
     pub pty_manager: Arc<RwLock<crate::pty::manager::PtyManager>>,
     pub projects: Arc<RwLock<Vec<Project>>>,
     pub settings: Arc<RwLock<AppSettings>>,
-    pub notification_tx: tokio::sync::mpsc::Sender<crate::notifications::notifier::NotificationEvent>,
+    pub notification_tx:
+        tokio::sync::mpsc::Sender<crate::notifications::notifier::NotificationEvent>,
     pub memory_worker_tx: tokio::sync::mpsc::Sender<crate::memory_worker::MemoryWorkerEvent>,
     pub loop_cmd_tx: tokio::sync::mpsc::Sender<crate::loop_engine::engine::LoopCommand>,
+    pub mcp_port: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -200,7 +202,7 @@ pub struct Story {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct QualityGateConfig {
     pub build_command: Option<String>,
@@ -210,20 +212,8 @@ pub struct QualityGateConfig {
     pub arbiter_judge: bool,
 }
 
-impl Default for QualityGateConfig {
-    fn default() -> Self {
-        Self {
-            build_command: None,
-            lint_command: None,
-            typecheck_command: None,
-            test_command: None,
-            arbiter_judge: false,
-        }
-    }
-}
-
 fn default_arbiter_timeout() -> u32 {
-    3
+    120
 }
 
 impl Default for AppSettings {
@@ -236,7 +226,7 @@ impl Default for AppSettings {
                 notifications_enabled: true,
                 minimize_to_tray: true,
                 terminal_scrollback: 10000,
-                arbiter_timeout_seconds: 3,
+                arbiter_timeout_seconds: 120,
                 arbiter_provider: String::new(),
                 arbiter_model: String::new(),
             },
@@ -270,7 +260,7 @@ mod tests {
         assert!(settings.global.notifications_enabled);
         assert!(settings.global.minimize_to_tray);
         assert_eq!(settings.global.terminal_scrollback, 10000);
-        assert_eq!(settings.global.arbiter_timeout_seconds, 3);
+        assert_eq!(settings.global.arbiter_timeout_seconds, 120);
     }
 
     #[test]

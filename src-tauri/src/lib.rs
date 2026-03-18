@@ -107,6 +107,15 @@ pub fn run() {
                 crate::bundled::seed::sync_bundled_content(&conn).ok();
             }
 
+            // Start MCP server — bind synchronously so port is known before AppState is built.
+            // start_server returns immediately after binding; the serve loop runs in the Tokio runtime
+            // via tauri::async_runtime::spawn inside start_server.
+            let mcp_port = crate::mcp::server::start_server(db.clone())
+                .unwrap_or_else(|e| {
+                    tracing::error!("[mcp] failed to start: {e}");
+                    0
+                });
+
             // Load persisted data from SQLite
             let loaded_projects = {
                 let conn = db.lock().unwrap();
@@ -127,6 +136,7 @@ pub fn run() {
                 notification_tx,
                 memory_worker_tx: memory_tx.clone(),
                 loop_cmd_tx,
+                mcp_port,
             };
 
             let app_handle = app.handle().clone();
