@@ -42,7 +42,7 @@ pub fn handle_list_context(db: &DbPool, project_path: &str) -> Value {
 }
 
 pub fn handle_get_context(db: &DbPool, project_path: &str, id: &str) -> Value {
-    let _project_id = match resolve_project_id(db, project_path) {
+    let project_id = match resolve_project_id(db, project_path) {
         Some(id) => id,
         None => return serde_json::json!({"error": "project not found"}),
     };
@@ -51,13 +51,18 @@ pub fn handle_get_context(db: &DbPool, project_path: &str, id: &str) -> Value {
         Err(_) => return serde_json::json!({"error": "db unavailable"}),
     };
     match crate::db::context::get_context_unit(&conn, id) {
-        Ok(u) => serde_json::json!({
-            "id": u.id,
-            "name": u.name,
-            "type": u.unit_type,
-            "l1_overview": u.l1_overview,
-            "l2_content": u.l2_content
-        }),
+        Ok(u) => {
+            if u.project_id.as_deref() != Some(&project_id) && u.project_id.is_some() {
+                return serde_json::json!({"error": "context unit not found"});
+            }
+            serde_json::json!({
+                "id": u.id,
+                "name": u.name,
+                "type": u.unit_type,
+                "l1_overview": u.l1_overview,
+                "l2_content": u.l2_content
+            })
+        }
         Err(_) => serde_json::json!({"error": "context unit not found"}),
     }
 }
@@ -134,7 +139,8 @@ pub fn handle_search_memories(db: &DbPool, project_path: &str, query: &str) -> V
                 "id": m.id,
                 "content": m.content,
                 "summary": m.summary,
-                "importance": m.importance
+                "importance": m.importance,
+                "topics": m.topics_json
             })
         })
         .collect();
