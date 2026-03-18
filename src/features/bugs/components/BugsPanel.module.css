@@ -189,9 +189,6 @@
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
-.listItem + .listItem {
-  margin-top: 6px;
-}
 
 .listItem:hover {
   border-color: color-mix(in srgb, var(--border) 84%, transparent);

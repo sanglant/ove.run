@@ -1,6 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { BookOpen, Plus, Search } from "lucide-react";
-import { SegmentedControl, TextInput, Modal, Text } from "@mantine/core";
+import { SegmentedControl, TextInput, Text } from "@mantine/core";
+import { AppModal } from "@/components/ui/AppModal";
 import { useProjectStore } from "@/stores/projectStore";
 import { useContextStore } from "@/stores/contextStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -15,7 +17,6 @@ import type { ContextUnit, ContextUnitType } from "@/types";
 import { ContextUnitCard } from "./ContextUnitCard";
 import { ContextUnitEditor } from "./ContextUnitEditor";
 import { ContextAssignments } from "./ContextAssignments";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { EmptyState } from "@/components/ui/EmptyState";
 import classes from "./ContextPanel.module.css";
 
@@ -94,6 +95,15 @@ export function ContextPanel() {
     }
     return result;
   }, [units, filter, searchQuery]);
+
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: visibleUnits.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+  });
 
   const handleOpenCreate = () => {
     setEditingUnit(null);
@@ -232,7 +242,7 @@ export function ContextPanel() {
         />
       </div>
 
-      <div className={classes.list} role="list" aria-label="Context entries">
+      <div className={classes.list} role="list" aria-label="Context entries" ref={listRef}>
         {loading ? (
           <div className={classes.listMessage}>Loading context…</div>
         ) : visibleUnits.length === 0 ? (
@@ -244,20 +254,37 @@ export function ContextPanel() {
             )}
           </div>
         ) : (
-          visibleUnits.map((unit) => (
-            <ContextUnitCard
-              key={unit.id}
-              unit={unit}
-              onEdit={handleOpenEdit}
-              onDelete={setPendingDelete}
-              onGenerateSummary={handleGenerateSummary}
-              onDuplicate={handleDuplicate}
-              isDefault={defaultUnitIds.has(unit.id)}
-              isGlobalDefault={unit.scope === "global"}
-              onSetDefault={handleSetDefault}
-              onRemoveDefault={handleRemoveDefault}
-            />
-          ))
+          <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const unit = visibleUnits[virtualRow.index];
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                    paddingBottom: 10,
+                  }}
+                >
+                  <ContextUnitCard
+                    unit={unit}
+                    onEdit={handleOpenEdit}
+                    onDelete={setPendingDelete}
+                    onGenerateSummary={handleGenerateSummary}
+                    onDuplicate={handleDuplicate}
+                    isDefault={defaultUnitIds.has(unit.id)}
+                    isGlobalDefault={unit.scope === "global"}
+                    onSetDefault={handleSetDefault}
+                    onRemoveDefault={handleRemoveDefault}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -269,18 +296,13 @@ export function ContextPanel() {
         onClose={() => setEditorOpen(false)}
       />
 
-      <Modal
+      <AppModal
         opened={!!pendingDelete}
         onClose={() => !deleting && setPendingDelete(null)}
         title="Delete context entry"
         centered
         size="sm"
-        overlayProps={MODAL_OVERLAY_PROPS}
-        transitionProps={MODAL_TRANSITION_PROPS}
-        styles={{
-          ...MODAL_STYLES,
-          body: { ...MODAL_STYLES.body, padding: 20 },
-        }}
+        bodyPadding={20}
       >
         <Text size="sm" c="var(--text-secondary)" mb="md">
           Delete "{pendingDelete?.name}"? This cannot be undone.
@@ -303,7 +325,7 @@ export function ContextPanel() {
             {deleting ? "Deleting…" : "Delete entry"}
           </button>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus, Trash2, FileText, StickyNote } from "lucide-react";
-import { Modal, TextInput, Text, Switch } from "@mantine/core";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
+import { TextInput, Text, Switch } from "@mantine/core";
+import { AppModal } from "@/components/ui/AppModal";
 import { MarkdownEditorWorkspace } from "@/components/shared/MarkdownEditorWorkspace";
 import { useAutoTour } from "@/hooks/useAutoTour";
 import { useProjectStore } from "@/stores/projectStore";
@@ -49,6 +50,15 @@ export function NotesPanel() {
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: notes.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 110,
+    overscan: 5,
+  });
 
   const selectionTokenRef = useRef<string | null>(null);
   const resetEditorState = useCallback(() => {
@@ -305,7 +315,7 @@ export function NotesPanel() {
           </form>
         )}
 
-        <div className={classes.list} role="list">
+        <div className={classes.list} role="list" ref={listRef}>
           {loadingList ? (
             <div className={classes.listMessage}>Loading notes…</div>
           ) : notes.length === 0 ? (
@@ -315,84 +325,97 @@ export function NotesPanel() {
               <span>Create the first document to start your workspace.</span>
             </div>
           ) : (
-            notes.map((note) => {
-              const isSelected = selectedNote?.id === note.id;
-              return (
-                <div
-                  key={note.id}
-                  className={cn(classes.listItem, isSelected && classes.listItemActive)}
-                >
-                  <div className={classes.cardAccent} aria-hidden="true" />
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const note = notes[virtualRow.index];
+                const isSelected = selectedNote?.id === note.id;
+                return (
                   <div
-                    className={classes.noteCard}
-                    onClick={() => void handleSelectNote(note)}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={isSelected}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        void handleSelectNote(note);
-                      }
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingBottom: 8,
                     }}
                   >
-                    <div className={classes.cardMetaRow}>
-                      <span className={classes.cardChip}>Markdown note</span>
-                      <span className={classes.cardDate}>{formatRelativeTime(note.updated_at)}</span>
-                    </div>
-                    <span className={classes.cardTitle}>{note.title}</span>
-                    <span className={classes.cardDescription}>
-                      Last edited {formatAbsoluteDate(note.updated_at)}
-                    </span>
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      role="presentation"
-                    >
-                      <Switch
-                        size="xs"
-                        label="Include in context"
-                        checked={note.include_in_context}
-                        onChange={(e) => {
-                          const include = e.currentTarget.checked;
-                          setNoteContextToggle(activeProjectId!, note.id, include).then(() => {
-                            setNotes((prev) =>
-                              prev.map((n) =>
-                                n.id === note.id ? { ...n, include_in_context: include } : n,
-                              ),
-                            );
-                          }).catch((err) => {
-                            console.error("Failed to toggle note context:", err);
-                          });
+                    <div className={cn(classes.listItem, isSelected && classes.listItemActive)}>
+                      <div className={classes.cardAccent} aria-hidden="true" />
+                      <div
+                        className={classes.noteCard}
+                        onClick={() => void handleSelectNote(note)}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            void handleSelectNote(note);
+                          }
                         }}
-                        styles={{
-                          label: { color: "var(--text-secondary)", fontSize: 10 },
-                          track: { backgroundColor: note.include_in_context ? undefined : "var(--bg-tertiary)", borderColor: "var(--bg-tertiary)" },
+                      >
+                        <div className={classes.cardMetaRow}>
+                          <span className={classes.cardChip}>Markdown note</span>
+                          <span className={classes.cardDate}>{formatRelativeTime(note.updated_at)}</span>
+                        </div>
+                        <span className={classes.cardTitle}>{note.title}</span>
+                        <span className={classes.cardDescription}>
+                          Last edited {formatAbsoluteDate(note.updated_at)}
+                        </span>
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          role="presentation"
+                        >
+                          <Switch
+                            size="xs"
+                            label="Include in context"
+                            checked={note.include_in_context}
+                            onChange={(e) => {
+                              const include = e.currentTarget.checked;
+                              setNoteContextToggle(activeProjectId!, note.id, include).then(() => {
+                                setNotes((prev) =>
+                                  prev.map((n) =>
+                                    n.id === note.id ? { ...n, include_in_context: include } : n,
+                                  ),
+                                );
+                              }).catch((err) => {
+                                console.error("Failed to toggle note context:", err);
+                              });
+                            }}
+                            styles={{
+                              label: { color: "var(--text-secondary)", fontSize: 10 },
+                              track: { backgroundColor: note.include_in_context ? undefined : "var(--bg-tertiary)", borderColor: "var(--bg-tertiary)" },
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                         }}
-                      />
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDeleteNote(note);
+                        }}
+                        aria-label={`Delete ${note.title}`}
+                        className={classes.deleteButton}
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onKeyDown={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPendingDeleteNote(note);
-                    }}
-                    aria-label={`Delete ${note.title}`}
-                    className={classes.deleteButton}
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </aside>
@@ -440,18 +463,13 @@ export function NotesPanel() {
         )}
       </main>
 
-      <Modal
+      <AppModal
         opened={!!pendingDeleteNote}
         onClose={() => !deleting && setPendingDeleteNote(null)}
         title="Delete note"
         centered
         size="sm"
-        overlayProps={MODAL_OVERLAY_PROPS}
-        transitionProps={MODAL_TRANSITION_PROPS}
-        styles={{
-          ...MODAL_STYLES,
-          body: { ...MODAL_STYLES.body, padding: 20 },
-        }}
+        bodyPadding={20}
       >
         <Text size="sm" c="var(--text-secondary)" mb="md">
           Delete "{pendingDeleteNote?.title}"? This cannot be undone.
@@ -474,7 +492,7 @@ export function NotesPanel() {
             {deleting ? "Deleting…" : "Delete note"}
           </button>
         </div>
-      </Modal>
+      </AppModal>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Bug, RefreshCw, Settings } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useProjectStore } from "@/stores/projectStore";
@@ -119,6 +120,8 @@ export function BugsPanel() {
     setDelegatePrompt(prompt);
   };
 
+  const listRef = useRef<HTMLDivElement>(null);
+
   const filteredBugs = bugs.filter((bug) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -127,6 +130,13 @@ export function BugsPanel() {
       bug.title.toLowerCase().includes(q) ||
       bug.status.toLowerCase().includes(q)
     );
+  });
+
+  const virtualizer = useVirtualizer({
+    count: filteredBugs.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 80,
+    overscan: 5,
   });
 
   if (!activeProjectId) {
@@ -215,7 +225,7 @@ export function BugsPanel() {
           />
         </div>
 
-        <div className={classes.list} role="list">
+        <div className={classes.list} role="list" ref={listRef}>
           {loading ? (
             <div className={classes.listMessage}>Loading bugs…</div>
           ) : filteredBugs.length === 0 ? (
@@ -225,48 +235,63 @@ export function BugsPanel() {
               <span>{bugs.length === 0 ? "Refresh to fetch issues from your tracker." : "Try a different search term."}</span>
             </div>
           ) : (
-            filteredBugs.map((bug) => {
-              const isSelected = selectedBug?.id === bug.id;
-              return (
-                <div
-                  key={bug.id}
-                  className={cn(classes.listItem, isSelected && classes.listItemActive)}
-                  role="listitem"
-                >
-                  <div className={classes.cardAccent} aria-hidden="true" />
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const bug = filteredBugs[virtualRow.index];
+                const isSelected = selectedBug?.id === bug.id;
+                return (
                   <div
-                    className={classes.bugCard}
-                    onClick={() => handleSelectBug(bug)}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={isSelected}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleSelectBug(bug);
-                      }
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.start}px)`,
+                      paddingBottom: 6,
                     }}
                   >
-                    <div className={classes.bugCardTopRow}>
-                      <span className={classes.bugKey}>{bug.key}</span>
-                      {bug.priority && (
-                        <span
-                          className={cn(classes.priorityDot, priorityDotClass(bug.priority))}
-                          title={bug.priority}
-                          aria-label={`Priority: ${bug.priority}`}
-                        />
-                      )}
-                    </div>
-                    <span className={classes.bugTitle}>{bug.title}</span>
-                    <div className={classes.bugMetaRow}>
-                      <span className={cn(classes.statusBadge, statusClass(bug.status))}>
-                        {bug.status}
-                      </span>
+                    <div
+                      className={cn(classes.listItem, isSelected && classes.listItemActive)}
+                      role="listitem"
+                    >
+                      <div className={classes.cardAccent} aria-hidden="true" />
+                      <div
+                        className={classes.bugCard}
+                        onClick={() => handleSelectBug(bug)}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectBug(bug);
+                          }
+                        }}
+                      >
+                        <div className={classes.bugCardTopRow}>
+                          <span className={classes.bugKey}>{bug.key}</span>
+                          {bug.priority && (
+                            <span
+                              className={cn(classes.priorityDot, priorityDotClass(bug.priority))}
+                              title={bug.priority}
+                              aria-label={`Priority: ${bug.priority}`}
+                            />
+                          )}
+                        </div>
+                        <span className={classes.bugTitle}>{bug.title}</span>
+                        <div className={classes.bugMetaRow}>
+                          <span className={cn(classes.statusBadge, statusClass(bug.status))}>
+                            {bug.status}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </aside>

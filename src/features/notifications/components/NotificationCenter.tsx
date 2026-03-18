@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { Bell, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import cn from "clsx";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { formatRelativeTime } from "@/lib/formatTime";
@@ -21,6 +23,15 @@ export function NotificationCenter() {
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: notifications.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 72,
+    overscan: 5,
+  });
 
   return (
     <div className={classes.container}>
@@ -92,7 +103,7 @@ export function NotificationCenter() {
       </div>
 
       {/* Notification list */}
-      <div className={classes.listScroll}>
+      <div className={classes.listScroll} ref={listRef}>
         {notifications.length === 0 ? (
           <EmptyState
             icon={<Bell size={40} strokeWidth={1} />}
@@ -100,49 +111,64 @@ export function NotificationCenter() {
             description="Agent events will appear here"
           />
         ) : (
-          <ul role="list" className={classes.list}>
-            {notifications.map((notification) => (
-              <li
-                key={notification.id}
-                className={cn(classes.notificationItem, notification.read ? classes.notificationItemRead : classes.notificationItemUnread)}
-                onClick={() =>
-                  handleNotificationClick(notification.id, notification.sessionId)
-                }
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleNotificationClick(notification.id, notification.sessionId);
-                  }
-                }}
-                aria-label={`Notification: ${notification.title}`}
-              >
-                <div className={classes.notificationContent}>
-                  <div className={classes.notificationRow}>
-                    <div className={classes.notificationBody}>
-                      <Text
-                        size="sm"
-                        className={classes.notificationTitle}
-                        c={notification.read ? "var(--text-secondary)" : "var(--text-primary)"}
-                      >
-                        {notification.title}
-                      </Text>
-                      <Text size="xs" lineClamp={2} c="var(--text-secondary)" mt={2}>
-                        {notification.body}
-                      </Text>
+          <div
+            role="list"
+            style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const notification = notifications[virtualRow.index];
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div
+                    className={cn(classes.notificationItem, notification.read ? classes.notificationItemRead : classes.notificationItemUnread)}
+                    onClick={() => handleNotificationClick(notification.id, notification.sessionId)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleNotificationClick(notification.id, notification.sessionId);
+                      }
+                    }}
+                    aria-label={`Notification: ${notification.title}`}
+                  >
+                    <div className={classes.notificationContent}>
+                      <div className={classes.notificationRow}>
+                        <div className={classes.notificationBody}>
+                          <Text
+                            size="sm"
+                            className={classes.notificationTitle}
+                            c={notification.read ? "var(--text-secondary)" : "var(--text-primary)"}
+                          >
+                            {notification.title}
+                          </Text>
+                          <Text size="xs" lineClamp={2} c="var(--text-secondary)" mt={2}>
+                            {notification.body}
+                          </Text>
+                        </div>
+                        <div className={classes.notificationMeta}>
+                          <Text size="xs" c="dimmed">
+                            {formatRelativeTime(notification.timestamp)}
+                          </Text>
+                          <ExternalLink size={10} className={classes.jumpIcon} />
+                        </div>
+                      </div>
                     </div>
-                    <div className={classes.notificationMeta}>
-                      <Text size="xs" c="dimmed">
-                        {formatRelativeTime(notification.timestamp)}
-                      </Text>
-                      <ExternalLink size={10} className={classes.jumpIcon} />
-                    </div>
+                    <Divider className={classes.divider} color="var(--border)" />
                   </div>
                 </div>
-                <Divider className={classes.divider} color="var(--border)" />
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
