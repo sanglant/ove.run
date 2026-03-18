@@ -1,14 +1,14 @@
 use rusqlite::Connection;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 pub type DbPool = Arc<Mutex<Connection>>;
 
-pub fn db_path(app_data_dir: &PathBuf) -> PathBuf {
+pub fn db_path(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join("ove.db")
 }
 
-pub fn init_db(app_data_dir: &PathBuf) -> Result<DbPool, String> {
+pub fn init_db(app_data_dir: &Path) -> Result<DbPool, String> {
     std::fs::create_dir_all(app_data_dir).map_err(|e| e.to_string())?;
     let path = db_path(app_data_dir);
     let conn = Connection::open(&path).map_err(|e| e.to_string())?;
@@ -23,7 +23,7 @@ pub fn init_db(app_data_dir: &PathBuf) -> Result<DbPool, String> {
     Ok(Arc::new(Mutex::new(conn)))
 }
 
-fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
+pub(crate) fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
     conn.execute_batch(SCHEMA)?;
     run_migrations(conn)?;
     Ok(())
@@ -75,6 +75,14 @@ const MIGRATIONS: &[Migration] = &[
             UPDATE context_units SET is_bundled = 1, bundled_slug = 'security-checklist' WHERE name = 'Security Checklist' AND scope = 'global' AND project_id IS NULL;\
             UPDATE context_units SET is_bundled = 1, bundled_slug = 'api-design' WHERE name = 'API Design' AND scope = 'global' AND project_id IS NULL;\
             UPDATE context_units SET is_bundled = 1, bundled_slug = 'documentation-standards' WHERE name = 'Documentation Standards' AND scope = 'global' AND project_id IS NULL;\
+        ",
+    },
+    Migration {
+        version: 5,
+        description: "add sandboxed and arbiter_enabled columns to sessions",
+        sql: "\
+            ALTER TABLE sessions ADD COLUMN sandboxed INTEGER NOT NULL DEFAULT 0;\
+            ALTER TABLE sessions ADD COLUMN arbiter_enabled INTEGER NOT NULL DEFAULT 0;\
         ",
     },
 ];
@@ -250,6 +258,8 @@ CREATE VIRTUAL TABLE IF NOT EXISTS consolidations_fts USING fts5(
     content=consolidations
 );
 
+CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version INTEGER PRIMARY KEY,
     description TEXT NOT NULL,
@@ -273,7 +283,9 @@ mod tests {
     fn schema_creates_all_tables() {
         let conn = in_memory_db();
         let tables: Vec<String> = conn
-            .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+            .prepare(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+            )
             .unwrap()
             .query_map([], |row| row.get(0))
             .unwrap()
@@ -295,7 +307,9 @@ mod tests {
         run_migrations(&conn).unwrap();
 
         let count: i32 = conn
-            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
             .unwrap();
         assert_eq!(count, MIGRATIONS.len() as i32);
     }
@@ -306,8 +320,13 @@ mod tests {
         run_migrations(&conn).unwrap();
 
         let max_version: i32 = conn
-            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| row.get(0))
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
             .unwrap();
-        assert_eq!(max_version, MIGRATIONS.last().map(|m| m.version).unwrap_or(0));
+        assert_eq!(
+            max_version,
+            MIGRATIONS.last().map(|m| m.version).unwrap_or(0)
+        );
     }
 }
