@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Brain, Search } from "lucide-react";
 import { SegmentedControl, TextInput, Text } from "@mantine/core";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useProjectStore } from "@/stores/projectStore";
 import { useMemoryStore } from "@/stores/memoryStore";
 import { MemoryCard } from "./MemoryCard";
@@ -21,6 +22,16 @@ export function MemoryPanel() {
 
   const [tab, setTab] = useState<Tab>("memories");
   const [searchQuery, setSearchQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const items = tab === "memories" ? memories : consolidations;
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 120,
+    overscan: 5,
+  });
 
   useEffect(() => {
     if (!activeProjectId) return;
@@ -50,7 +61,7 @@ export function MemoryPanel() {
             <Brain size={15} className={classes.headerIcon} />
             <h2 className={classes.title}>Memory</h2>
             <span className={classes.countBadge}>
-              {tab === "memories" ? memories.length : consolidations.length}
+              {items.length}
             </span>
           </div>
         </div>
@@ -95,49 +106,62 @@ export function MemoryPanel() {
         )}
       </div>
 
-      <div className={classes.list} role="list" aria-label={tab === "memories" ? "Memories" : "Summaries"}>
+      <div
+        ref={listRef}
+        className={classes.list}
+        role="list"
+        aria-label={tab === "memories" ? "Memories" : "Summaries"}
+      >
         {loading ? (
           <div className={classes.listMessage}>Loading memories…</div>
-        ) : tab === "memories" ? (
-          memories.length === 0 ? (
-            <div className={classes.listEmpty}>
-              <Brain size={28} strokeWidth={1} className={classes.emptyListIcon} />
-              <p>{searchQuery ? "No matching memories." : "No memories yet."}</p>
-              {!searchQuery && (
-                <span>Memories are extracted automatically as agents work.</span>
-              )}
-            </div>
-          ) : (
-            <>
-              <Text size="xs" c="var(--text-secondary)" className={classes.statsLine}>
-                {memories.length} {memories.length === 1 ? "memory" : "memories"}
-              </Text>
-              {memories.map((memory) => (
-                <MemoryCard
-                  key={memory.id}
-                  memory={memory}
-                  onDelete={removeMemory}
-                />
-              ))}
-            </>
-          )
+        ) : items.length === 0 ? (
+          <div className={classes.listEmpty}>
+            <Brain size={28} strokeWidth={1} className={classes.emptyListIcon} />
+            {tab === "memories" ? (
+              <>
+                <p>{searchQuery ? "No matching memories." : "No memories yet."}</p>
+                {!searchQuery && <span>Memories are extracted automatically as agents work.</span>}
+              </>
+            ) : (
+              <>
+                <p>No summaries yet.</p>
+                <span>As memories build up, they're summarized into concise takeaways.</span>
+              </>
+            )}
+          </div>
         ) : (
-          consolidations.length === 0 ? (
-            <div className={classes.listEmpty}>
-              <Brain size={28} strokeWidth={1} className={classes.emptyListIcon} />
-              <p>No summaries yet.</p>
-              <span>As memories build up, they're summarized into concise takeaways.</span>
-            </div>
-          ) : (
-            <>
-              <Text size="xs" c="var(--text-secondary)" className={classes.statsLine}>
-                {consolidations.length} {consolidations.length === 1 ? "summary" : "summaries"}
-              </Text>
-              {consolidations.map((c) => (
-                <ConsolidationCard key={c.id} consolidation={c} />
+          <>
+            <Text size="xs" c="var(--text-secondary)" className={classes.statsLine}>
+              {tab === "memories"
+                ? `${memories.length} ${memories.length === 1 ? "memory" : "memories"}`
+                : `${consolidations.length} ${consolidations.length === 1 ? "summary" : "summaries"}`}
+            </Text>
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                    paddingBottom: 10,
+                  }}
+                >
+                  {tab === "memories" ? (
+                    <MemoryCard
+                      memory={memories[virtualRow.index]}
+                      onDelete={removeMemory}
+                    />
+                  ) : (
+                    <ConsolidationCard consolidation={consolidations[virtualRow.index]} />
+                  )}
+                </div>
               ))}
-            </>
-          )
+            </div>
+          </>
         )}
       </div>
     </div>
