@@ -31,10 +31,10 @@ use commands::bugs_commands::{
     save_bug_provider_config, start_bug_oauth,
 };
 use commands::context_commands::{
-    assign_context, create_context_unit, delete_context_unit, generate_context_summary,
-    list_context_units, list_project_default_context, list_session_context,
-    remove_project_default_context, search_context_units, set_project_default_context,
-    unassign_context, update_context_unit,
+    arbiter_generate_context_unit, assign_context, create_context_unit, delete_context_unit,
+    generate_context_summary, list_context_units, list_project_default_context,
+    list_session_context, remove_project_default_context, search_context_units,
+    set_project_default_context, unassign_context, update_context_unit,
 };
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
@@ -44,7 +44,8 @@ use commands::loop_commands::{
     set_quality_gates, start_loop,
 };
 use commands::memory_commands::{
-    check_consolidation, delete_memory, extract_memories, list_consolidations, list_memories,
+    arbiter_clean_memories, arbiter_generate_memory, check_consolidation, delete_memory,
+    delete_all_memories, extract_memories, list_consolidations, list_memories,
     search_memories, toggle_memory_visibility,
 };
 use commands::notes_commands::{
@@ -291,6 +292,7 @@ pub fn run() {
             remove_project_default_context,
             list_project_default_context,
             generate_context_summary,
+            arbiter_generate_context_unit,
             // Memory commands
             list_memories,
             search_memories,
@@ -299,6 +301,9 @@ pub fn run() {
             list_consolidations,
             extract_memories,
             check_consolidation,
+            delete_all_memories,
+            arbiter_generate_memory,
+            arbiter_clean_memories,
             // Arbiter commands
             get_arbiter_state,
             set_trust_level,

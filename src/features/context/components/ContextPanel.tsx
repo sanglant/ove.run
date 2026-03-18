@@ -17,6 +17,7 @@ import type { ContextUnit, ContextUnitType } from "@/types";
 import { ContextUnitCard } from "./ContextUnitCard";
 import { ContextUnitEditor } from "./ContextUnitEditor";
 import { ContextAssignments } from "./ContextAssignments";
+import { ArbiterContextInput } from "./ArbiterContextInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import classes from "./ContextPanel.module.css";
 
@@ -169,6 +170,11 @@ export function ContextPanel() {
     });
   };
 
+  const handleArbiterGenerated = (unit: ContextUnit) => {
+    setEditingUnit(unit);
+    setEditorOpen(true);
+  };
+
   if (!activeProjectId) {
     return (
       <EmptyState
@@ -240,6 +246,14 @@ export function ContextPanel() {
             indicator: { backgroundColor: "var(--accent)" },
           }}
         />
+
+        {activeProject && (
+          <ArbiterContextInput
+            projectPath={activeProject.path}
+            projectId={activeProjectId}
+            onGenerated={handleArbiterGenerated}
+          />
+        )}
       </div>
 
       <div className={classes.list} role="list" aria-label="Context entries" ref={listRef}>

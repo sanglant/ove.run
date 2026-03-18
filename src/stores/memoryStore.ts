@@ -6,7 +6,9 @@ import {
   searchMemories as apiSearchMemories,
   toggleMemoryVisibility,
   deleteMemory,
+  deleteAllMemories,
 } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 interface MemoryState {
   memories: Memory[];
@@ -17,6 +19,7 @@ interface MemoryState {
   search: (query: string, projectId: string) => Promise<void>;
   toggleVisibility: (id: string, visibility: "private" | "public") => Promise<void>;
   removeMemory: (id: string) => Promise<void>;
+  clearAllMemories: (projectId: string) => Promise<void>;
 }
 
 export const useMemoryStore = create<MemoryState>((set) => ({
@@ -58,16 +61,39 @@ export const useMemoryStore = create<MemoryState>((set) => ({
   },
 
   toggleVisibility: async (id, visibility) => {
-    await toggleMemoryVisibility(id, visibility);
-    set((s) => ({
-      memories: s.memories.map((m) =>
-        m.id === id ? { ...m, visibility } : m,
-      ),
-    }));
+    try {
+      await toggleMemoryVisibility(id, visibility);
+      set((s) => ({
+        memories: s.memories.map((m) =>
+          m.id === id ? { ...m, visibility } : m,
+        ),
+      }));
+    } catch (err) {
+      console.error("Failed to toggle memory visibility:", err);
+      useNotificationStore.getState().showToast("error", "Failed to update memory visibility", String(err));
+      throw err;
+    }
   },
 
   removeMemory: async (id) => {
-    await deleteMemory(id);
-    set((s) => ({ memories: s.memories.filter((m) => m.id !== id) }));
+    try {
+      await deleteMemory(id);
+      set((s) => ({ memories: s.memories.filter((m) => m.id !== id) }));
+    } catch (err) {
+      console.error("Failed to remove memory:", err);
+      useNotificationStore.getState().showToast("error", "Failed to remove memory", String(err));
+      throw err;
+    }
+  },
+
+  clearAllMemories: async (projectId) => {
+    try {
+      await deleteAllMemories(projectId);
+      set({ memories: [], consolidations: [] });
+    } catch (err) {
+      console.error("Failed to clear all memories:", err);
+      useNotificationStore.getState().showToast("error", "Failed to clear memories", String(err));
+      throw err;
+    }
   },
 }));

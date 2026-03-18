@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Brain, Search } from "lucide-react";
+import { Brain, Search, Trash2 } from "lucide-react";
 import { SegmentedControl, TextInput, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useProjectStore } from "@/stores/projectStore";
@@ -7,7 +7,9 @@ import { useMemoryStore } from "@/stores/memoryStore";
 import { useAutoTour } from "@/hooks/useAutoTour";
 import { MemoryCard } from "./MemoryCard";
 import { ConsolidationCard } from "./ConsolidationCard";
+import { ArbiterMemoryInput } from "./ArbiterMemoryInput";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AppModal } from "@/components/ui/AppModal";
 import classes from "./MemoryPanel.module.css";
 
 type Tab = "memories" | "consolidations";
@@ -18,15 +20,24 @@ const TAB_OPTIONS = [
 ];
 
 export function MemoryPanel() {
-  const { activeProjectId } = useProjectStore();
-  const { memories, consolidations, loading, loadMemories, loadConsolidations, search, removeMemory } = useMemoryStore();
+  const { activeProjectId, projects } = useProjectStore();
+  const { memories, consolidations, loading, loadMemories, loadConsolidations, search, removeMemory, clearAllMemories } = useMemoryStore();
 
   const [tab, setTab] = useState<Tab>("memories");
   const [searchQuery, setSearchQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Clear all state
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  // Clean suggestions state
+  const [cleanSuggestions, setCleanSuggestions] = useState<string[]>([]);
+  const [applyingClean, setApplyingClean] = useState(false);
+
   useAutoTour("memory");
 
+  const activeProject = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const items = tab === "memories" ? memories : consolidations;
 
   const virtualizer = useVirtualizer({
@@ -45,6 +56,42 @@ export function MemoryPanel() {
     }
     void loadConsolidations(activeProjectId);
   }, [activeProjectId, searchQuery, search, loadMemories, loadConsolidations]);
+
+  const handleClearAll = async () => {
+    if (!activeProjectId) return;
+    setClearing(true);
+    try {
+      await clearAllMemories(activeProjectId);
+      setClearConfirmOpen(false);
+    } catch {
+      // error handled by store toast
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const handleApplyClean = async () => {
+    if (!activeProjectId || applyingClean) return;
+    setApplyingClean(true);
+    try {
+      for (const id of cleanSuggestions) {
+        await removeMemory(id);
+      }
+      setCleanSuggestions([]);
+      if (!searchQuery.trim()) {
+        void loadMemories(activeProjectId);
+      }
+    } catch {
+      // error handled by store toast
+    } finally {
+      setApplyingClean(false);
+    }
+  };
+
+  // Get memory content snippets for clean suggestions display
+  const suggestedMemories = cleanSuggestions
+    .map((id) => memories.find((m) => m.id === id))
+    .filter(Boolean) as typeof memories;
 
   if (!activeProjectId) {
     return (
@@ -67,6 +114,17 @@ export function MemoryPanel() {
               {items.length}
             </span>
           </div>
+          {memories.length > 0 && (
+            <button
+              type="button"
+              className={classes.clearButton}
+              onClick={() => setClearConfirmOpen(true)}
+              aria-label="Clear all memories"
+              title="Clear all memories"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
         </div>
 
         <SegmentedControl
@@ -107,6 +165,15 @@ export function MemoryPanel() {
               }}
               aria-label="Search memories"
             />
+            {activeProject && (
+              <ArbiterMemoryInput
+                projectId={activeProjectId}
+                projectPath={activeProject.path}
+                memories={memories}
+                onGenerated={() => void loadMemories(activeProjectId)}
+                onCleanSuggested={setCleanSuggestions}
+              />
+            )}
           </>
         )}
       </div>
@@ -170,6 +237,87 @@ export function MemoryPanel() {
           </>
         )}
       </div>
+
+      {/* Clear all confirmation */}
+      <AppModal
+        opened={clearConfirmOpen}
+        onClose={() => !clearing && setClearConfirmOpen(false)}
+        title="Clear all memories"
+        centered
+        size="sm"
+        bodyPadding={20}
+      >
+        <Text size="sm" c="var(--text-secondary)" mb={4}>
+          Delete all <strong>{memories.length}</strong> {memories.length === 1 ? "memory" : "memories"} and{" "}
+          <strong>{consolidations.length}</strong> {consolidations.length === 1 ? "summary" : "summaries"} for this project?
+        </Text>
+        <Text size="xs" c="var(--text-tertiary)" mb="md">
+          This cannot be undone.
+        </Text>
+        <div className={classes.modalActions}>
+          <button
+            type="button"
+            className={classes.secondaryButton}
+            onClick={() => setClearConfirmOpen(false)}
+            disabled={clearing}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={classes.dangerButton}
+            onClick={() => void handleClearAll()}
+            disabled={clearing}
+          >
+            {clearing ? "Clearing…" : "Clear all"}
+          </button>
+        </div>
+      </AppModal>
+
+      {/* Arbiter clean suggestions */}
+      <AppModal
+        opened={cleanSuggestions.length > 0}
+        onClose={() => setCleanSuggestions([])}
+        title="Arbiter cleanup suggestions"
+        centered
+        size="md"
+        bodyPadding={20}
+      >
+        <Text size="sm" c="var(--text-secondary)" mb="md">
+          The Arbiter suggests removing <strong>{cleanSuggestions.length}</strong>{" "}
+          {cleanSuggestions.length === 1 ? "memory" : "memories"}:
+        </Text>
+        <div className={classes.cleanList}>
+          {suggestedMemories.map((m) => (
+            <div key={m.id} className={classes.cleanItem}>
+              <Text size="xs" c="var(--text-secondary)" className={classes.cleanItemContent}>
+                {m.content}
+              </Text>
+              <Text size="xs" c="var(--text-tertiary)" className={classes.cleanItemMeta}>
+                importance {m.importance.toFixed(1)}
+              </Text>
+            </div>
+          ))}
+        </div>
+        <div className={classes.modalActions} style={{ marginTop: 16 }}>
+          <button
+            type="button"
+            className={classes.secondaryButton}
+            onClick={() => setCleanSuggestions([])}
+            disabled={applyingClean}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={classes.dangerButton}
+            onClick={() => void handleApplyClean()}
+            disabled={applyingClean}
+          >
+            {applyingClean ? "Removing…" : `Remove ${cleanSuggestions.length} ${cleanSuggestions.length === 1 ? "memory" : "memories"}`}
+          </button>
+        </div>
+      </AppModal>
     </div>
   );
 }

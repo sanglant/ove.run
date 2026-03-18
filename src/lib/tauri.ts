@@ -244,6 +244,13 @@ export async function listProjectDefaultContext(projectId: string): Promise<Cont
 export async function generateContextSummary(unitId: string, projectPath: string): Promise<void> {
   return invoke("generate_context_summary", { unitId, projectPath });
 }
+export async function arbiterGenerateContextUnit(
+  projectPath: string,
+  unitType: string,
+  prompt: string,
+): Promise<ContextUnit> {
+  return invoke("arbiter_generate_context_unit", { projectPath, unitType, prompt });
+}
 
 export async function listMemories(projectId: string, sessionId?: string): Promise<Memory[]> {
   return invoke("list_memories", { projectId, sessionId: sessionId ?? null });
@@ -353,6 +360,24 @@ export async function checkForUpdates(): Promise<UpdateInfo> {
 
 export async function saveLayout(layoutJson: string): Promise<void> {
   return invoke("save_layout", { layoutJson });
+}
+
+export async function deleteAllMemories(projectId: string): Promise<void> {
+  return invoke("delete_all_memories", { projectId });
+}
+export async function arbiterGenerateMemory(
+  projectId: string,
+  projectPath: string,
+  prompt: string,
+): Promise<Memory[]> {
+  return invoke("arbiter_generate_memory", { projectId, projectPath, prompt });
+}
+export async function arbiterCleanMemories(
+  projectId: string,
+  projectPath: string,
+  instruction: string,
+): Promise<string[]> {
+  return invoke("arbiter_clean_memories", { projectId, projectPath, instruction });
 }
 
 export async function loadLayout(): Promise<string | null> {

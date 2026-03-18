@@ -266,3 +266,94 @@
   font-style: italic;
 }
 
+/* ── Header clear button ─────────────────────────────────── */
+.clearButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+
+.clearButton:hover {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+/* ── Modal buttons ───────────────────────────────────────── */
+.secondaryButton,
+.dangerButton {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 140ms ease, opacity 140ms ease;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.secondaryButton {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-tertiary) 82%, transparent);
+}
+
+.dangerButton {
+  background: var(--danger);
+  color: var(--text-primary);
+}
+
+.dangerButton:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Clean suggestions list ──────────────────────────────── */
+.cleanList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.cleanItem {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.cleanItemContent {
+  line-height: 1.5;
+}
+
+.cleanItemMeta {
+  margin-top: 2px;
+  opacity: 0.6;
+}
