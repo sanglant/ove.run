@@ -1,7 +1,5 @@
 use axum::{extract::State, http::StatusCode, response::Json, routing::post, Router};
 use serde_json::json;
-#[cfg(test)]
-use serde_json::Value;
 use std::sync::Arc;
 
 use crate::db::init::DbPool;
@@ -115,10 +113,13 @@ pub fn start_server(db: DbPool) -> Result<u16, String> {
         .with_state(state);
 
     tauri::async_runtime::spawn(async move {
-        let listener = tokio::net::TcpListener::from_std(std_listener)
-            .expect("convert std listener to tokio");
-        if let Err(e) = axum::serve(listener, app).await {
-            tracing::error!("[mcp] server error: {e}");
+        match tokio::net::TcpListener::from_std(std_listener) {
+            Ok(listener) => {
+                if let Err(e) = axum::serve(listener, app).await {
+                    tracing::error!("[mcp] server error: {e}");
+                }
+            }
+            Err(e) => tracing::error!("[mcp] failed to convert listener: {e}"),
         }
     });
 
@@ -132,6 +133,7 @@ pub fn start_server(db: DbPool) -> Result<u16, String> {
 mod tests {
     use super::*;
     use crate::db::init::DbPool;
+    use serde_json::Value;
     use std::sync::{Arc, Mutex};
 
     fn make_empty_db() -> DbPool {
