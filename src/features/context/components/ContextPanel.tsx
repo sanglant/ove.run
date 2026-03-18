@@ -38,6 +38,7 @@ export function ContextPanel() {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<ContextUnit | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ContextUnit | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [defaultUnitIds, setDefaultUnitIds] = useState<Set<string>>(new Set());
@@ -107,17 +108,19 @@ export function ContextPanel() {
   });
 
   const handleOpenCreate = () => {
+    setIsCreating(true);
     setEditingUnit(null);
     setEditorOpen(true);
   };
 
   const handleOpenEdit = (unit: ContextUnit) => {
+    setIsCreating(false);
     setEditingUnit(unit);
     setEditorOpen(true);
   };
 
   const handleSave = async (unit: ContextUnit) => {
-    if (editingUnit) {
+    if (editingUnit && !isCreating) {
       await editUnit(unit);
     } else {
       await addUnit(unit);
@@ -171,6 +174,7 @@ export function ContextPanel() {
   };
 
   const handleArbiterGenerated = (unit: ContextUnit) => {
+    setIsCreating(true);
     setEditingUnit(unit);
     setEditorOpen(true);
   };
@@ -307,7 +311,7 @@ export function ContextPanel() {
         unit={editingUnit}
         projectId={activeProjectId}
         onSave={handleSave}
-        onClose={() => setEditorOpen(false)}
+        onClose={() => { setEditorOpen(false); setIsCreating(false); }}
       />
 
       <AppModal
