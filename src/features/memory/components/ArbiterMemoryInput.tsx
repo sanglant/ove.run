@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Sparkles, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Textarea } from "@mantine/core";
 import type { Memory } from "@/types";
-import { arbiterGenerateMemory, arbiterCleanMemories } from "@/lib/tauri";
+import { arbiterGenerateMemory, arbiterCleanMemories, fmtErr } from "@/lib/tauri";
 import { useNotificationStore } from "@/stores/notificationStore";
 import classes from "./ArbiterMemoryInput.module.css";
 
@@ -29,7 +29,7 @@ export function ArbiterMemoryInput({ projectId, projectPath, memories, onGenerat
       onGenerated();
       useNotificationStore.getState().showToast("success", "Memories added", "Arbiter added new memories from your description.");
     } catch (err) {
-      useNotificationStore.getState().showToast("error", "Failed to generate memories", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to generate memories", fmtErr(err));
     } finally {
       setBusy(false);
     }
@@ -47,7 +47,7 @@ export function ArbiterMemoryInput({ projectId, projectPath, memories, onGenerat
       }
       setPrompt("");
     } catch (err) {
-      useNotificationStore.getState().showToast("error", "Failed to analyze memories", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to analyze memories", fmtErr(err));
     } finally {
       setBusy(false);
     }

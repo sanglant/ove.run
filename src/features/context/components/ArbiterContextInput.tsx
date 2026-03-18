@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Sparkles, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Textarea, Select } from "@mantine/core";
 import type { ContextUnit, ContextUnitType } from "@/types";
-import { arbiterGenerateContextUnit } from "@/lib/tauri";
+import { arbiterGenerateContextUnit, fmtErr } from "@/lib/tauri";
 import { useNotificationStore } from "@/stores/notificationStore";
 import classes from "./ArbiterContextInput.module.css";
 
@@ -40,7 +40,7 @@ export function ArbiterContextInput({ projectPath, projectId, onGenerated }: Pro
       setOpen(false);
       onGenerated(withProject);
     } catch (err) {
-      useNotificationStore.getState().showToast("error", "Failed to generate context unit", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to generate context unit", fmtErr(err));
     } finally {
       setBusy(false);
     }

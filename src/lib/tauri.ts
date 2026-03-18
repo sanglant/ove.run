@@ -1,5 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
+
+/**
+ * Extract a readable message from a Tauri AppError.
+ * Backend errors are serialised as `{ kind: string, message: string }`.
+ * Plain JS Error objects carry `.message`. Everything else falls back to String().
+ */
+export function fmtErr(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object" && err !== null && "message" in err) {
+    return String((err as { message: unknown }).message);
+  }
+  return String(err);
+}
 import type {
   Project,
   AppSettings,

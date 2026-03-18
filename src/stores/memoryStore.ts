@@ -7,6 +7,7 @@ import {
   toggleMemoryVisibility,
   deleteMemory,
   deleteAllMemories,
+  fmtErr,
 } from "@/lib/tauri";
 import { useNotificationStore } from "./notificationStore";
 
@@ -70,7 +71,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       }));
     } catch (err) {
       console.error("Failed to toggle memory visibility:", err);
-      useNotificationStore.getState().showToast("error", "Failed to update memory visibility", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to update memory visibility", fmtErr(err));
       throw err;
     }
   },
@@ -81,7 +82,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       set((s) => ({ memories: s.memories.filter((m) => m.id !== id) }));
     } catch (err) {
       console.error("Failed to remove memory:", err);
-      useNotificationStore.getState().showToast("error", "Failed to remove memory", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to remove memory", fmtErr(err));
       throw err;
     }
   },
@@ -92,7 +93,7 @@ export const useMemoryStore = create<MemoryState>((set) => ({
       set({ memories: [], consolidations: [] });
     } catch (err) {
       console.error("Failed to clear all memories:", err);
-      useNotificationStore.getState().showToast("error", "Failed to clear memories", String(err));
+      useNotificationStore.getState().showToast("error", "Failed to clear memories", fmtErr(err));
       throw err;
     }
   },
