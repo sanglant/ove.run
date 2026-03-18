@@ -377,6 +377,30 @@ mod tests {
         assert_eq!(result["l2_content"], "full content here");
     }
 
+    #[test]
+    fn get_context_rejects_cross_project_access() {
+        let db = make_test_db();
+        insert_project(&db, "proj-a", "/proj/a");
+        insert_project(&db, "proj-b", "/proj/b");
+        insert_context_unit(&db, "unit-b", Some("proj-b"), "B Unit", 0, None, None);
+
+        // proj-a should NOT be able to read proj-b's unit
+        let result = handle_get_context(&db, "/proj/a", "unit-b");
+        assert!(result["error"].is_string(), "expected error for cross-project access");
+    }
+
+    #[test]
+    fn get_context_allows_global_units() {
+        let db = make_test_db();
+        insert_project(&db, "proj-c", "/proj/c");
+        // Global unit has project_id = None
+        insert_context_unit(&db, "unit-global", None, "Global Unit", 0, Some("global overview"), None);
+
+        let result = handle_get_context(&db, "/proj/c", "unit-global");
+        assert_eq!(result["id"], "unit-global");
+        assert_eq!(result["l1_overview"], "global overview");
+    }
+
     // ── handle_list_memories ──────────────────────────────────────────────
 
     #[test]

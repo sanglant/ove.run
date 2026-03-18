@@ -30,9 +30,13 @@ fn dispatch_request(db: &DbPool, req: McpRequest) -> McpResponse {
             json!({
                 "protocolVersion": "2024-11-05",
                 "capabilities": { "tools": {} },
-                "serverInfo": { "name": "ove-run", "version": "1.0.0" }
+                "serverInfo": { "name": "ove-run", "version": env!("CARGO_PKG_VERSION") }
             }),
         ),
+        // Notifications have no id and expect no response — accept silently.
+        "notifications/initialized" | "notifications/cancelled" => {
+            return McpResponse::ok(req.id, json!(null));
+        }
         "tools/list" => McpResponse::ok(
             req.id,
             json!({ "tools": all_tool_definitions() }),
