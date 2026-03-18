@@ -4,13 +4,14 @@ use tokio::sync::RwLock;
 
 pub mod agents;
 pub mod arbiter;
-pub mod loop_engine;
 pub mod bugs;
 pub mod bundled;
 pub mod commands;
 pub mod db;
 pub mod error;
 pub mod git;
+pub mod loop_engine;
+pub mod mcp;
 pub mod memory_worker;
 pub mod notifications;
 pub mod pty;
@@ -20,40 +21,44 @@ pub mod tray;
 
 use crate::db::init::init_db;
 use commands::agent_commands::list_agent_types;
+use commands::arbiter_commands::{
+    decompose_request, delete_story, get_arbiter_state, list_stories, reorder_stories,
+    set_trust_level, update_story,
+};
 use commands::bugs_commands::{
     check_bug_auth, disconnect_bug_provider, get_bug_detail, get_bug_provider_config, list_bugs,
     save_bug_provider_config, start_bug_oauth,
 };
 use commands::context_commands::{
-    list_context_units, create_context_unit, update_context_unit, delete_context_unit,
-    search_context_units, assign_context, unassign_context, list_session_context,
-    set_project_default_context, remove_project_default_context, list_project_default_context,
-    generate_context_summary,
-};
-use commands::memory_commands::{
-    list_memories, search_memories, toggle_memory_visibility, delete_memory,
-    list_consolidations, extract_memories, check_consolidation,
+    assign_context, create_context_unit, delete_context_unit, generate_context_summary,
+    list_context_units, list_project_default_context, list_session_context,
+    remove_project_default_context, search_context_units, set_project_default_context,
+    unassign_context, update_context_unit,
 };
 use commands::git_commands::{
     git_commit, git_diff, git_diff_file, git_stage, git_status, git_unstage,
 };
-use commands::notes_commands::{
-    create_note, delete_note, list_notes, read_note_content, update_note,
-    set_note_context_toggle,
-};
-use commands::arbiter_commands::{
-    get_arbiter_state, set_trust_level, decompose_request,
-    list_stories, update_story, delete_story, reorder_stories,
-};
 use commands::loop_commands::{
-    start_loop, pause_loop, resume_loop, cancel_loop,
-    get_loop_state, set_quality_gates, get_quality_gates, set_max_iterations,
+    cancel_loop, get_loop_state, get_quality_gates, pause_loop, resume_loop, set_max_iterations,
+    set_quality_gates, start_loop,
 };
-use commands::project_commands::{add_project, arbiter_review, list_cli_models, list_project_files, list_projects, remove_project, update_project};
+use commands::memory_commands::{
+    check_consolidation, delete_memory, extract_memories, list_consolidations, list_memories,
+    search_memories, toggle_memory_visibility,
+};
+use commands::notes_commands::{
+    create_note, delete_note, list_notes, read_note_content, set_note_context_toggle, update_note,
+};
+use commands::project_commands::{
+    add_project, arbiter_review, list_cli_models, list_project_files, list_projects,
+    remove_project, update_project,
+};
 use commands::pty_commands::{kill_pty, resize_pty, spawn_pty, write_pty};
-use commands::session_commands::{load_sessions, save_sessions, send_desktop_notification};
 use commands::sandbox_commands::get_sandbox_capabilities;
-use commands::settings_commands::{get_settings, update_settings, reset_database};
+use commands::session_commands::{
+    load_layout, load_sessions, save_layout, save_sessions, send_desktop_notification,
+};
+use commands::settings_commands::{get_settings, reset_database, update_settings};
 use commands::update_commands::check_for_updates;
 use notifications::notifier::{run_notification_loop, NotificationEvent};
 use state::AppState;
@@ -172,25 +177,46 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                // Check if minimize_to_tray is enabled
-                let minimize = {
-                    if let Some(state) = window.try_state::<AppState>() {
-                        // Use try_read to avoid blocking; fall back to false on contention
-                        state
-                            .settings
-                            .try_read()
-                            .map(|s| s.global.minimize_to_tray)
-                            .unwrap_or(false)
-                    } else {
-                        false
-                    }
-                };
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    // Check if minimize_to_tray is enabled
+                    let minimize = {
+                        if let Some(state) = window.try_state::<AppState>() {
+                            // Use try_read to avoid blocking; fall back to false on contention
+                            state
+                                .settings
+                                .try_read()
+                                .map(|s| s.global.minimize_to_tray)
+                                .unwrap_or(false)
+                        } else {
+                            false
+                        }
+                    };
 
-                if minimize {
-                    api.prevent_close();
-                    let _ = window.hide();
+                    if minimize {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
                 }
+                WindowEvent::Destroyed => {
+                    if let Some(state) = window.try_state::<AppState>() {
+                        // Kill all active PTY sessions.
+                        if let Ok(mut pty) = state.pty_manager.try_write() {
+                            pty.kill_all();
+                        }
+
+                        // Cancel any running loop.
+                        let _ = state
+                            .loop_cmd_tx
+                            .try_send(loop_engine::engine::LoopCommand::Cancel);
+
+                        // Flush the memory worker — give it up to 3 s to drain.
+                        let _ = state
+                            .memory_worker_tx
+                            .try_send(memory_worker::MemoryWorkerEvent::Shutdown);
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -230,6 +256,8 @@ pub fn run() {
             // Session commands
             save_sessions,
             load_sessions,
+            save_layout,
+            load_layout,
             send_desktop_notification,
             // Bug commands
             get_bug_provider_config,
