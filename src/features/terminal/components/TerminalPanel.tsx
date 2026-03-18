@@ -1,15 +1,16 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState, type MouseEvent } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import cn from "clsx";
 import panelClasses from "./TerminalPanel.module.css";
+import { ArtifactsPane } from "./ArtifactsPane";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification } from "@/lib/tauri";
+import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification, prepareMcpConfig, cleanupMcpConfig } from "@/lib/tauri";
 import { toBytes } from "@/lib/pty-utils";
 import { listen } from "@tauri-apps/api/event";
 import { detectStatusFromOutput } from "@/lib/patterns";
@@ -35,6 +36,10 @@ function readXtermBuffer(term: Terminal, lineCount = 40): string {
   return lines.join("\n");
 }
 
+const ARBITER_SIDEBAR_DEFAULT_RATIO = 0.7;
+const ARBITER_SIDEBAR_MIN_TERMINAL_WIDTH = 280;
+const ARBITER_SIDEBAR_MIN_SIDEBAR_WIDTH = 200;
+
 interface TerminalPanelProps {
   session: AgentSession;
   isVisible: boolean;
@@ -52,6 +57,12 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   isVisibleRef.current = isVisible;
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
+
+  // Arbiter integrated sidebar split ratio (terminal width / total width)
+  const [splitRatio, setSplitRatio] = useState(ARBITER_SIDEBAR_DEFAULT_RATIO);
+  const splitRatioRef = useRef(splitRatio);
+  splitRatioRef.current = splitRatio;
+  const arbiterWrapperRef = useRef<HTMLDivElement>(null);
 
   const updateStatus = useSessionStore((s) => s.updateSessionStatus);
   const settings = useSettingsStore((s) => s.settings);
@@ -115,6 +126,15 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         if (session.arbiterEnabled) {
           updateStatus(session.id, "idle");
           return;
+        }
+
+        // Inject ove-run MCP config for Claude Code sessions
+        if (session.agentType === "claude" && projectPath) {
+          try {
+            await prepareMcpConfig(projectPath);
+          } catch (err) {
+            console.warn("MCP config injection failed (non-fatal):", err);
+          }
         }
 
         await spawnPty(session.id, command, args, projectPath, envVars, cols, rows, sandboxEnabled, trustLevel);
@@ -216,7 +236,6 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         const detected = detectStatusFromOutput(agentDefRef.current, screenText);
         if (detected && detected !== lastStatusRef.current) {
           const prevStatus = lastStatusRef.current;
-          console.log(`[ove.run] status change: ${prevStatus} → ${detected} (session=${session.id})`);
           lastStatusRef.current = detected;
           updateStatus(session.id, detected);
 
@@ -334,6 +353,9 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
       unlistenExitRef.current?.();
       observer.disconnect();
 
+      if (session.agentType === "claude" && projectPath) {
+        cleanupMcpConfig(projectPath).catch(() => {/* non-fatal */});
+      }
       killPty(session.id).catch(() => {});
       term.dispose();
       termRef.current = null;
@@ -384,6 +406,82 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         return doSpawn(term, fitAddon);
       });
   }, [session.yoloMode, session.id, doSpawn]);
+
+  // Arbiter sidebar drag-to-resize handler
+  const handleSidebarDividerMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const wrapper = arbiterWrapperRef.current;
+      if (!wrapper) return;
+
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "col-resize";
+
+      const onMouseMove = (moveEvent: globalThis.MouseEvent) => {
+        const wrapperRect = wrapper.getBoundingClientRect();
+        if (wrapperRect.width <= 0) return;
+
+        const pointerX = moveEvent.clientX - wrapperRect.left;
+        const minTerminalRatio = ARBITER_SIDEBAR_MIN_TERMINAL_WIDTH / wrapperRect.width;
+        const minSidebarRatio = ARBITER_SIDEBAR_MIN_SIDEBAR_WIDTH / wrapperRect.width;
+        const maxRatio = 1 - minSidebarRatio;
+
+        const nextRatio = Math.min(Math.max(pointerX / wrapperRect.width, minTerminalRatio), maxRatio);
+        setSplitRatio(nextRatio);
+      };
+
+      const onMouseUp = () => {
+        document.body.style.userSelect = "";
+        document.body.style.cursor = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        // Refit after resize settles
+        setTimeout(() => {
+          try {
+            fitAddonRef.current?.fit();
+          } catch {
+            // ignore
+          }
+        }, 50);
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    },
+    [],
+  );
+
+  if (session.arbiterEnabled) {
+    return (
+      <div
+        ref={arbiterWrapperRef}
+        className={cn(panelClasses.arbiterWrapper, !isVisible && panelClasses.containerHidden)}
+        aria-label={`Arbiter session ${session.label}`}
+      >
+        <div
+          ref={containerRef}
+          className={panelClasses.arbiterTerminal}
+          style={{ width: `${splitRatio * 100}%` }}
+          aria-label={`Terminal for session ${session.label}`}
+        />
+        <div
+          className={panelClasses.arbiterDivider}
+          role="separator"
+          aria-label="Resize arbiter sidebar"
+          aria-orientation="vertical"
+          onMouseDown={handleSidebarDividerMouseDown}
+        />
+        <div
+          className={panelClasses.arbiterSidebar}
+          style={{ width: `${(1 - splitRatio) * 100}%` }}
+        >
+          <ArtifactsPane />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

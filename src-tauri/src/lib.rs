@@ -21,6 +21,7 @@ pub mod tray;
 
 use crate::db::init::init_db;
 use commands::agent_commands::list_agent_types;
+use commands::mcp_commands::{cleanup_mcp_config, prepare_mcp_config};
 use commands::arbiter_commands::{
     decompose_request, delete_story, get_arbiter_state, list_stories, reorder_stories,
     set_trust_level, update_story,
@@ -319,6 +320,9 @@ pub fn run() {
             get_sandbox_capabilities,
             // Update commands
             check_for_updates,
+            // MCP commands
+            prepare_mcp_config,
+            cleanup_mcp_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

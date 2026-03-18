@@ -350,3 +350,19 @@ export interface UpdateInfo {
 export async function checkForUpdates(): Promise<UpdateInfo> {
   return invoke("check_for_updates");
 }
+
+export async function saveLayout(layoutJson: string): Promise<void> {
+  return invoke("save_layout", { layoutJson });
+}
+
+export async function loadLayout(): Promise<string | null> {
+  return invoke("load_layout");
+}
+
+export async function prepareMcpConfig(projectPath: string): Promise<void> {
+  return invoke("prepare_mcp_config", { projectPath });
+}
+
+export async function cleanupMcpConfig(projectPath: string): Promise<void> {
+  return invoke("cleanup_mcp_config", { projectPath });
+}
