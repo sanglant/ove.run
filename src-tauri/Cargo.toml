@@ -1,6 +1,6 @@
 [package]
 name = "ove-run"
-version = "0.1.5"
+version = "0.1.7"
 edition = "2021"
 
 [lib]
@@ -34,3 +34,4 @@ ts-rs = { version = "10", features = ["serde-compat"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ignore = "0.4"
+axum = { version = "0.8", features = [] }
