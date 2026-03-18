@@ -23,10 +23,10 @@ import {
   Button,
   Group,
   Indicator,
-  Modal,
   Text,
   UnstyledButton,
 } from "@mantine/core";
+import { AppModal } from "@/components/ui/AppModal";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { useProjectStore } from "@/stores/projectStore";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -39,7 +39,6 @@ import { TrustLevelSelector } from "@/features/arbiter/components/TrustLevelSele
 import type { Project, TrustLevel } from "@/types";
 import { getAgentMeta } from "@/constants/agents";
 import { StatusDot } from "@/components/ui/StatusDot";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
 import { killPty } from "@/lib/tauri";
 import cn from "clsx";
 import classes from "./Sidebar.module.css";
@@ -206,13 +205,16 @@ export function Sidebar() {
     setTrustLevelProject(null);
   };
 
-  const handleCloseSession = async (sessionId: string) => {
-    try {
-      await killPty(sessionId);
-      removeSession(sessionId);
-    } catch (err) {
-      console.error("Failed to close session:", err);
-    }
+  const handleCloseSession = (sessionId: string) => {
+    removeSession(sessionId);
+    killPty(sessionId).catch((err: unknown) => {
+      const message = typeof err === "object" && err !== null && "message" in err
+        ? String((err as { message: string }).message)
+        : String(err);
+      if (!message.includes("not found")) {
+        console.error("Failed to kill PTY for session:", sessionId, err);
+      }
+    });
   };
 
   const navItems = [
@@ -250,11 +252,13 @@ export function Sidebar() {
       id: "memory" as const,
       icon: <Brain size={16} />,
       label: "Memory",
+      tourId: "sidebar-memory",
     },
     {
       id: "stats" as const,
       icon: <BarChart3 size={16} />,
       label: "Stats",
+      tourId: "sidebar-stats",
     },
     {
       id: "settings" as const,
@@ -522,18 +526,13 @@ export function Sidebar() {
         />
       )}
 
-      <Modal
+      <AppModal
         opened={!!trustLevelProject}
         onClose={() => setTrustLevelProject(null)}
         title="Select trust level"
         centered
         size="sm"
-        overlayProps={MODAL_OVERLAY_PROPS}
-        transitionProps={MODAL_TRANSITION_PROPS}
-        styles={{
-          ...MODAL_STYLES,
-          body: { ...MODAL_STYLES.body, padding: 20 },
-        }}
+        bodyPadding={20}
       >
         <Text size="xs" c="var(--text-secondary)" mb="md">
           How much autonomy should the Arbiter have for{" "}
@@ -569,20 +568,15 @@ export function Sidebar() {
             Enable Arbiter
           </Button>
         </div>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         opened={!!pendingRemoveProject}
         onClose={() => !removing && setPendingRemoveProject(null)}
         title="Remove project"
         centered
         size="sm"
-        overlayProps={MODAL_OVERLAY_PROPS}
-        transitionProps={MODAL_TRANSITION_PROPS}
-        styles={{
-          ...MODAL_STYLES,
-          body: { ...MODAL_STYLES.body, padding: 20 },
-        }}
+        bodyPadding={20}
       >
         <Text size="sm" c="var(--text-secondary)" mb={4}>
           Remove <strong>{pendingRemoveProject?.name}</strong> from ove.run?
@@ -627,7 +621,7 @@ export function Sidebar() {
             {removing ? "Removing…" : "Remove project"}
           </Button>
         </div>
-      </Modal>
+      </AppModal>
 
       {/* Context menu */}
       {contextMenu && (
@@ -707,7 +701,7 @@ export function Sidebar() {
                 className={cn(classes.contextMenuItem, classes.contextMenuItemDanger)}
                 role="menuitem"
                 onClick={() => {
-                  void handleCloseSession(ctxSession.id);
+                  handleCloseSession(ctxSession.id);
                   setContextMenu(null);
                 }}
               >

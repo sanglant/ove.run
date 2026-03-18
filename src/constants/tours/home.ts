@@ -56,6 +56,26 @@ export const homeTour: DriveStep[] = [
     },
   },
   {
+    element: '[data-tour="sidebar-memory"]',
+    popover: {
+      title: "Memory",
+      description:
+        "Browse and search agent memories extracted automatically from sessions. Memories help agents recall project context over time.",
+      side: "top",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="sidebar-stats"]',
+    popover: {
+      title: "Stats",
+      description:
+        "Usage dashboard for the active project: sessions, loop iterations, memory counts, context breakdown, and more.",
+      side: "top",
+      align: "center",
+    },
+  },
+  {
     element: '[data-tour="sidebar-settings"]',
     popover: {
       title: "Settings",

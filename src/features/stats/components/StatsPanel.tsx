@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { useAutoTour } from "@/hooks/useAutoTour";
 import {
   BarChart3,
   BookOpen,
@@ -57,6 +58,8 @@ export function StatsPanel() {
   const loadTokenRef = useRef(0);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
+
+  useAutoTour("stats");
 
   useEffect(() => {
     if (!activeProjectId) {
@@ -163,7 +166,7 @@ export function StatsPanel() {
 
       <div className={classes.body}>
         {/* Overview cards */}
-        <div className={classes.cardsGrid}>
+        <div className={classes.cardsGrid} data-tour="stats-overview">
           <div className={classes.statCard} aria-label={`${projectSessions.length} sessions`}>
             <span className={classes.statCardLabel}>Sessions</span>
             <span className={classes.statCardValue}>{projectSessions.length}</span>
@@ -193,7 +196,7 @@ export function StatsPanel() {
         </div>
 
         {/* Loop & Stories — front-loaded for ove.run's core value */}
-        <div className={classes.section}>
+        <div className={classes.section} data-tour="stats-loop">
           <div className={classes.sectionHeader}>
             <RotateCw size={12} className={classes.sectionIcon} />
             <h3 className={classes.sectionTitle}>Loop Engine</h3>
@@ -344,7 +347,7 @@ export function StatsPanel() {
         </div>
 
         {/* Memories */}
-        <div className={classes.section}>
+        <div className={classes.section} data-tour="stats-memory">
           <div className={classes.sectionHeader}>
             <Brain size={12} className={classes.sectionIcon} />
             <h3 className={classes.sectionTitle}>Memory</h3>

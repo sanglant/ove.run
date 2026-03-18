@@ -4,6 +4,7 @@ import { SegmentedControl, TextInput, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useProjectStore } from "@/stores/projectStore";
 import { useMemoryStore } from "@/stores/memoryStore";
+import { useAutoTour } from "@/hooks/useAutoTour";
 import { MemoryCard } from "./MemoryCard";
 import { ConsolidationCard } from "./ConsolidationCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -23,6 +24,8 @@ export function MemoryPanel() {
   const [tab, setTab] = useState<Tab>("memories");
   const [searchQuery, setSearchQuery] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+
+  useAutoTour("memory");
 
   const items = tab === "memories" ? memories : consolidations;
 
@@ -72,6 +75,7 @@ export function MemoryPanel() {
           onChange={(v) => setTab(v as Tab)}
           size="xs"
           fullWidth
+          data-tour="memory-tabs"
           styles={{
             root: {
               marginTop: 12,
@@ -91,6 +95,7 @@ export function MemoryPanel() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               size="xs"
+              data-tour="memory-search"
               styles={{
                 root: { marginTop: 10 },
                 input: {
@@ -111,6 +116,7 @@ export function MemoryPanel() {
         className={classes.list}
         role="list"
         aria-label={tab === "memories" ? "Memories" : "Summaries"}
+        data-tour="memory-list"
       >
         {loading ? (
           <div className={classes.listMessage}>Loading memories…</div>
