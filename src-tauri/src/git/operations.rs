@@ -51,10 +51,7 @@ pub fn git_status(cwd: &str) -> Result<GitStatus, String> {
             if let Some(ab) = line.strip_prefix("# branch.ab ") {
                 let parts: Vec<&str> = ab.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    ahead = parts[0]
-                        .trim_start_matches('+')
-                        .parse()
-                        .unwrap_or(0);
+                    ahead = parts[0].trim_start_matches('+').parse().unwrap_or(0);
                     behind = parts[1]
                         .trim_start_matches('-')
                         .parse::<i32>()
@@ -87,9 +84,9 @@ pub fn git_status(cwd: &str) -> Result<GitStatus, String> {
                     });
                 }
             }
-        } else if line.starts_with("? ") {
+        } else if let Some(stripped) = line.strip_prefix("? ") {
             // Untracked
-            let path = line[2..].to_string();
+            let path = stripped.to_string();
             files.push(GitFileStatus {
                 path,
                 status: "?".to_string(),

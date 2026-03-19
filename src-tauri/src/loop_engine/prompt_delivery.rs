@@ -1,4 +1,4 @@
-use crate::state::{PromptDelivery, AgentDefinition};
+use crate::state::{AgentDefinition, PromptDelivery};
 
 /// Deliver a prompt to a running agent session via PTY write (InteractiveInput only)
 pub fn deliver_interactive_prompt(prompt: &str) -> Vec<u8> {
@@ -6,11 +6,7 @@ pub fn deliver_interactive_prompt(prompt: &str) -> Vec<u8> {
 }
 
 /// Build spawn arguments including prompt if delivery is via CLI flag or positional arg
-pub fn build_spawn_args(
-    agent_def: &AgentDefinition,
-    prompt: &str,
-    yolo_mode: bool,
-) -> Vec<String> {
+pub fn build_spawn_args(agent_def: &AgentDefinition, prompt: &str, yolo_mode: bool) -> Vec<String> {
     let mut args = agent_def.default_args.clone();
     if yolo_mode && !agent_def.yolo_flag.is_empty() {
         args.push(agent_def.yolo_flag.clone());
@@ -83,7 +79,10 @@ mod tests {
     fn build_spawn_args_interactive_excludes_prompt() {
         let agent = make_agent(Some(PromptDelivery::InteractiveInput), vec![], "");
         let args = build_spawn_args(&agent, "do the thing", false);
-        assert!(args.is_empty(), "InteractiveInput should not add prompt to args");
+        assert!(
+            args.is_empty(),
+            "InteractiveInput should not add prompt to args"
+        );
     }
 
     #[test]

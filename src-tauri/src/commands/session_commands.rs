@@ -1,5 +1,5 @@
 use crate::db::sessions::PersistedSession;
-use crate::error::{AppError, lock_err};
+use crate::error::{lock_err, AppError};
 use crate::notifications::notifier::show_desktop_notification;
 use crate::state::AppState;
 use tauri::State;
@@ -15,11 +15,21 @@ pub async fn save_sessions(
 }
 
 #[tauri::command]
-pub async fn load_sessions(
-    state: State<'_, AppState>,
-) -> Result<Vec<PersistedSession>, AppError> {
+pub async fn load_sessions(state: State<'_, AppState>) -> Result<Vec<PersistedSession>, AppError> {
     let conn = state.db.lock().map_err(lock_err)?;
     crate::db::sessions::load_sessions(&conn).map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn save_layout(state: State<'_, AppState>, layout_json: String) -> Result<(), AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::app_state::set_app_state(&conn, "global_layout", &layout_json).map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn load_layout(state: State<'_, AppState>) -> Result<Option<String>, AppError> {
+    let conn = state.db.lock().map_err(lock_err)?;
+    crate::db::app_state::get_app_state(&conn, "global_layout").map_err(Into::into)
 }
 
 #[tauri::command]

@@ -10,11 +10,13 @@ pub struct PersistedSession {
     pub label: String,
     pub initial_prompt: Option<String>,
     pub created_at: String,
+    pub sandboxed: bool,
+    pub arbiter_enabled: bool,
 }
 
 pub fn load_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at FROM sessions",
+        "SELECT id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at, sandboxed, arbiter_enabled FROM sessions",
     )?;
     let rows = stmt.query_map(params![], |row| {
         Ok(PersistedSession {
@@ -25,6 +27,8 @@ pub fn load_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, rusqlit
             label: row.get(4)?,
             initial_prompt: row.get(5)?,
             created_at: row.get(6)?,
+            sandboxed: row.get(7)?,
+            arbiter_enabled: row.get(8)?,
         })
     })?;
 
@@ -35,7 +39,10 @@ pub fn load_sessions(conn: &Connection) -> Result<Vec<PersistedSession>, rusqlit
     Ok(sessions)
 }
 
-pub fn save_sessions(conn: &Connection, sessions: &[PersistedSession]) -> Result<(), rusqlite::Error> {
+pub fn save_sessions(
+    conn: &Connection,
+    sessions: &[PersistedSession],
+) -> Result<(), rusqlite::Error> {
     // SAFETY: unchecked_transaction does not require &mut Connection.
     // The transaction is rolled back automatically on drop if commit() is not called.
     let tx = conn.unchecked_transaction()?;
@@ -44,7 +51,7 @@ pub fn save_sessions(conn: &Connection, sessions: &[PersistedSession]) -> Result
 
     {
         let mut stmt = tx.prepare(
-            "INSERT INTO sessions (id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO sessions (id, project_id, agent_type, yolo_mode, label, initial_prompt, created_at, sandboxed, arbiter_enabled) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         )?;
 
         for session in sessions {
@@ -56,6 +63,8 @@ pub fn save_sessions(conn: &Connection, sessions: &[PersistedSession]) -> Result
                 session.label,
                 session.initial_prompt,
                 session.created_at,
+                session.sandboxed,
+                session.arbiter_enabled,
             ])?;
         }
     }

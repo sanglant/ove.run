@@ -81,6 +81,8 @@ export interface PersistedSession {
   label: string;
   created_at: string;
   initial_prompt?: string;
+  sandboxed: boolean;
+  arbiter_enabled: boolean;
 }
 
 export interface Note {

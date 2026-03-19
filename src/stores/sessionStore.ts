@@ -11,7 +11,7 @@ import type {
   TerminalSplitFlow,
   TerminalSplitLayoutNode,
 } from "@/types";
-import { saveSessions, loadSessions } from "@/lib/tauri";
+import { saveSessions, loadSessions, saveLayout, loadLayout } from "@/lib/tauri";
 import { collectPanes, countPanes, findPaneById } from "@/lib/layout";
 import { useNotificationStore } from "./notificationStore";
 
@@ -20,6 +20,7 @@ const DEFAULT_SPLIT_RATIO = 0.5;
 const MIN_SPLIT_RATIO = 0.1;
 
 let layoutNodeSequence = 0;
+let layoutPersistTimer: ReturnType<typeof setTimeout> | null = null;
 
 function createNodeId(prefix: "pane" | "split"): string {
   layoutNodeSequence += 1;
@@ -105,32 +106,6 @@ function replacePane(
     ...node,
     first: replacePane(node.first, paneId, replacement),
     second: replacePane(node.second, paneId, replacement),
-  };
-}
-
-function removeArtifactsPanes(node: TerminalLayoutNode): TerminalLayoutNode | null {
-  if (node.type === "pane") {
-    return node.paneType === "artifacts" ? null : node;
-  }
-
-  const nextFirst = removeArtifactsPanes(node.first);
-  if (!nextFirst) {
-    return removeArtifactsPanes(node.second);
-  }
-
-  const nextSecond = removeArtifactsPanes(node.second);
-  if (!nextSecond) {
-    return nextFirst;
-  }
-
-  if (nextFirst === node.first && nextSecond === node.second) {
-    return node;
-  }
-
-  return {
-    ...node,
-    first: nextFirst,
-    second: nextSecond,
   };
 }
 
@@ -356,6 +331,31 @@ function splitPaneInLayout(
   };
 }
 
+function removeEmptyTerminalPanes(root: TerminalLayoutNode): TerminalLayoutNode {
+  // Collect all empty panes (sessionId === null)
+  const panes = collectPanes(root);
+  const emptyTerminalPanes = panes.filter(
+    (pane) => pane.sessionId === null,
+  );
+
+  // Keep at least one pane in the tree — if every pane is empty,
+  // preserve the first one so the tree never collapses to nothing.
+  const totalEmpty = emptyTerminalPanes.length;
+  const totalPanes = panes.length;
+  const keepOne = totalEmpty === totalPanes;
+  const removeCount = keepOne ? totalEmpty - 1 : totalEmpty;
+
+  if (removeCount === 0) {
+    return root;
+  }
+
+  let result = root;
+  for (let i = 0; i < removeCount; i++) {
+    result = removePane(result, emptyTerminalPanes[i].id) ?? createPane(null);
+  }
+  return result;
+}
+
 function normalizeLayout(
   layout: TerminalProjectLayout | undefined,
   validSessionIds: string[],
@@ -365,6 +365,10 @@ function normalizeLayout(
   let root = layout?.root
     ? sanitizeNode(layout.root, validSet, new Set<string>())
     : createPane(null);
+
+  // Remove empty (sessionId === null) panes; keep one if all are empty.
+  root = removeEmptyTerminalPanes(root);
+
   let panes = collectPanes(root);
 
   if (panes.length === 0) {
@@ -467,6 +471,7 @@ interface SessionState {
   updateSessionStatus: (id: string, status: AgentStatus) => void;
   updateSessionYolo: (id: string, yoloMode: boolean) => void;
   persistSessions: () => void;
+  persistLayout: () => void;
   loadPersistedSessions: () => Promise<void>;
 }
 
@@ -485,26 +490,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         state.activeSessionId,
       );
 
-      let layout = placeSessionInLayout(currentLayout, session.id);
-
-      // Auto-create artifacts pane for arbiter sessions
-      if (session.arbiterEnabled) {
-        const terminalPaneId = layout.activePaneId;
-        const artifactsPane: TerminalPaneLayoutNode = {
-          type: "pane",
-          id: createNodeId("pane"),
-          sessionId: null,
-          paneType: "artifacts",
-        };
-        const terminalPane = findPaneById(layout.root, terminalPaneId);
-        if (terminalPane) {
-          const split = createSplit("row", terminalPane, artifactsPane, 0.7);
-          layout = {
-            ...layout,
-            root: replacePane(layout.root, terminalPaneId, split),
-          };
-        }
-      }
+      const layout = placeSessionInLayout(currentLayout, session.id);
 
       return {
         sessions,
@@ -513,11 +499,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       };
     });
     get().persistSessions();
+    get().persistLayout();
   },
 
   removeSession: (id: string) => {
     set((state) => {
-      const removedSession = state.sessions.find((session) => session.id === id);
       const sessions = state.sessions.filter((session) => session.id !== id);
       const allSessionIds = sessions.map((s) => s.id);
 
@@ -526,16 +512,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           ? sessions[sessions.length - 1]?.id ?? null
           : state.activeSessionId;
 
-      // Clean up artifacts panes when an arbiter session is removed
-      let layoutToNormalize = state.globalLayout;
-      if (removedSession?.arbiterEnabled) {
-        const cleaned = removeArtifactsPanes(layoutToNormalize.root);
-        if (cleaned) {
-          layoutToNormalize = { ...layoutToNormalize, root: cleaned };
-        }
-      }
-
-      let globalLayout = normalizeLayout(layoutToNormalize, allSessionIds);
+      let globalLayout = normalizeLayout(state.globalLayout, allSessionIds);
 
       if (activeSessionId) {
         const activePane = findPaneBySession(globalLayout.root, activeSessionId);
@@ -548,6 +525,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return { sessions, activeSessionId, globalLayout };
     });
     get().persistSessions();
+    get().persistLayout();
   },
 
   setActiveSession: (id: string | null) => {
@@ -603,6 +581,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       };
     });
+    get().persistLayout();
   },
 
   setPaneSession: (_projectId: string, paneId: string, sessionId: string | null) => {
@@ -661,6 +640,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       };
     });
+    get().persistLayout();
   },
 
   focusPane: (_projectId: string, paneId: string) => {
@@ -688,6 +668,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       };
     });
+    get().persistLayout();
   },
 
   setSplitRatio: (_projectId: string, splitId: string, ratio: number) => {
@@ -702,6 +683,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       };
     });
+    get().persistLayout();
   },
 
   splitPane: (
@@ -732,6 +714,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         },
       };
     });
+    get().persistLayout();
   },
 
   reorderSessions: (draggedId: string, targetId: string, projectId?: string) => {
@@ -739,6 +722,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       sessions: reorderScopedSessions(state.sessions, draggedId, targetId, projectId),
     }));
     get().persistSessions();
+    get().persistLayout();
   },
 
   updateSessionStatus: (id: string, status: AgentStatus) => {
@@ -751,6 +735,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ),
       };
     });
+    if (status === "error" || status === "finished") {
+      get().persistSessions();
+    }
   },
 
   updateSessionYolo: (id: string, yoloMode: boolean) => {
@@ -772,6 +759,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         yolo_mode: session.yoloMode,
         label: session.label,
         created_at: session.createdAt,
+        initial_prompt: session.initialPrompt,
+        sandboxed: session.sandboxed ?? false,
+        arbiter_enabled: session.arbiterEnabled ?? false,
       }));
 
     saveSessions(persisted).catch((err) => {
@@ -779,9 +769,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     });
   },
 
+  persistLayout: () => {
+    if (layoutPersistTimer !== null) {
+      clearTimeout(layoutPersistTimer);
+    }
+    layoutPersistTimer = setTimeout(() => {
+      layoutPersistTimer = null;
+      const { globalLayout } = get();
+      const layoutJson = JSON.stringify(globalLayout);
+      saveLayout(layoutJson).catch((err) => {
+        console.error("Failed to persist layout:", err);
+      });
+    }, 500);
+  },
+
   loadPersistedSessions: async () => {
     try {
-      const persisted = await loadSessions();
+      const [persisted, layoutJson] = await Promise.all([loadSessions(), loadLayout()]);
+
+      let restoredLayout: TerminalProjectLayout | undefined;
+      if (layoutJson) {
+        try {
+          restoredLayout = JSON.parse(layoutJson) as TerminalProjectLayout;
+        } catch {
+          // Invalid JSON — fall back to current layout
+        }
+      }
+
       if (persisted.length === 0) return;
 
       const { sessions: existingSessions } = get();
@@ -798,26 +812,39 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           createdAt: session.created_at,
           label: session.label,
           isResumed: true,
+          initialPrompt: session.initial_prompt,
+          sandboxed: session.sandboxed,
+          arbiterEnabled: session.arbiter_enabled,
         }));
 
       if (resumed.length === 0) return;
+
+      const lastResumed = resumed[resumed.length - 1];
 
       set((state) => {
         const sessions = [...state.sessions, ...resumed];
         const allSessionIds = sessions.map((s) => s.id);
 
-        let globalLayout = normalizeLayout(state.globalLayout, allSessionIds);
-
-        for (const resumedSession of resumed) {
-          globalLayout = placeSessionInLayout(globalLayout, resumedSession.id);
-        }
+        const baseLayout = restoredLayout ?? state.globalLayout;
+        const globalLayout = normalizeLayout(baseLayout, allSessionIds);
 
         return {
           sessions,
-          activeSessionId: resumed[resumed.length - 1]?.id ?? state.activeSessionId,
+          activeSessionId: lastResumed?.id ?? state.activeSessionId,
           globalLayout,
         };
       });
+
+      // Sync project store so the active project matches the resumed session.
+      // Without this, activeProjectId can be null or stale, causing tabs to
+      // appear empty until the user manually switches projects.
+      if (lastResumed) {
+        const { useProjectStore } = await import("./projectStore");
+        const projectStore = useProjectStore.getState();
+        if (!projectStore.activeProjectId || !projectStore.projects.some((p) => p.id === projectStore.activeProjectId)) {
+          projectStore.setActiveProject(lastResumed.projectId);
+        }
+      }
     } catch (err) {
       console.error("Failed to load persisted sessions:", err);
       useNotificationStore.getState().showToast("error", "Failed to load persisted sessions", String(err));

@@ -1,5 +1,5 @@
-use regex::Regex;
 use crate::state::AgentStatus;
+use regex::Regex;
 
 pub struct OutputMonitor {
     idle_pattern: Regex,
@@ -16,12 +16,12 @@ impl OutputMonitor {
         input_pattern: &str,
         finished_pattern: &str,
     ) -> Result<Self, String> {
-        let idle_re = Regex::new(idle_pattern)
-            .map_err(|e| format!("Invalid idle pattern: {}", e))?;
-        let input_re = Regex::new(input_pattern)
-            .map_err(|e| format!("Invalid input pattern: {}", e))?;
-        let finished_re = Regex::new(finished_pattern)
-            .map_err(|e| format!("Invalid finished pattern: {}", e))?;
+        let idle_re =
+            Regex::new(idle_pattern).map_err(|e| format!("Invalid idle pattern: {}", e))?;
+        let input_re =
+            Regex::new(input_pattern).map_err(|e| format!("Invalid input pattern: {}", e))?;
+        let finished_re =
+            Regex::new(finished_pattern).map_err(|e| format!("Invalid finished pattern: {}", e))?;
 
         Ok(Self {
             idle_pattern: idle_re,

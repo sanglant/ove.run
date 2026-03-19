@@ -1,12 +1,12 @@
-use tokio::net::TcpListener;
 use tauri::State;
+use tokio::net::TcpListener;
 
 use crate::bugs::{
     oauth,
     provider::{BugItem, BugProvider, ProviderAuth, ProviderConfig},
 };
 use crate::db::init::DbPool;
-use crate::error::{AppError, lock_err};
+use crate::error::{lock_err, AppError};
 use crate::state::AppState;
 
 fn validate_non_empty(value: &str, field: &str) -> Result<(), AppError> {
@@ -17,7 +17,10 @@ fn validate_non_empty(value: &str, field: &str) -> Result<(), AppError> {
     }
 }
 
-fn load_provider_config_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderConfig>, AppError> {
+fn load_provider_config_from_db(
+    db: &DbPool,
+    project_id: &str,
+) -> Result<Option<ProviderConfig>, AppError> {
     let conn = db.lock().map_err(lock_err)?;
     match crate::db::bugs::load_bug_config(&conn, project_id)? {
         Some((_provider, config_json)) => {
@@ -29,7 +32,10 @@ fn load_provider_config_from_db(db: &DbPool, project_id: &str) -> Result<Option<
     }
 }
 
-fn load_provider_auth_from_db(db: &DbPool, project_id: &str) -> Result<Option<ProviderAuth>, AppError> {
+fn load_provider_auth_from_db(
+    db: &DbPool,
+    project_id: &str,
+) -> Result<Option<ProviderAuth>, AppError> {
     let conn = db.lock().map_err(lock_err)?;
     match crate::db::bugs::load_bug_auth(&conn, project_id)? {
         Some(auth_json) => {
@@ -94,10 +100,7 @@ pub async fn start_bug_oauth(
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .map_err(|e| AppError::Other(format!("Failed to bind OAuth listener: {}", e)))?;
-    let port = listener
-        .local_addr()
-        .map_err(|e| AppError::Io(e))?
-        .port();
+    let port = listener.local_addr().map_err(AppError::Io)?.port();
     let redirect_uri = format!("http://127.0.0.1:{}", port);
 
     let result = oauth::start_oauth(&config, &redirect_uri)
@@ -125,7 +128,9 @@ pub async fn start_bug_oauth(
                             return;
                         }
                     };
-                    if let Err(e) = crate::db::bugs::save_bug_auth(&conn, &project_id_bg, &auth_json) {
+                    if let Err(e) =
+                        crate::db::bugs::save_bug_auth(&conn, &project_id_bg, &auth_json)
+                    {
                         tracing::error!("[bugs] Failed to save provider auth: {}", e);
                     }
                 }
@@ -163,9 +168,15 @@ pub async fn list_bugs(
         .ok_or_else(|| AppError::Other("Not authenticated".to_string()))?;
 
     match config.provider {
-        BugProvider::Jira => crate::bugs::jira::list_bugs(&auth, &config).await.map_err(AppError::Other),
-        BugProvider::GithubProjects => crate::bugs::github::list_bugs(&auth, &config).await.map_err(AppError::Other),
-        BugProvider::YouTrack => crate::bugs::youtrack::list_bugs(&auth, &config).await.map_err(AppError::Other),
+        BugProvider::Jira => crate::bugs::jira::list_bugs(&auth, &config)
+            .await
+            .map_err(AppError::Other),
+        BugProvider::GithubProjects => crate::bugs::github::list_bugs(&auth, &config)
+            .await
+            .map_err(AppError::Other),
+        BugProvider::YouTrack => crate::bugs::youtrack::list_bugs(&auth, &config)
+            .await
+            .map_err(AppError::Other),
     }
 }
 
@@ -184,13 +195,15 @@ pub async fn get_bug_detail(
         .ok_or_else(|| AppError::Other("Not authenticated".to_string()))?;
 
     match config.provider {
-        BugProvider::Jira => crate::bugs::jira::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other),
-        BugProvider::GithubProjects => {
-            crate::bugs::github::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other)
-        }
-        BugProvider::YouTrack => {
-            crate::bugs::youtrack::get_bug_detail(&auth, &config, &bug_id).await.map_err(AppError::Other)
-        }
+        BugProvider::Jira => crate::bugs::jira::get_bug_detail(&auth, &config, &bug_id)
+            .await
+            .map_err(AppError::Other),
+        BugProvider::GithubProjects => crate::bugs::github::get_bug_detail(&auth, &config, &bug_id)
+            .await
+            .map_err(AppError::Other),
+        BugProvider::YouTrack => crate::bugs::youtrack::get_bug_detail(&auth, &config, &bug_id)
+            .await
+            .map_err(AppError::Other),
     }
 }
 

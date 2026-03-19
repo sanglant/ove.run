@@ -4,7 +4,10 @@ use serde::Deserialize;
 use super::provider::{BugItem, BugProvider, ProviderAuth, ProviderConfig};
 
 pub fn get_oauth_url(config: &ProviderConfig, redirect_uri: &str) -> Result<String, String> {
-    let client_id = config.client_id.as_ref().ok_or("GitHub client_id is required")?;
+    let client_id = config
+        .client_id
+        .as_ref()
+        .ok_or("GitHub client_id is required")?;
     Ok(format!(
         "https://github.com/login/oauth/authorize?client_id={}&redirect_uri={}&scope=repo",
         client_id,
@@ -18,7 +21,10 @@ pub async fn exchange_token(
     redirect_uri: &str,
 ) -> Result<ProviderAuth, String> {
     let client_id = config.client_id.as_ref().ok_or("client_id required")?;
-    let client_secret = config.client_secret.as_ref().ok_or("client_secret required")?;
+    let client_secret = config
+        .client_secret
+        .as_ref()
+        .ok_or("client_secret required")?;
 
     #[derive(Deserialize)]
     struct TokenResponse {
@@ -58,7 +64,9 @@ pub async fn exchange_token(
 
 fn parse_owner_repo(project_key: &str) -> Result<(&str, &str), String> {
     let mut parts = project_key.splitn(2, '/');
-    let owner = parts.next().ok_or("project_key must be in owner/repo format")?;
+    let owner = parts
+        .next()
+        .ok_or("project_key must be in owner/repo format")?;
     let repo = parts
         .next()
         .ok_or("project_key must be in owner/repo format")?;
@@ -105,7 +113,10 @@ fn issue_to_bug_item(issue: GitHubIssue) -> BugItem {
     }
 }
 
-pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<Vec<BugItem>, String> {
+pub async fn list_bugs(
+    auth: &ProviderAuth,
+    config: &ProviderConfig,
+) -> Result<Vec<BugItem>, String> {
     let (owner, repo) = parse_owner_repo(&config.project_key)?;
     let client = Client::new();
 

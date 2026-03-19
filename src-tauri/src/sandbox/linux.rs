@@ -48,15 +48,22 @@ pub fn wrap_command(
     // ── System paths (read-only) ────────────────────────────
     for sys_path in policy::SYSTEM_READ_PATHS {
         if Path::new(sys_path).exists() {
-            bwrap_args.extend(["--ro-bind".into(), sys_path.to_string(), sys_path.to_string()]);
+            bwrap_args.extend([
+                "--ro-bind".into(),
+                sys_path.to_string(),
+                sys_path.to_string(),
+            ]);
         }
     }
 
     // ── /proc, /dev, /tmp ───────────────────────────────────
     bwrap_args.extend([
-        "--proc".into(), "/proc".into(),
-        "--dev".into(), "/dev".into(),
-        "--tmpfs".into(), "/tmp".into(),
+        "--proc".into(),
+        "/proc".into(),
+        "--dev".into(),
+        "/dev".into(),
+        "--tmpfs".into(),
+        "/tmp".into(),
     ]);
 
     // ── Project directory ───────────────────────────────────
@@ -136,11 +143,17 @@ pub fn wrap_command(
     // ── Environment: pass through, scrub dangerous vars ─────
     let mut sandbox_env = env.clone();
     // Remove vars that could leak secrets if inherited
-    for var in &["AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "GCP_SERVICE_ACCOUNT_KEY"] {
+    for var in &[
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "GCP_SERVICE_ACCOUNT_KEY",
+    ] {
         sandbox_env.remove(*var);
     }
     // Set HOME so agent configs resolve correctly inside sandbox
-    sandbox_env.entry("HOME".to_string()).or_insert_with(|| home_str.to_string());
+    sandbox_env
+        .entry("HOME".to_string())
+        .or_insert_with(|| home_str.to_string());
 
     ("bwrap".to_string(), bwrap_args, sandbox_env)
 }
@@ -158,7 +171,11 @@ mod tests {
         // The command is resolved to a full path; verify it appears after "--"
         let sep_idx = args.iter().position(|a| a == "--").unwrap();
         let resolved_cmd = &args[sep_idx + 1];
-        assert!(resolved_cmd.contains("claude"), "resolved command should contain 'claude', got: {}", resolved_cmd);
+        assert!(
+            resolved_cmd.contains("claude"),
+            "resolved command should contain 'claude', got: {}",
+            resolved_cmd
+        );
         assert!(args.contains(&"--bind".to_string())); // read-write for trust 2
     }
 

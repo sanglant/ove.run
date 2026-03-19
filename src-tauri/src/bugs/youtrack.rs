@@ -4,8 +4,14 @@ use serde::Deserialize;
 use super::provider::{BugItem, BugProvider, ProviderAuth, ProviderConfig};
 
 pub fn get_oauth_url(config: &ProviderConfig, redirect_uri: &str) -> Result<String, String> {
-    let base_url = config.base_url.as_ref().ok_or("YouTrack base_url is required")?;
-    let client_id = config.client_id.as_ref().ok_or("YouTrack client_id is required")?;
+    let base_url = config
+        .base_url
+        .as_ref()
+        .ok_or("YouTrack base_url is required")?;
+    let client_id = config
+        .client_id
+        .as_ref()
+        .ok_or("YouTrack client_id is required")?;
     Ok(format!(
         "{}/hub/api/rest/oauth2/auth?response_type=code&client_id={}&redirect_uri={}&scope=YouTrack",
         base_url,
@@ -21,7 +27,10 @@ pub async fn exchange_token(
 ) -> Result<ProviderAuth, String> {
     let base_url = config.base_url.as_ref().ok_or("base_url required")?;
     let client_id = config.client_id.as_ref().ok_or("client_id required")?;
-    let client_secret = config.client_secret.as_ref().ok_or("client_secret required")?;
+    let client_secret = config
+        .client_secret
+        .as_ref()
+        .ok_or("client_secret required")?;
 
     #[derive(Deserialize)]
     struct TokenResponse {
@@ -105,27 +114,19 @@ fn issue_to_bug_item(issue: YouTrackIssue, base_url: &str) -> BugItem {
 
     if let Some(fields) = &issue.fields {
         for field in fields {
-            if let Some(value) = &field.value {
-                if let YouTrackFieldValue::Named { name } = value {
-                    match field.name.as_str() {
-                        "State" => status = name.clone(),
-                        "Priority" => priority = Some(name.clone()),
-                        "Assignee" => assignee = Some(name.clone()),
-                        _ => {}
-                    }
+            if let Some(YouTrackFieldValue::Named { name }) = &field.value {
+                match field.name.as_str() {
+                    "State" => status = name.clone(),
+                    "Priority" => priority = Some(name.clone()),
+                    "Assignee" => assignee = Some(name.clone()),
+                    _ => {}
                 }
             }
         }
     }
 
-    let created_at = issue
-        .created
-        .map(epoch_ms_to_rfc3339)
-        .unwrap_or_default();
-    let updated_at = issue
-        .updated
-        .map(epoch_ms_to_rfc3339)
-        .unwrap_or_default();
+    let created_at = issue.created.map(epoch_ms_to_rfc3339).unwrap_or_default();
+    let updated_at = issue.updated.map(epoch_ms_to_rfc3339).unwrap_or_default();
 
     BugItem {
         id: issue.id,
@@ -142,11 +143,20 @@ fn issue_to_bug_item(issue: YouTrackIssue, base_url: &str) -> BugItem {
     }
 }
 
-pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<Vec<BugItem>, String> {
-    let base_url = config.base_url.as_ref().ok_or("YouTrack base_url is required")?;
+pub async fn list_bugs(
+    auth: &ProviderAuth,
+    config: &ProviderConfig,
+) -> Result<Vec<BugItem>, String> {
+    let base_url = config
+        .base_url
+        .as_ref()
+        .ok_or("YouTrack base_url is required")?;
     let client = Client::new();
 
-    let query = format!("project: {} type: Bug State: Unresolved", config.project_key);
+    let query = format!(
+        "project: {} type: Bug State: Unresolved",
+        config.project_key
+    );
 
     let issues: Vec<YouTrackIssue> = client
         .get(format!("{}/api/issues", base_url))
@@ -154,7 +164,10 @@ pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<V
         .header("Accept", "application/json")
         .query(&[
             ("query", query.as_str()),
-            ("fields", "id,idReadable,summary,description,created,updated,fields(name,value(name))"),
+            (
+                "fields",
+                "id,idReadable,summary,description,created,updated,fields(name,value(name))",
+            ),
             ("$top", "50"),
         ])
         .send()
@@ -177,7 +190,10 @@ pub async fn get_bug_detail(
     config: &ProviderConfig,
     bug_id: &str,
 ) -> Result<BugItem, String> {
-    let base_url = config.base_url.as_ref().ok_or("YouTrack base_url is required")?;
+    let base_url = config
+        .base_url
+        .as_ref()
+        .ok_or("YouTrack base_url is required")?;
     let client = Client::new();
 
     let issue: YouTrackIssue = client

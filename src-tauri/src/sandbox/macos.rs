@@ -124,7 +124,11 @@ pub fn wrap_command(
 
     // Scrub dangerous env vars
     let mut sandbox_env = env.clone();
-    for var in &["AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "GCP_SERVICE_ACCOUNT_KEY"] {
+    for var in &[
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+        "GCP_SERVICE_ACCOUNT_KEY",
+    ] {
         sandbox_env.remove(*var);
     }
 

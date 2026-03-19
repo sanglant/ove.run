@@ -58,10 +58,16 @@ export const useContextStore = create<ContextState>((set) => ({
   },
 
   editUnit: async (unit) => {
-    await apiUpdateContextUnit(unit);
-    set((s) => ({
-      units: s.units.map((u) => (u.id === unit.id ? unit : u)),
-    }));
+    try {
+      await apiUpdateContextUnit(unit);
+      set((s) => ({
+        units: s.units.map((u) => (u.id === unit.id ? unit : u)),
+      }));
+    } catch (err) {
+      console.error("Failed to edit context unit:", err);
+      useNotificationStore.getState().showToast("error", "Failed to edit context unit", String(err));
+      throw err;
+    }
   },
 
   removeUnit: async (id) => {

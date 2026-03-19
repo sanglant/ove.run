@@ -167,7 +167,7 @@ export const cssResolver: CSSVariablesResolver = () => ({
     /* Text */
     "--text-primary": "#e8e8f0",
     "--text-secondary": "#8888a0",
-    "--text-tertiary": "#50505f",
+    "--text-tertiary": "#7a7a8a",
 
     /* Accent */
     "--accent": "#d4943c",

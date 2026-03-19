@@ -1,5 +1,5 @@
-use rusqlite::{Connection, params};
 use crate::state::Story;
+use rusqlite::{params, Connection};
 
 fn row_to_story(row: &rusqlite::Row) -> Result<Story, rusqlite::Error> {
     Ok(Story {
@@ -10,7 +10,9 @@ fn row_to_story(row: &rusqlite::Row) -> Result<Story, rusqlite::Error> {
         acceptance_criteria: row.get(4)?,
         priority: row.get(5)?,
         status: row.get(6)?,
-        depends_on_json: row.get::<_, Option<String>>(7)?.unwrap_or_else(|| "[]".to_string()),
+        depends_on_json: row
+            .get::<_, Option<String>>(7)?
+            .unwrap_or_else(|| "[]".to_string()),
         iteration_attempts: row.get(8)?,
         created_at: row.get(9)?,
     })
@@ -38,9 +40,13 @@ pub fn create_story(conn: &Connection, story: &Story) -> Result<(), rusqlite::Er
 }
 
 pub fn create_stories_batch(conn: &Connection, stories: &[Story]) -> Result<(), rusqlite::Error> {
+    // SAFETY: unchecked_transaction does not require &mut Connection.
+    // The transaction is rolled back automatically on drop if commit() is not called.
+    let tx = conn.unchecked_transaction()?;
     for story in stories {
-        create_story(conn, story)?;
+        create_story(&tx, story)?;
     }
+    tx.commit()?;
     Ok(())
 }
 
@@ -48,7 +54,7 @@ pub fn list_stories(conn: &Connection, project_id: &str) -> Result<Vec<Story>, r
     let mut stmt = conn.prepare(
         "SELECT id, project_id, title, description, acceptance_criteria, priority, status, \
          depends_on_json, iteration_attempts, created_at \
-         FROM stories WHERE project_id = ?1 ORDER BY priority DESC, created_at ASC"
+         FROM stories WHERE project_id = ?1 ORDER BY priority DESC, created_at ASC",
     )?;
 
     let rows = stmt.query_map(params![project_id], row_to_story)?;
@@ -65,7 +71,11 @@ pub fn get_story(conn: &Connection, id: &str) -> Result<Story, rusqlite::Error> 
     )
 }
 
-pub fn update_story_status(conn: &Connection, id: &str, status: &str) -> Result<(), rusqlite::Error> {
+pub fn update_story_status(
+    conn: &Connection,
+    id: &str,
+    status: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE stories SET status = ?1 WHERE id = ?2",
         params![status, id],
@@ -107,16 +117,21 @@ pub fn delete_story(conn: &Connection, id: &str) -> Result<(), rusqlite::Error> 
 }
 
 pub fn delete_project_stories(conn: &Connection, project_id: &str) -> Result<(), rusqlite::Error> {
-    conn.execute("DELETE FROM stories WHERE project_id = ?1", params![project_id])?;
+    conn.execute(
+        "DELETE FROM stories WHERE project_id = ?1",
+        params![project_id],
+    )?;
     Ok(())
 }
 
-pub fn get_next_story(conn: &Connection, project_id: &str) -> Result<Option<Story>, rusqlite::Error> {
+pub fn get_next_story(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Option<Story>, rusqlite::Error> {
     let pending = list_stories_by_status(conn, project_id, "pending")?;
 
     for story in pending {
-        let deps: Vec<String> = serde_json::from_str(&story.depends_on_json)
-            .unwrap_or_default();
+        let deps: Vec<String> = serde_json::from_str(&story.depends_on_json).unwrap_or_default();
 
         let all_deps_done = deps.iter().all(|dep_id| {
             conn.query_row(
@@ -145,7 +160,10 @@ pub fn all_stories_complete(conn: &Connection, project_id: &str) -> Result<bool,
     Ok(count == 0)
 }
 
-pub fn count_incomplete_stories(conn: &Connection, project_id: &str) -> Result<i64, rusqlite::Error> {
+pub fn count_incomplete_stories(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<i64, rusqlite::Error> {
     conn.query_row(
         "SELECT COUNT(*) FROM stories WHERE project_id = ?1 AND status != 'completed' AND status != 'skipped'",
         params![project_id],
@@ -153,11 +171,15 @@ pub fn count_incomplete_stories(conn: &Connection, project_id: &str) -> Result<i
     )
 }
 
-fn list_stories_by_status(conn: &Connection, project_id: &str, status: &str) -> Result<Vec<Story>, rusqlite::Error> {
+fn list_stories_by_status(
+    conn: &Connection,
+    project_id: &str,
+    status: &str,
+) -> Result<Vec<Story>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, project_id, title, description, acceptance_criteria, priority, status, \
          depends_on_json, iteration_attempts, created_at \
-         FROM stories WHERE project_id = ?1 AND status = ?2 ORDER BY priority DESC, created_at ASC"
+         FROM stories WHERE project_id = ?1 AND status = ?2 ORDER BY priority DESC, created_at ASC",
     )?;
 
     let rows = stmt.query_map(params![project_id, status], row_to_story)?;
@@ -183,8 +205,9 @@ mod tests {
                 depends_on_json TEXT DEFAULT '[]',
                 iteration_attempts INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
-            );"
-        ).unwrap();
+            );",
+        )
+        .unwrap();
         conn
     }
 
@@ -199,7 +222,8 @@ mod tests {
             status: status.to_string(),
             depends_on_json: serde_json::to_string(
                 &deps.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-            ).unwrap(),
+            )
+            .unwrap(),
             iteration_attempts: 0,
             created_at: "2026-01-01T00:00:00Z".to_string(),
         }

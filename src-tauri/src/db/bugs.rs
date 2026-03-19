@@ -1,9 +1,11 @@
 use rusqlite::{params, Connection};
 
-pub fn load_bug_config(conn: &Connection, project_id: &str) -> Result<Option<(String, String)>, rusqlite::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT provider, config_json FROM bug_configs WHERE project_id = ?1",
-    )?;
+pub fn load_bug_config(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Option<(String, String)>, rusqlite::Error> {
+    let mut stmt =
+        conn.prepare("SELECT provider, config_json FROM bug_configs WHERE project_id = ?1")?;
     let mut rows = stmt.query(params![project_id])?;
     match rows.next()? {
         Some(row) => {
@@ -40,10 +42,11 @@ pub fn save_bug_auth(
     Ok(())
 }
 
-pub fn load_bug_auth(conn: &Connection, project_id: &str) -> Result<Option<String>, rusqlite::Error> {
-    let mut stmt = conn.prepare(
-        "SELECT auth_json FROM bug_configs WHERE project_id = ?1",
-    )?;
+pub fn load_bug_auth(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Option<String>, rusqlite::Error> {
+    let mut stmt = conn.prepare("SELECT auth_json FROM bug_configs WHERE project_id = ?1")?;
     let mut rows = stmt.query(params![project_id])?;
     match rows.next()? {
         Some(row) => Ok(Some(row.get(0)?)),

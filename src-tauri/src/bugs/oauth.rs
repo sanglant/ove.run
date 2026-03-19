@@ -22,10 +22,7 @@ pub async fn start_oauth(
 }
 
 pub async fn wait_for_callback(listener: TcpListener) -> Result<String, String> {
-    let (mut stream, _) = listener
-        .accept()
-        .await
-        .map_err(|e| e.to_string())?;
+    let (mut stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
 
     let mut buf = vec![0u8; 4096];
     let n = stream.read(&mut buf).await.map_err(|e| e.to_string())?;
@@ -73,8 +70,6 @@ pub async fn exchange_token(
         BugProvider::GithubProjects => {
             super::github::exchange_token(config, code, redirect_uri).await
         }
-        BugProvider::YouTrack => {
-            super::youtrack::exchange_token(config, code, redirect_uri).await
-        }
+        BugProvider::YouTrack => super::youtrack::exchange_token(config, code, redirect_uri).await,
     }
 }

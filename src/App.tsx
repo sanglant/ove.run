@@ -14,6 +14,7 @@ import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackToast } from "@/features/arbiter/components/AgentFeedbackToast";
 import toastClasses from "@/features/arbiter/components/AgentFeedbackToast.module.css";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
 import { collectPanes } from "@/lib/layout";
 import { useProjectStore } from "@/stores/projectStore";
@@ -34,7 +35,7 @@ export default function App() {
   const { activePanel, setActivePanel, sidebarCollapsed } = useUiStore();
   const { loadPersistedSessions, globalLayout } = useSessionStore();
   const feedbackQueue = useAgentFeedbackStore((s) => s.queue);
-  const dismissFeedback = useAgentFeedbackStore((s) => s.dismissCurrent);
+  const dismissFeedbackById = useAgentFeedbackStore((s) => s.dismissById);
 
   // Initialize global notification listener
   useNotifications();
@@ -49,9 +50,11 @@ export default function App() {
   const { hasSeenHomeTour, setHomeTourSeen } = useTourStore();
 
   useEffect(() => {
-    loadProjects();
+    // loadProjects must complete before loadPersistedSessions so that
+    // activeProjectId is set when resumed sessions are added — otherwise
+    // tabs appear empty until the user manually switches projects.
+    loadProjects().then(() => loadPersistedSessions());
     loadSettings();
-    loadPersistedSessions();
     loadSandboxCapabilities();
   }, [loadProjects, loadSettings, loadPersistedSessions, loadSandboxCapabilities]);
 
@@ -110,48 +113,62 @@ export default function App() {
           <div
             className={cn(classes.terminalContainer, activePanel !== "terminal" && classes.terminalContainerHidden)}
           >
-            <TerminalContainer />
+            <ErrorBoundary label="Terminal">
+              <TerminalContainer />
+            </ErrorBoundary>
           </div>
 
           {/* Git panel */}
           {activePanel === "git" && (
             <div className={classes.panelContainer}>
-              <GitPanel />
+              <ErrorBoundary label="Git">
+                <GitPanel />
+              </ErrorBoundary>
             </div>
           )}
 
           {/* Context panel */}
           {activePanel === "context" && (
             <div className={classes.panelContainer}>
-              <ContextPanel />
+              <ErrorBoundary label="Context">
+                <ContextPanel />
+              </ErrorBoundary>
             </div>
           )}
 
           {/* Notes panel */}
           {activePanel === "notes" && (
             <div className={classes.panelContainer}>
-              <NotesPanel />
+              <ErrorBoundary label="Notes">
+                <NotesPanel />
+              </ErrorBoundary>
             </div>
           )}
 
           {/* Bugs panel */}
           {activePanel === "bugs" && (
             <div className={classes.panelContainer}>
-              <BugsPanel />
+              <ErrorBoundary label="Bugs">
+                <BugsPanel />
+              </ErrorBoundary>
             </div>
           )}
 
           {/* Memory panel */}
           {activePanel === "memory" && (
             <div className={classes.panelContainer}>
-              <MemoryPanel />
+              <ErrorBoundary label="Memory">
+                <MemoryPanel />
+              </ErrorBoundary>
             </div>
           )}
 
           {/* Notifications panel */}
           {activePanel === "notifications" && (
             <div className={classes.panelContainer}>
-              <NotificationCenter />
+              <ErrorBoundary label="Notifications">
+                <NotificationCenter />
+              </ErrorBoundary>
             </div>
           )}
 
@@ -159,7 +176,9 @@ export default function App() {
           <div
             className={cn(classes.panelContainer, activePanel !== "stats" && classes.terminalContainerHidden)}
           >
-            <StatsPanel />
+            <ErrorBoundary label="Stats">
+              <StatsPanel />
+            </ErrorBoundary>
           </div>
         </main>
 
@@ -175,11 +194,11 @@ export default function App() {
       {/* Agent feedback toasts for sessions not visible in the terminal layout */}
       {floatingFeedback.length > 0 && (
         <div className={toastClasses.fixedAnchor}>
-          {floatingFeedback.map((item, idx) => (
+          {floatingFeedback.map((item) => (
             <AgentFeedbackToast
               key={item.id}
               item={item}
-              onDismiss={idx === 0 ? dismissFeedback : () => {}}
+              onDismiss={() => dismissFeedbackById(item.id)}
               showFocusButton
             />
           ))}

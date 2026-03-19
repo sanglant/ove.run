@@ -5,6 +5,7 @@ interface AgentFeedbackState {
   queue: FeedbackItem[];
   enqueue: (item: FeedbackItem) => void;
   dismissCurrent: () => void;
+  dismissById: (id: string) => void;
   removeBySessionId: (sessionId: string) => void;
 }
 
@@ -13,11 +14,17 @@ export const useAgentFeedbackStore = create<AgentFeedbackState>((set) => ({
 
   enqueue: (item: FeedbackItem) => {
     set((state) => {
-      // Don't enqueue duplicate for same session if one already exists
-      const exists = state.queue.some(
+      const existingIndex = state.queue.findIndex(
         (q) => q.sessionId === item.sessionId && q.type === item.type,
       );
-      if (exists) return state;
+      // If there's an existing item with the same sessionId+type but a different id,
+      // replace it with the new one so stale items don't block incoming updates.
+      if (existingIndex !== -1) {
+        if (state.queue[existingIndex].id === item.id) return state;
+        const next = [...state.queue];
+        next[existingIndex] = item;
+        return { queue: next };
+      }
       return { queue: [...state.queue, item] };
     });
   },
@@ -26,6 +33,10 @@ export const useAgentFeedbackStore = create<AgentFeedbackState>((set) => ({
     set((state) => ({
       queue: state.queue.slice(1),
     }));
+  },
+
+  dismissById: (id: string) => {
+    set((s) => ({ queue: s.queue.filter((q) => q.id !== id) }));
   },
 
   removeBySessionId: (sessionId: string) => {

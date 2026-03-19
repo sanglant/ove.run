@@ -37,6 +37,21 @@ describe("notificationStore", () => {
       const ids = useNotificationStore.getState().notifications.map((n) => n.id);
       expect(ids).toEqual(["n2", "n1"]);
     });
+
+    it("caps the list at MAX_NOTIFICATIONS (500) and drops the oldest entries", () => {
+      // Pre-fill with 500 notifications (already-stored items have read flag)
+      const initial = Array.from({ length: 500 }, (_, i) => ({ ...makeNotification(`old-${i}`), read: false }));
+      useNotificationStore.setState({ notifications: initial });
+
+      // Add one more — this should displace the oldest
+      useNotificationStore.getState().addNotification(makeNotification("newest"));
+
+      const notifications = useNotificationStore.getState().notifications;
+      expect(notifications).toHaveLength(500);
+      expect(notifications[0].id).toBe("newest");
+      // The 500th oldest should have been dropped
+      expect(notifications.find((n) => n.id === "old-499")).toBeUndefined();
+    });
   });
 
   describe("markRead", () => {

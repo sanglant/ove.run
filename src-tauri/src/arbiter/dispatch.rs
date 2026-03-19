@@ -7,9 +7,10 @@ pub async fn dispatch(
     project_path: &str,
     cli_command: &str,
     model: Option<&str>,
+    timeout_seconds: u64,
 ) -> Result<ArbiterResponse, String> {
     let prompt = build_prompt(&action);
-    let raw = run_arbiter_cli(&prompt, project_path, cli_command, model)
+    let raw = run_arbiter_cli(&prompt, project_path, cli_command, model, timeout_seconds)
         .await
         .map_err(|e| e.to_string())?;
     parse_response(&action, &raw)
@@ -227,8 +228,9 @@ fn parse_response(action: &ArbiterAction, raw: &str) -> Result<ArbiterResponse, 
                 .ok_or_else(|| "No closing bracket in decompose response".to_string())?;
 
             let json_slice = &raw[start..=end];
-            let drafts: Vec<StoryDraft> = serde_json::from_str(json_slice)
-                .map_err(|e| format!("Failed to parse story drafts: {} — raw: {}", e, json_slice))?;
+            let drafts: Vec<StoryDraft> = serde_json::from_str(json_slice).map_err(|e| {
+                format!("Failed to parse story drafts: {} — raw: {}", e, json_slice)
+            })?;
 
             Ok(ArbiterResponse {
                 stories: Some(drafts),
@@ -274,7 +276,10 @@ fn parse_response(action: &ArbiterAction, raw: &str) -> Result<ArbiterResponse, 
 
                 // Format: <content> | importance:<val> | entities:<val> | topics:<val> | visibility:<val>
                 let parts: Vec<&str> = rest.splitn(5, '|').collect();
-                let content = parts.first().map(|s| s.trim().to_string()).unwrap_or_default();
+                let content = parts
+                    .first()
+                    .map(|s| s.trim().to_string())
+                    .unwrap_or_default();
                 if content.is_empty() {
                     continue;
                 }

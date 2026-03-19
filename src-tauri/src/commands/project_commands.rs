@@ -1,8 +1,9 @@
+use crate::error::{lock_err, AppError};
+use crate::state::{AppState, Project};
 use chrono::Utc;
+use std::time::Duration;
 use tauri::State;
 use uuid::Uuid;
-use crate::error::{AppError, lock_err};
-use crate::state::{AppState, Project};
 
 #[tauri::command]
 pub async fn list_projects(state: State<'_, AppState>) -> Result<Vec<Project>, AppError> {
@@ -40,10 +41,7 @@ pub async fn add_project(
 }
 
 #[tauri::command]
-pub async fn remove_project(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), AppError> {
+pub async fn remove_project(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
     {
         let conn = state.db.lock().map_err(lock_err)?;
         crate::db::projects::delete_project(&conn, &id)?;
@@ -90,7 +88,10 @@ pub async fn list_project_files(
 
     let root = Path::new(&project_path);
     if !root.is_dir() {
-        return Err(AppError::Other(format!("Not a directory: {}", project_path)));
+        return Err(AppError::Other(format!(
+            "Not a directory: {}",
+            project_path
+        )));
     }
 
     let limit = max_files.unwrap_or(5000);
@@ -126,11 +127,13 @@ pub async fn list_project_files(
 
 /// Core arbiter CLI subprocess call — usable without Tauri State.
 /// Runs the CLI tool with `-p <prompt>` in a temp directory.
+/// `timeout_seconds` caps how long the subprocess may run; 0 means no cap.
 pub async fn run_arbiter_cli(
     prompt: &str,
     project_path: &str,
     cli_command: &str,
     model: Option<&str>,
+    timeout_seconds: u64,
 ) -> Result<String, AppError> {
     let tmp_dir = tempfile::tempdir()
         .map_err(|e| AppError::Other(format!("Failed to create temp dir for arbiter: {}", e)))?;
@@ -148,10 +151,26 @@ pub async fn run_arbiter_cli(
     let full_prompt = format!("Project path: {}\n\n{}", project_path, prompt);
     cmd.arg("-p").arg(&full_prompt).current_dir(tmp_dir.path());
 
-    let output = cmd
-        .output()
-        .await
-        .map_err(|e| AppError::Other(format!("Failed to run {} for arbiter review: {}", cli_command, e)))?;
+    let output = if timeout_seconds > 0 {
+        tokio::time::timeout(Duration::from_secs(timeout_seconds), cmd.output())
+            .await
+            .map_err(|_| {
+                AppError::Other(format!("Arbiter CLI timed out after {}s", timeout_seconds))
+            })?
+            .map_err(|e| {
+                AppError::Other(format!(
+                    "Failed to run {} for arbiter review: {}",
+                    cli_command, e
+                ))
+            })?
+    } else {
+        cmd.output().await.map_err(|e| {
+            AppError::Other(format!(
+                "Failed to run {} for arbiter review: {}",
+                cli_command, e
+            ))
+        })?
+    };
 
     if output.status.success() {
         let raw = String::from_utf8(output.stdout)
@@ -161,7 +180,10 @@ pub async fn run_arbiter_cli(
         Ok(String::from_utf8_lossy(&clean).to_string())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(AppError::Other(format!("Arbiter review process failed: {}", stderr)))
+        Err(AppError::Other(format!(
+            "Arbiter review process failed: {}",
+            stderr
+        )))
     }
 }
 
@@ -177,14 +199,14 @@ pub async fn arbiter_review(
     model: Option<String>,
 ) -> Result<String, AppError> {
     let command = cli_command.unwrap_or_else(|| "claude".to_string());
-    run_arbiter_cli(&prompt, &project_path, &command, model.as_deref()).await
+    run_arbiter_cli(&prompt, &project_path, &command, model.as_deref(), 120).await
 }
 
 /// Return known model aliases and IDs for a given CLI agent tool.
 /// Uses official documentation as source for aliases.
 #[tauri::command]
 pub async fn list_cli_models(cli_command: String) -> Result<Vec<String>, AppError> {
-    let cmd = cli_command.trim().split_whitespace().next().unwrap_or("claude");
+    let cmd = cli_command.split_whitespace().next().unwrap_or("claude");
 
     match cmd {
         "claude" => Ok(vec![

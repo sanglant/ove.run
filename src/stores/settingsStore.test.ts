@@ -5,6 +5,9 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn().mockResolvedValue(() =
 
 import { useSettingsStore } from "./settingsStore";
 import type { AppSettings } from "@/types";
+import { invoke } from "@tauri-apps/api/core";
+
+const mockInvoke = vi.mocked(invoke);
 
 const DEFAULT_SETTINGS: AppSettings = {
   global: {
@@ -83,17 +86,55 @@ describe("settingsStore", () => {
   });
 
   describe("loadSettings", () => {
-    it("sets loading true while fetching then false after", async () => {
-      const promise = useSettingsStore.getState().loadSettings();
-      // After resolution the loading flag should be false
-      await promise;
-      expect(useSettingsStore.getState().loading).toBe(false);
+    it("sets loading false after successful fetch and stores returned settings", async () => {
+      const returned: AppSettings = {
+        ...DEFAULT_SETTINGS,
+        global: { ...DEFAULT_SETTINGS.global, font_size: 16 },
+      };
+      mockInvoke.mockResolvedValueOnce(returned);
+
+      await useSettingsStore.getState().loadSettings();
+
+      const state = useSettingsStore.getState();
+      expect(state.loading).toBe(false);
+      expect(state.settings.global.font_size).toBe(16);
+    });
+
+    it("keeps defaults and resets loading when invoke fails", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("settings unavailable"));
+
+      await useSettingsStore.getState().loadSettings();
+
+      const state = useSettingsStore.getState();
+      expect(state.loading).toBe(false);
+      expect(state.settings.global.font_size).toBe(14);
     });
   });
 
   describe("loadSandboxCapabilities", () => {
-    it("resolves without throwing when invoke returns undefined (error path)", async () => {
-      await expect(useSettingsStore.getState().loadSandboxCapabilities()).resolves.not.toThrow();
+    it("stores sandbox availability and platform on success", async () => {
+      mockInvoke.mockResolvedValueOnce({
+        platform: "linux",
+        available: true,
+        backend: "bwrap",
+        detail: "bubblewrap available",
+      });
+
+      await useSettingsStore.getState().loadSandboxCapabilities();
+
+      const state = useSettingsStore.getState();
+      expect(state.sandboxAvailable).toBe(true);
+      expect(state.sandboxPlatform).toBe("linux");
+    });
+
+    it("resets sandbox fields to defaults when invoke fails", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("sandbox check failed"));
+
+      await useSettingsStore.getState().loadSandboxCapabilities();
+
+      const state = useSettingsStore.getState();
+      expect(state.sandboxAvailable).toBe(false);
+      expect(state.sandboxPlatform).toBe("");
     });
   });
 });

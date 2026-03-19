@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection};
 
-use crate::state::{Memory, Project, ContextUnit};
+use crate::state::{ContextUnit, Memory, Project};
 
 pub fn list_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::Error> {
     let mut stmt = conn.prepare(
@@ -67,19 +67,22 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
         let rows = stmt.query_map(params![id], |row| {
             let rid: i64 = row.get(0)?;
             let consolidated_int: i64 = row.get(10)?;
-            Ok((rid, Memory {
-                id: row.get(1)?,
-                project_id: row.get(2)?,
-                session_id: row.get(3)?,
-                visibility: row.get(4)?,
-                content: row.get(5)?,
-                summary: row.get(6)?,
-                entities_json: row.get(7)?,
-                topics_json: row.get(8)?,
-                importance: row.get(9)?,
-                consolidated: consolidated_int != 0,
-                created_at: row.get(11)?,
-            }))
+            Ok((
+                rid,
+                Memory {
+                    id: row.get(1)?,
+                    project_id: row.get(2)?,
+                    session_id: row.get(3)?,
+                    visibility: row.get(4)?,
+                    content: row.get(5)?,
+                    summary: row.get(6)?,
+                    entities_json: row.get(7)?,
+                    topics_json: row.get(8)?,
+                    importance: row.get(9)?,
+                    consolidated: consolidated_int != 0,
+                    created_at: row.get(11)?,
+                },
+            ))
         })?;
         rows.collect::<Result<Vec<_>, _>>()?
     };
@@ -92,32 +95,38 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
              FROM context_units WHERE project_id = ?1",
         )?;
         let rows = stmt.query_map(params![id], |row| {
-            Ok((row.get::<_, i64>(0)?, ContextUnit {
-                id: row.get(1)?,
-                project_id: row.get(2)?,
-                name: row.get(3)?,
-                unit_type: row.get::<_, String>(4)?,
-                scope: row.get(5)?,
-                tags_json: row.get(6)?,
-                l0_summary: row.get(7)?,
-                l1_overview: row.get(8)?,
-                l2_content: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
-                is_bundled: row.get::<_, i32>(12).unwrap_or(0) != 0,
-                bundled_slug: row.get(13).ok(),
-            }))
+            Ok((
+                row.get::<_, i64>(0)?,
+                ContextUnit {
+                    id: row.get(1)?,
+                    project_id: row.get(2)?,
+                    name: row.get(3)?,
+                    unit_type: row.get::<_, String>(4)?,
+                    scope: row.get(5)?,
+                    tags_json: row.get(6)?,
+                    l0_summary: row.get(7)?,
+                    l1_overview: row.get(8)?,
+                    l2_content: row.get(9)?,
+                    created_at: row.get(10)?,
+                    updated_at: row.get(11)?,
+                    is_bundled: row.get::<_, i32>(12).unwrap_or(0) != 0,
+                    bundled_slug: row.get(13).ok(),
+                },
+            ))
         })?;
         rows.collect::<Result<Vec<_>, _>>()?
     };
 
     // Collect consolidation rowids for FTS cleanup (consolidations_fts uses implicit rowid).
     let consolidation_rowids: Vec<(i64, String, String)> = {
-        let mut stmt = conn.prepare(
-            "SELECT rowid, summary, insight FROM consolidations WHERE project_id = ?1",
-        )?;
+        let mut stmt = conn
+            .prepare("SELECT rowid, summary, insight FROM consolidations WHERE project_id = ?1")?;
         let rows = stmt.query_map(params![id], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
         })?;
         rows.collect::<Result<Vec<_>, _>>()?
     };
@@ -134,7 +143,10 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
     )?;
 
     // 2. context_defaults — for this project
-    tx.execute("DELETE FROM context_defaults WHERE project_id = ?1", params![id])?;
+    tx.execute(
+        "DELETE FROM context_defaults WHERE project_id = ?1",
+        params![id],
+    )?;
 
     // 3. sessions — for this project
     tx.execute("DELETE FROM sessions WHERE project_id = ?1", params![id])?;
@@ -160,13 +172,19 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
             params![rowid, summary, insight],
         )?;
     }
-    tx.execute("DELETE FROM consolidations WHERE project_id = ?1", params![id])?;
+    tx.execute(
+        "DELETE FROM consolidations WHERE project_id = ?1",
+        params![id],
+    )?;
 
     // 7. stories — for this project
     tx.execute("DELETE FROM stories WHERE project_id = ?1", params![id])?;
 
     // 8. arbiter_state — for this project
-    tx.execute("DELETE FROM arbiter_state WHERE project_id = ?1", params![id])?;
+    tx.execute(
+        "DELETE FROM arbiter_state WHERE project_id = ?1",
+        params![id],
+    )?;
 
     // 9. bug_configs — for this project
     tx.execute("DELETE FROM bug_configs WHERE project_id = ?1", params![id])?;
@@ -179,7 +197,10 @@ pub fn delete_project(conn: &Connection, id: &str) -> Result<(), rusqlite::Error
             params![rid, unit.name, unit.l0_summary, unit.l1_overview, unit.l2_content],
         )?;
     }
-    tx.execute("DELETE FROM context_units WHERE project_id = ?1", params![id])?;
+    tx.execute(
+        "DELETE FROM context_units WHERE project_id = ?1",
+        params![id],
+    )?;
 
     // 11. Finally, the project itself
     tx.execute("DELETE FROM projects WHERE id = ?1", params![id])?;

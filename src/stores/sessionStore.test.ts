@@ -412,6 +412,37 @@ describe("sessionStore", () => {
     });
   });
 
+  describe("layout cleanup — empty pane removal", () => {
+    it("collapses a split when one pane becomes empty after removing a session", () => {
+      useSessionStore.getState().addSession(makeSession("s1", "p1"));
+      useSessionStore.getState().addSession(makeSession("s2", "p1"));
+
+      // Create a two-pane split: s1 | s2
+      const layout = getLayout();
+      useSessionStore.getState().splitPane("p1", layout.activePaneId, "right", "s1");
+      expect(getLayout().root.type).toBe("split");
+
+      // Remove s1 — its pane should be cleaned up, leaving only s2
+      useSessionStore.getState().removeSession("s1");
+
+      const updated = getLayout();
+      expect(updated.root.type).toBe("pane");
+      if (updated.root.type === "pane") {
+        expect(updated.root.sessionId).toBe("s2");
+      }
+    });
+
+    it("keeps a single empty pane when there are no sessions at all", () => {
+      // No sessions — single empty pane is the correct initial state
+      const layout = getLayout();
+      expect(layout.root.type).toBe("pane");
+      if (layout.root.type === "pane") {
+        expect(layout.root.sessionId).toBeNull();
+      }
+    });
+
+  });
+
   describe("setPaneSession", () => {
     it("assigns a session to an existing pane", () => {
       useSessionStore.getState().addSession(makeSession("s1", "p1"));

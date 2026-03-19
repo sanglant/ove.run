@@ -13,7 +13,6 @@ import { Stack, Text, Button } from "@mantine/core";
 import cn from "clsx";
 import { TerminalTabs } from "./TerminalTabs";
 import { TerminalPanel } from "./TerminalPanel";
-import { ArtifactsPane } from "./ArtifactsPane";
 import { NewAgentDialog } from "@/features/agents/components/NewAgentDialog";
 import { AgentFeedbackToast } from "@/features/arbiter/components/AgentFeedbackToast";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
@@ -46,7 +45,6 @@ interface LayoutRect {
 interface RenderedPane {
   paneId: string;
   sessionId: string | null;
-  paneType: "terminal" | "artifacts" | undefined;
   rect: LayoutRect;
 }
 
@@ -107,7 +105,6 @@ function buildGridRenderData(
     panes.push({
       paneId: node.id,
       sessionId: node.sessionId,
-      paneType: node.paneType,
       rect: bounds,
     });
     return;
@@ -191,7 +188,6 @@ function buildRenderData(layout: TerminalProjectLayout): {
             {
               paneId: activePane.id,
               sessionId: activePane.sessionId,
-              paneType: activePane.paneType,
               rect: { top: 0, left: 0, width: 1, height: 1 },
             },
           ]
@@ -499,14 +495,9 @@ export function TerminalContainer() {
         <div className={classes.workspaceSurface}>
           {renderedLayout.panes.map((pane) => {
             const isFocused = pane.paneId === layout.activePaneId;
-            const isArtifacts = pane.paneType === "artifacts";
-            const isEmpty = !pane.sessionId && !isArtifacts;
+            const isEmpty = !pane.sessionId;
             const paneSession = pane.sessionId ? sessionMap.get(pane.sessionId) : undefined;
-            const paneLabel = isArtifacts
-              ? "Arbiter artifacts pane"
-              : paneSession
-                ? `${paneSession.label} pane`
-                : "Empty pane";
+            const paneLabel = paneSession ? `${paneSession.label} pane` : "Empty pane";
 
             return (
               <div
@@ -522,9 +513,7 @@ export function TerminalContainer() {
                 onDragOver={(event) => handlePaneDragOver(event, pane.paneId)}
                 onDrop={(event) => handlePaneDrop(event, pane.paneId)}
               >
-                {isArtifacts ? (
-                  <ArtifactsPane />
-                ) : isEmpty ? (
+                {isEmpty && (
                   <div className={classes.emptyPaneContent}>
                     <div className={classes.emptyPaneCard}>
                       <span className={classes.emptyPaneTitle}>Drop terminal here</span>
@@ -533,7 +522,7 @@ export function TerminalContainer() {
                       </span>
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
             );
           })}

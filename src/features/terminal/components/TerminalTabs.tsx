@@ -4,10 +4,8 @@ import { ActionIcon, Tooltip } from "@mantine/core";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUiStore } from "@/stores/uiStore";
-import { useNotificationStore } from "@/stores/notificationStore";
 import { killPty } from "@/lib/tauri";
 import type { AgentSession, TerminalLayoutMode } from "@/types";
-import { v4 as uuidv4 } from "uuid";
 import { getAgentMeta } from "@/constants/agents";
 import { StatusDot } from "@/components/ui/StatusDot";
 import cn from "clsx";
@@ -45,7 +43,6 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
   } = useSessionStore();
   const { activeProjectId, projects, setActiveProject } = useProjectStore();
   const { setActivePanel, tabViewMode, setTabViewMode } = useUiStore();
-  const addNotification = useNotificationStore((state) => state.addNotification);
   const [draggedSessionId, setDraggedSessionId] = useState<string | null>(null);
   const [dropSessionId, setDropSessionId] = useState<string | null>(null);
 
@@ -65,41 +62,30 @@ export function TerminalTabs({ sessions, allSessions, onNewSession }: TerminalTa
     }
   };
 
-  const closeSession = async (session: AgentSession) => {
-    try {
-      await killPty(session.id);
-      removeSession(session.id);
-    } catch (err: unknown) {
-      // Tauri errors are serialized as { kind, message } objects
+  const closeSession = (session: AgentSession) => {
+    // Remove from UI immediately for instant feedback, kill PTY in background
+    removeSession(session.id);
+    killPty(session.id).catch((err: unknown) => {
       const message = typeof err === "object" && err !== null && "message" in err
         ? String((err as { message: string }).message)
         : String(err);
-      if (message.includes("not found")) {
-        removeSession(session.id);
-        return;
+      if (!message.includes("not found")) {
+        console.error("Failed to kill PTY for session:", session.id, err);
       }
-
-      console.error("Failed to close terminal session:", err);
-      addNotification({
-        id: uuidv4(),
-        title: "Session Close Failed",
-        body: `${session.label}: ${message.slice(0, 200)}`,
-        sessionId: session.id,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    });
   };
 
   const handleClose = (event: MouseEvent, session: AgentSession) => {
     event.stopPropagation();
-    void closeSession(session);
+    event.preventDefault();
+    closeSession(session);
   };
 
   const handleKillActive = () => {
     const activeSession = allSessions.find((session) => session.id === activeSessionId);
     if (!activeSession) return;
 
-    void closeSession(activeSession);
+    closeSession(activeSession);
   };
 
   const handleLayoutChange = (mode: TerminalLayoutMode) => {
@@ -456,13 +442,16 @@ function FlatTabs({
                 <span className={classes.sessionNameLabel}>{session.label}</span>
               </div>
 
-              <button
+              <span
+                role="button"
+                tabIndex={0}
                 aria-label={`Close session ${session.label}`}
                 onClick={(event) => onClose(event, session)}
+                onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onClose(event as unknown as MouseEvent, session); }}
                 className={cn(classes.revealOnHover, classes.closeButton)}
               >
                 <X size={10} />
-              </button>
+              </span>
             </button>
           );
         })}
@@ -526,13 +515,16 @@ function SessionTab({
       </span>
       <StatusDot status={session.status} />
       <span className={classes.sessionNameLabel}>{session.label}</span>
-      <button
+      <span
+        role="button"
+        tabIndex={0}
         aria-label={`Close session ${session.label}`}
         onClick={(event) => onClose(event, session)}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onClose(event as unknown as MouseEvent, session); }}
         className={cn(classes.revealOnHover, classes.closeButton)}
       >
         <X size={10} />
-      </button>
+      </span>
     </button>
   );
 }

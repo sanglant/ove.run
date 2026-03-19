@@ -4,7 +4,10 @@ use serde::Deserialize;
 use super::provider::{BugItem, BugProvider, ProviderAuth, ProviderConfig};
 
 pub fn get_oauth_url(config: &ProviderConfig, redirect_uri: &str) -> Result<String, String> {
-    let client_id = config.client_id.as_ref().ok_or("Jira client_id is required")?;
+    let client_id = config
+        .client_id
+        .as_ref()
+        .ok_or("Jira client_id is required")?;
     Ok(format!(
         "https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id={}&scope=read%3Ajira-work%20read%3Ajira-user&redirect_uri={}&response_type=code&prompt=consent",
         client_id,
@@ -18,7 +21,10 @@ pub async fn exchange_token(
     redirect_uri: &str,
 ) -> Result<ProviderAuth, String> {
     let client_id = config.client_id.as_ref().ok_or("client_id required")?;
-    let client_secret = config.client_secret.as_ref().ok_or("client_secret required")?;
+    let client_secret = config
+        .client_secret
+        .as_ref()
+        .ok_or("client_secret required")?;
 
     #[derive(Deserialize)]
     struct TokenResponse {
@@ -143,7 +149,10 @@ fn issue_to_bug_item(issue: JiraIssue, base: &str) -> BugItem {
     }
 }
 
-pub async fn list_bugs(auth: &ProviderAuth, config: &ProviderConfig) -> Result<Vec<BugItem>, String> {
+pub async fn list_bugs(
+    auth: &ProviderAuth,
+    config: &ProviderConfig,
+) -> Result<Vec<BugItem>, String> {
     let client = Client::new();
     let cloud_id = get_cloud_id(&client, &auth.access_token).await?;
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { Group, Modal, Alert, Text } from "@mantine/core";
-import { MODAL_STYLES, MODAL_OVERLAY_PROPS, MODAL_TRANSITION_PROPS } from "@/constants/styles";
+import { Group, Alert, Text } from "@mantine/core";
+import { AppModal } from "@/components/ui/AppModal";
 import { useSessionStore } from "@/stores/sessionStore";
 import { getStatusMeta } from "@/constants/agents";
 import { AgentBadge } from "@/components/ui/AgentBadge";
@@ -81,18 +81,13 @@ export function TopBar() {
       </header>
 
       {/* YOLO confirmation modal */}
-      <Modal
+      <AppModal
         opened={showYoloWarning && !!activeSession}
         onClose={() => setShowYoloWarning(false)}
         title={activeSession?.yoloMode ? "Disable Auto-approve" : "Enable Auto-approve"}
         centered
         size="sm"
-        overlayProps={MODAL_OVERLAY_PROPS}
-        transitionProps={MODAL_TRANSITION_PROPS}
-        styles={{
-          ...MODAL_STYLES,
-          body: { ...MODAL_STYLES.body, padding: 20 },
-        }}
+        bodyPadding={20}
       >
         {activeSession && (
           <>
@@ -127,7 +122,7 @@ export function TopBar() {
             </Group>
           </>
         )}
-      </Modal>
+      </AppModal>
     </>
   );
 }

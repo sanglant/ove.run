@@ -1,5 +1,5 @@
 use crate::db::notes::Note;
-use crate::error::{AppError, lock_err};
+use crate::error::{lock_err, AppError};
 use crate::state::AppState;
 use tauri::State;
 

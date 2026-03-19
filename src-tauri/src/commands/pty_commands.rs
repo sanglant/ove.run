@@ -1,9 +1,10 @@
+use crate::error::AppError;
+use crate::sandbox;
+use crate::state::AppState;
 use std::collections::HashMap;
 use tauri::{AppHandle, State};
-use crate::error::AppError;
-use crate::state::AppState;
-use crate::sandbox;
 
+#[allow(clippy::too_many_arguments)]
 #[tracing::instrument(skip(state, app))]
 #[tauri::command]
 pub async fn spawn_pty(
@@ -16,10 +17,8 @@ pub async fn spawn_pty(
     env: HashMap<String, String>,
     cols: u16,
     rows: u16,
-    #[allow(unused_variables)]
-    sandbox_enabled: Option<bool>,
-    #[allow(unused_variables)]
-    trust_level: Option<u32>,
+    #[allow(unused_variables)] sandbox_enabled: Option<bool>,
+    #[allow(unused_variables)] trust_level: Option<u32>,
 ) -> Result<(), AppError> {
     // Apply sandbox wrapping if enabled
     let (final_cmd, final_args, final_env) = if sandbox_enabled.unwrap_or(false) {
@@ -30,7 +29,10 @@ pub async fn spawn_pty(
     };
 
     let mut manager = state.pty_manager.write().await;
-    manager.spawn(session_id, final_cmd, final_args, cwd, final_env, cols, rows, app)
+    manager
+        .spawn(
+            session_id, final_cmd, final_args, cwd, final_env, cols, rows, app,
+        )
         .map_err(AppError::Pty)
 }
 
@@ -52,14 +54,13 @@ pub async fn resize_pty(
     rows: u16,
 ) -> Result<(), AppError> {
     let mut manager = state.pty_manager.write().await;
-    manager.resize(&session_id, cols, rows).map_err(AppError::Pty)
+    manager
+        .resize(&session_id, cols, rows)
+        .map_err(AppError::Pty)
 }
 
 #[tauri::command]
-pub async fn kill_pty(
-    state: State<'_, AppState>,
-    session_id: String,
-) -> Result<(), AppError> {
+pub async fn kill_pty(state: State<'_, AppState>, session_id: String) -> Result<(), AppError> {
     let mut manager = state.pty_manager.write().await;
     manager.kill(&session_id).map_err(AppError::Pty)
 }

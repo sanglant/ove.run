@@ -26,5 +26,5 @@ export async function sendKeys(sessionId: string, keys: number[]): Promise<void>
 
 export async function sendText(sessionId: string, text: string): Promise<void> {
   const bytes = toBytes(text + "\r");
-  await sendKeys(sessionId, bytes);
+  await writePty(sessionId, bytes);
 }

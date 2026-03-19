@@ -1,4 +1,4 @@
-use crate::state::{TrustLevel, ArbiterStateRow, Story};
+use crate::state::{ArbiterStateRow, Story, TrustLevel};
 
 pub enum CircuitBreakerAction {
     Continue,
@@ -18,21 +18,21 @@ pub fn check_circuit_breakers(
     };
 
     if current_story.iteration_attempts >= max_retries {
-        return CircuitBreakerAction::Pause(
-            format!("Story '{}' failed {} times", current_story.title, current_story.iteration_attempts)
-        );
+        return CircuitBreakerAction::Pause(format!(
+            "Story '{}' failed {} times",
+            current_story.title, current_story.iteration_attempts
+        ));
     }
 
     if consecutive_no_commit >= 3 {
-        return CircuitBreakerAction::Pause(
-            "No commit in 3 consecutive iterations".to_string()
-        );
+        return CircuitBreakerAction::Pause("No commit in 3 consecutive iterations".to_string());
     }
 
     if arbiter_state.iteration_count >= arbiter_state.max_iterations {
-        return CircuitBreakerAction::Stop(
-            format!("Max iterations ({}) reached", arbiter_state.max_iterations)
-        );
+        return CircuitBreakerAction::Stop(format!(
+            "Max iterations ({}) reached",
+            arbiter_state.max_iterations
+        ));
     }
 
     CircuitBreakerAction::Continue
@@ -74,69 +74,99 @@ mod tests {
     fn continues_when_under_all_limits() {
         let state = make_state(TrustLevel::Autonomous, 0, 10);
         let story = make_story(0);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Continue));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Continue
+        ));
     }
 
     #[test]
     fn pauses_supervised_after_1_retry() {
         let state = make_state(TrustLevel::Supervised, 0, 10);
         let story = make_story(1);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Pause(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Pause(_)
+        ));
     }
 
     #[test]
     fn pauses_autonomous_after_3_retries() {
         let state = make_state(TrustLevel::Autonomous, 0, 10);
         let story = make_story(3);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Pause(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Pause(_)
+        ));
     }
 
     #[test]
     fn allows_autonomous_2_retries() {
         let state = make_state(TrustLevel::Autonomous, 0, 10);
         let story = make_story(2);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Continue));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Continue
+        ));
     }
 
     #[test]
     fn pauses_fullauto_after_5_retries() {
         let state = make_state(TrustLevel::FullAuto, 0, 10);
         let story = make_story(5);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Pause(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Pause(_)
+        ));
     }
 
     #[test]
     fn allows_fullauto_4_retries() {
         let state = make_state(TrustLevel::FullAuto, 0, 10);
         let story = make_story(4);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Continue));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Continue
+        ));
     }
 
     #[test]
     fn pauses_on_3_consecutive_no_commit() {
         let state = make_state(TrustLevel::Autonomous, 0, 10);
         let story = make_story(0);
-        assert!(matches!(check_circuit_breakers(&state, &story, 3), CircuitBreakerAction::Pause(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 3),
+            CircuitBreakerAction::Pause(_)
+        ));
     }
 
     #[test]
     fn continues_on_2_consecutive_no_commit() {
         let state = make_state(TrustLevel::Autonomous, 0, 10);
         let story = make_story(0);
-        assert!(matches!(check_circuit_breakers(&state, &story, 2), CircuitBreakerAction::Continue));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 2),
+            CircuitBreakerAction::Continue
+        ));
     }
 
     #[test]
     fn stops_when_max_iterations_reached() {
         let state = make_state(TrustLevel::Autonomous, 10, 10);
         let story = make_story(0);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Stop(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Stop(_)
+        ));
     }
 
     #[test]
     fn retries_checked_before_max_iterations() {
         let state = make_state(TrustLevel::Autonomous, 10, 10);
         let story = make_story(3);
-        assert!(matches!(check_circuit_breakers(&state, &story, 0), CircuitBreakerAction::Pause(_)));
+        assert!(matches!(
+            check_circuit_breakers(&state, &story, 0),
+            CircuitBreakerAction::Pause(_)
+        ));
     }
 }

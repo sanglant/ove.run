@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::state::Story;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ExecutionGroup {
@@ -20,16 +20,15 @@ pub fn plan_execution(stories: &[Story]) -> Vec<ExecutionGroup> {
         return Vec::new();
     }
 
-    let pending: Vec<&Story> = stories.iter()
-        .filter(|s| s.status == "pending")
-        .collect();
+    let pending: Vec<&Story> = stories.iter().filter(|s| s.status == "pending").collect();
 
     if pending.is_empty() {
         return Vec::new();
     }
 
     // Seed completed_ids with already-finished stories
-    let mut completed_ids: std::collections::HashSet<String> = stories.iter()
+    let mut completed_ids: std::collections::HashSet<String> = stories
+        .iter()
         .filter(|s| s.status == "completed" || s.status == "skipped")
         .map(|s| s.id.clone())
         .collect();
@@ -39,12 +38,10 @@ pub fn plan_execution(stories: &[Story]) -> Vec<ExecutionGroup> {
 
     while !remaining.is_empty() {
         // Partition into ready (all deps satisfied) and blocked
-        let (ready, blocked): (Vec<&Story>, Vec<&Story>) = remaining.into_iter()
-            .partition(|s| {
-                let deps: Vec<String> = serde_json::from_str(&s.depends_on_json)
-                    .unwrap_or_default();
-                deps.iter().all(|d| completed_ids.contains(d))
-            });
+        let (ready, blocked): (Vec<&Story>, Vec<&Story>) = remaining.into_iter().partition(|s| {
+            let deps: Vec<String> = serde_json::from_str(&s.depends_on_json).unwrap_or_default();
+            deps.iter().all(|d| completed_ids.contains(d))
+        });
 
         if ready.is_empty() {
             // Deadlock — remaining stories have unsatisfiable dependencies.

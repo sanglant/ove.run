@@ -226,40 +226,6 @@
   text-transform: uppercase;
 }
 
-.emptyPaneContent {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  text-align: center;
-  pointer-events: none;
-}
-
-.emptyPaneCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.95rem 1rem;
-  border: 1px dashed color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--bg-primary) 78%, transparent);
-  color: var(--text-secondary);
-  max-width: 15rem;
-}
-
-.emptyPaneTitle {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-primary);
-}
-
-.emptyPaneHint {
-  font-size: 0.7rem;
-  line-height: 1.45;
-}
 
 .resizeHandle {
   position: absolute;
@@ -331,4 +297,35 @@
 .newSessionButton {
   background-color: var(--accent);
   color: var(--bg-primary);
+}
+
+.emptyPaneContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  inset: 0;
+}
+
+.emptyPaneCard {
+  text-align: center;
+  padding: 1.5rem 2rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+}
+
+.emptyPaneTitle {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.emptyPaneHint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  margin-top: 0.5rem;
+  max-width: 220px;
 }

@@ -9,3 +9,63 @@
 .containerHidden {
   display: none;
 }
+
+/* ── Arbiter integrated layout ── */
+
+.arbiterWrapper {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Shared border radius to read as one unit */
+  border-radius: 0;
+}
+
+.arbiterTerminal {
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  /* xterm.js needs block display */
+  display: block;
+  min-width: 0;
+}
+
+.arbiterDivider {
+  flex-shrink: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.arbiterDivider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: color-mix(in srgb, var(--arbiter, #4ec9b0) 30%, var(--border));
+  transition: background-color 120ms ease, width 120ms ease, left 120ms ease;
+}
+
+.arbiterDivider:hover::after,
+.arbiterDivider:active::after {
+  left: 1px;
+  width: 3px;
+  background: color-mix(in srgb, var(--arbiter, #4ec9b0) 70%, transparent);
+}
+
+.arbiterSidebar {
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  min-width: 0;
+  /* Subtle teal-tinted background to visually distinguish the sidebar */
+  background: color-mix(in srgb, var(--arbiter, #4ec9b0) 3%, var(--bg-secondary));
+  border-left: none; /* divider handles the separation */
+}

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { BugItem, ProviderConfig } from "../features/bugs/types";
 import * as tauri from "../lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 interface BugsState {
   bugs: BugItem[];
@@ -29,6 +30,7 @@ export const useBugsStore = create<BugsState>((set) => ({
       set({ providerConfig: config, authenticated: authed });
     } catch (e) {
       console.error("Failed to load bug config:", e);
+      useNotificationStore.getState().showToast("error", "Failed to load bug tracker config", String(e));
     }
   },
 
@@ -40,6 +42,7 @@ export const useBugsStore = create<BugsState>((set) => ({
     } catch (e) {
       console.error("Failed to load bugs:", e);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load bugs", String(e));
     }
   },
 
@@ -49,6 +52,7 @@ export const useBugsStore = create<BugsState>((set) => ({
       set({ selectedBug: detail });
     } catch (e) {
       console.error("Failed to load bug detail:", e);
+      useNotificationStore.getState().showToast("error", "Failed to load bug detail", String(e));
       set({ selectedBug: bug });
     }
   },

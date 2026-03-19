@@ -1,5 +1,5 @@
-use rusqlite::{params, Connection};
 use crate::state::ContextUnit;
+use rusqlite::{params, Connection};
 
 fn row_to_context_unit(row: &rusqlite::Row) -> Result<ContextUnit, rusqlite::Error> {
     Ok(ContextUnit {
@@ -44,7 +44,10 @@ fn sync_fts_delete(conn: &Connection, rid: i64, unit: &ContextUnit) -> Result<()
 
 // --- Core CRUD ---
 
-pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result<Vec<ContextUnit>, rusqlite::Error> {
+pub fn list_context_units(
+    conn: &Connection,
+    project_id: Option<&str>,
+) -> Result<Vec<ContextUnit>, rusqlite::Error> {
     let mut units = Vec::new();
     match project_id {
         Some(pid) => {
@@ -52,7 +55,7 @@ pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result
                 "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
                  FROM context_units WHERE project_id = ?1 OR project_id IS NULL ORDER BY updated_at DESC"
             )?;
-            let rows = stmt.query_map(params![pid], |row| row_to_context_unit(row))?;
+            let rows = stmt.query_map(params![pid], row_to_context_unit)?;
             for row in rows {
                 units.push(row?);
             }
@@ -62,7 +65,7 @@ pub fn list_context_units(conn: &Connection, project_id: Option<&str>) -> Result
                 "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
                  FROM context_units WHERE project_id IS NULL ORDER BY updated_at DESC"
             )?;
-            let rows = stmt.query_map([], |row| row_to_context_unit(row))?;
+            let rows = stmt.query_map([], row_to_context_unit)?;
             for row in rows {
                 units.push(row?);
             }
@@ -76,7 +79,7 @@ pub fn get_context_unit(conn: &Connection, id: &str) -> Result<ContextUnit, rusq
         "SELECT id, project_id, name, type, scope, tags_json, l0_summary, l1_overview, l2_content, created_at, updated_at, is_bundled, bundled_slug \
          FROM context_units WHERE id = ?1",
         params![id],
-        |row| row_to_context_unit(row),
+        row_to_context_unit,
     )
 }
 
@@ -155,8 +158,14 @@ pub fn delete_context_unit(conn: &Connection, id: &str) -> Result<(), rusqlite::
     let tx = conn.unchecked_transaction()?;
 
     // Delete assignments and defaults first
-    tx.execute("DELETE FROM context_assignments WHERE context_unit_id = ?1", params![id])?;
-    tx.execute("DELETE FROM context_defaults WHERE context_unit_id = ?1", params![id])?;
+    tx.execute(
+        "DELETE FROM context_assignments WHERE context_unit_id = ?1",
+        params![id],
+    )?;
+    tx.execute(
+        "DELETE FROM context_defaults WHERE context_unit_id = ?1",
+        params![id],
+    )?;
 
     // Delete FTS entry
     sync_fts_delete(&tx, rid, &unit)?;
@@ -168,7 +177,12 @@ pub fn delete_context_unit(conn: &Connection, id: &str) -> Result<(), rusqlite::
     Ok(())
 }
 
-pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&str>) -> Result<Vec<ContextUnit>, rusqlite::Error> {
+pub fn search_context_units(
+    conn: &Connection,
+    query: &str,
+    project_id: Option<&str>,
+) -> Result<Vec<ContextUnit>, rusqlite::Error> {
+    let safe_query = format!("\"{}\"", query.replace('"', "\"\""));
     let mut units = Vec::new();
     match project_id {
         Some(pid) => {
@@ -180,7 +194,7 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
                  WHERE context_units_fts MATCH ?1 AND (cu.project_id = ?2 OR cu.project_id IS NULL) \
                  ORDER BY rank"
             )?;
-            let rows = stmt.query_map(params![query, pid], |row| row_to_context_unit(row))?;
+            let rows = stmt.query_map(params![safe_query, pid], row_to_context_unit)?;
             for row in rows {
                 units.push(row?);
             }
@@ -194,7 +208,7 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
                  WHERE context_units_fts MATCH ?1 AND cu.project_id IS NULL \
                  ORDER BY rank"
             )?;
-            let rows = stmt.query_map(params![query], |row| row_to_context_unit(row))?;
+            let rows = stmt.query_map(params![safe_query], row_to_context_unit)?;
             for row in rows {
                 units.push(row?);
             }
@@ -203,7 +217,10 @@ pub fn search_context_units(conn: &Connection, query: &str, project_id: Option<&
     Ok(units)
 }
 
-pub fn list_l0_summaries(conn: &Connection, project_id: &str) -> Result<Vec<(String, String, String)>, rusqlite::Error> {
+pub fn list_l0_summaries(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<(String, String, String)>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, name, l0_summary FROM context_units \
          WHERE (project_id = ?1 OR (project_id IS NULL AND is_bundled = 0)) AND l0_summary IS NOT NULL \
@@ -221,7 +238,11 @@ pub fn list_l0_summaries(conn: &Connection, project_id: &str) -> Result<Vec<(Str
 
 // --- Context assignment functions ---
 
-pub fn assign_context_to_session(conn: &Connection, unit_id: &str, session_id: &str) -> Result<(), rusqlite::Error> {
+pub fn assign_context_to_session(
+    conn: &Connection,
+    unit_id: &str,
+    session_id: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT OR IGNORE INTO context_assignments (context_unit_id, session_id, assigned_at) VALUES (?1, ?2, ?3)",
         params![unit_id, session_id, chrono::Utc::now().to_rfc3339()],
@@ -229,7 +250,11 @@ pub fn assign_context_to_session(conn: &Connection, unit_id: &str, session_id: &
     Ok(())
 }
 
-pub fn unassign_context_from_session(conn: &Connection, unit_id: &str, session_id: &str) -> Result<(), rusqlite::Error> {
+pub fn unassign_context_from_session(
+    conn: &Connection,
+    unit_id: &str,
+    session_id: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "DELETE FROM context_assignments WHERE context_unit_id = ?1 AND session_id = ?2",
         params![unit_id, session_id],
@@ -237,7 +262,10 @@ pub fn unassign_context_from_session(conn: &Connection, unit_id: &str, session_i
     Ok(())
 }
 
-pub fn list_session_context(conn: &Connection, session_id: &str) -> Result<Vec<ContextUnit>, rusqlite::Error> {
+pub fn list_session_context(
+    conn: &Connection,
+    session_id: &str,
+) -> Result<Vec<ContextUnit>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
          cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
@@ -246,7 +274,7 @@ pub fn list_session_context(conn: &Connection, session_id: &str) -> Result<Vec<C
          WHERE ca.session_id = ?1 \
          ORDER BY ca.assigned_at DESC"
     )?;
-    let rows = stmt.query_map(params![session_id], |row| row_to_context_unit(row))?;
+    let rows = stmt.query_map(params![session_id], row_to_context_unit)?;
     let mut units = Vec::new();
     for row in rows {
         units.push(row?);
@@ -254,7 +282,11 @@ pub fn list_session_context(conn: &Connection, session_id: &str) -> Result<Vec<C
     Ok(units)
 }
 
-pub fn set_project_default(conn: &Connection, unit_id: &str, project_id: &str) -> Result<(), rusqlite::Error> {
+pub fn set_project_default(
+    conn: &Connection,
+    unit_id: &str,
+    project_id: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT OR IGNORE INTO context_defaults (context_unit_id, project_id) VALUES (?1, ?2)",
         params![unit_id, project_id],
@@ -262,7 +294,11 @@ pub fn set_project_default(conn: &Connection, unit_id: &str, project_id: &str) -
     Ok(())
 }
 
-pub fn remove_project_default(conn: &Connection, unit_id: &str, project_id: &str) -> Result<(), rusqlite::Error> {
+pub fn remove_project_default(
+    conn: &Connection,
+    unit_id: &str,
+    project_id: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "DELETE FROM context_defaults WHERE context_unit_id = ?1 AND project_id = ?2",
         params![unit_id, project_id],
@@ -270,7 +306,10 @@ pub fn remove_project_default(conn: &Connection, unit_id: &str, project_id: &str
     Ok(())
 }
 
-pub fn list_project_defaults(conn: &Connection, project_id: &str) -> Result<Vec<ContextUnit>, rusqlite::Error> {
+pub fn list_project_defaults(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<ContextUnit>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT cu.id, cu.project_id, cu.name, cu.type, cu.scope, cu.tags_json, \
          cu.l0_summary, cu.l1_overview, cu.l2_content, cu.created_at, cu.updated_at, cu.is_bundled, cu.bundled_slug \
@@ -279,7 +318,7 @@ pub fn list_project_defaults(conn: &Connection, project_id: &str) -> Result<Vec<
          WHERE cd.project_id = ?1 \
          ORDER BY cu.updated_at DESC"
     )?;
-    let rows = stmt.query_map(params![project_id], |row| row_to_context_unit(row))?;
+    let rows = stmt.query_map(params![project_id], row_to_context_unit)?;
     let mut units = Vec::new();
     for row in rows {
         units.push(row?);
@@ -287,7 +326,11 @@ pub fn list_project_defaults(conn: &Connection, project_id: &str) -> Result<Vec<
     Ok(units)
 }
 
-pub fn copy_defaults_to_session(conn: &Connection, project_id: &str, session_id: &str) -> Result<(), rusqlite::Error> {
+pub fn copy_defaults_to_session(
+    conn: &Connection,
+    project_id: &str,
+    session_id: &str,
+) -> Result<(), rusqlite::Error> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO context_assignments (context_unit_id, session_id, assigned_at) \
@@ -298,7 +341,11 @@ pub fn copy_defaults_to_session(conn: &Connection, project_id: &str, session_id:
 }
 
 /// Upsert a bundled context unit by its slug.
-pub fn upsert_bundled_unit(conn: &Connection, unit: &ContextUnit, slug: &str) -> Result<(), rusqlite::Error> {
+pub fn upsert_bundled_unit(
+    conn: &Connection,
+    unit: &ContextUnit,
+    slug: &str,
+) -> Result<(), rusqlite::Error> {
     use rusqlite::OptionalExtension;
     let existing_id: Option<String> = conn
         .query_row(
@@ -309,7 +356,25 @@ pub fn upsert_bundled_unit(conn: &Connection, unit: &ContextUnit, slug: &str) ->
         .optional()?;
 
     if let Some(id) = existing_id {
-        conn.execute(
+        // Fetch the old row and its rid before modifying so we can remove the
+        // stale FTS entry, then insert a fresh one after the UPDATE.
+        let (rid, old_unit) = {
+            let old = get_context_unit(conn, &id)?;
+            let rid: i64 = conn.query_row(
+                "SELECT rid FROM context_units WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )?;
+            (rid, old)
+        };
+
+        // SAFETY: unchecked_transaction does not require &mut Connection.
+        // The transaction is rolled back automatically on drop if commit() is not called.
+        let tx = conn.unchecked_transaction()?;
+
+        sync_fts_delete(&tx, rid, &old_unit)?;
+
+        tx.execute(
             "UPDATE context_units SET name = ?1, type = ?2, l0_summary = ?3, l1_overview = ?4, \
              l2_content = ?5, is_bundled = 1, updated_at = ?6 WHERE id = ?7",
             params![
@@ -322,6 +387,17 @@ pub fn upsert_bundled_unit(conn: &Connection, unit: &ContextUnit, slug: &str) ->
                 id,
             ],
         )?;
+
+        // Build the updated unit so sync_fts_insert can look it up by id.
+        // The id comes from the existing row; all other searchable fields come
+        // from the incoming `unit`.
+        let updated_unit = crate::state::ContextUnit {
+            id: id.clone(),
+            ..unit.clone()
+        };
+        sync_fts_insert(&tx, &updated_unit)?;
+
+        tx.commit()?;
     } else {
         conn.execute(
             "INSERT INTO context_units (id, project_id, name, type, scope, tags_json, l0_summary, \

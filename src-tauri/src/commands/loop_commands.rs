@@ -1,7 +1,7 @@
-use tauri::State;
-use crate::error::{AppError, lock_err};
-use crate::state::{AppState, QualityGateConfig};
+use crate::error::{lock_err, AppError};
 use crate::loop_engine::engine::LoopCommand;
+use crate::state::{AppState, QualityGateConfig};
+use tauri::State;
 
 #[tracing::instrument(skip(state))]
 #[tauri::command]
@@ -12,28 +12,41 @@ pub async fn start_loop(
     user_request: Option<String>,
     session_id: Option<String>,
 ) -> Result<(), AppError> {
-    state.loop_cmd_tx.send(LoopCommand::Start { project_id, project_path, user_request, session_id })
+    state
+        .loop_cmd_tx
+        .send(LoopCommand::Start {
+            project_id,
+            project_path,
+            user_request,
+            session_id,
+        })
         .await
         .map_err(|e| AppError::Channel(format!("Failed to send start: {}", e)))
 }
 
 #[tauri::command]
 pub async fn pause_loop(state: State<'_, AppState>) -> Result<(), AppError> {
-    state.loop_cmd_tx.send(LoopCommand::Pause)
+    state
+        .loop_cmd_tx
+        .send(LoopCommand::Pause)
         .await
         .map_err(|e| AppError::Channel(format!("Failed to send pause: {}", e)))
 }
 
 #[tauri::command]
 pub async fn resume_loop(state: State<'_, AppState>) -> Result<(), AppError> {
-    state.loop_cmd_tx.send(LoopCommand::Resume)
+    state
+        .loop_cmd_tx
+        .send(LoopCommand::Resume)
         .await
         .map_err(|e| AppError::Channel(format!("Failed to send resume: {}", e)))
 }
 
 #[tauri::command]
 pub async fn cancel_loop(state: State<'_, AppState>) -> Result<(), AppError> {
-    state.loop_cmd_tx.send(LoopCommand::Cancel)
+    state
+        .loop_cmd_tx
+        .send(LoopCommand::Cancel)
         .await
         .map_err(|e| AppError::Channel(format!("Failed to send cancel: {}", e)))
 }
@@ -60,8 +73,7 @@ pub async fn set_quality_gates(
 ) -> Result<(), AppError> {
     let conn = state.db.lock().map_err(lock_err)?;
     let key = format!("quality_gates_{}", project_id);
-    let json = serde_json::to_string(&config)
-        .map_err(|e| AppError::Other(e.to_string()))?;
+    let json = serde_json::to_string(&config).map_err(|e| AppError::Other(e.to_string()))?;
     crate::db::settings::set_setting(&conn, &key, &json).map_err(Into::into)
 }
 
@@ -84,6 +96,11 @@ pub async fn set_max_iterations(
     project_id: String,
     max: i32,
 ) -> Result<(), AppError> {
+    if max < 1 {
+        return Err(AppError::Validation(
+            "max_iterations must be at least 1".into(),
+        ));
+    }
     let conn = state.db.lock().map_err(lock_err)?;
     if let Some(mut arb) = crate::db::arbiter_state::get_arbiter_state(&conn, &project_id)? {
         arb.max_iterations = max;

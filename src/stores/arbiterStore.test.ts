@@ -136,4 +136,37 @@ describe("arbiterStore", () => {
       await expect(useArbiterStore.getState().setTrustLevel("unknown", 1)).resolves.not.toThrow();
     });
   });
+
+  describe("decompose", () => {
+    it("stores decomposed stories keyed by projectId", async () => {
+      const stories = [makeStory("s1", "p1"), makeStory("s2", "p1")];
+      mockInvoke.mockResolvedValueOnce(stories);
+
+      await useArbiterStore.getState().decompose("p1", "/path/to/project", "build a login form");
+
+      expect(useArbiterStore.getState().stories["p1"]).toHaveLength(2);
+      expect(useArbiterStore.getState().stories["p1"][0].id).toBe("s1");
+      expect(useArbiterStore.getState().loading).toBe(false);
+    });
+
+    it("keeps stories for other projects when decomposing", async () => {
+      useArbiterStore.setState({
+        stories: { other: [makeStory("s0", "other")] },
+      });
+      mockInvoke.mockResolvedValueOnce([makeStory("s1", "p1")]);
+
+      await useArbiterStore.getState().decompose("p1", "/path", "request");
+
+      expect(useArbiterStore.getState().stories["other"]).toHaveLength(1);
+      expect(useArbiterStore.getState().stories["p1"]).toHaveLength(1);
+    });
+
+    it("resets loading on error", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("decompose failed"));
+
+      await useArbiterStore.getState().decompose("p1", "/path", "request");
+
+      expect(useArbiterStore.getState().loading).toBe(false);
+    });
+  });
 });

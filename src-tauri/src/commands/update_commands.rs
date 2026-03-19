@@ -108,7 +108,8 @@ pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
 
-    let update_available = !latest_version.is_empty() && is_newer(&current_version, &latest_version);
+    let update_available =
+        !latest_version.is_empty() && is_newer(&current_version, &latest_version);
 
     Ok(UpdateInfo {
         current_version,

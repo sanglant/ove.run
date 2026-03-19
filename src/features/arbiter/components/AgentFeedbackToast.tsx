@@ -13,6 +13,7 @@ import { arbiterAnswer, arbiterProcessCompletion } from "@/lib/arbiter";
 import { sendKeys, toBytes } from "@/lib/pty-utils";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
+import DOMPurify from "dompurify";
 import type { FeedbackItem } from "@/types";
 import { AgentBadge } from "@/components/ui/AgentBadge";
 import classes from "./AgentFeedbackToast.module.css";
@@ -124,7 +125,8 @@ export function AgentFeedbackToast({ item, onDismiss, showFocusButton }: AgentFe
   const outputHtml = useMemo(() => {
     const ansiUp = new AnsiUp();
     ansiUp.use_classes = false;
-    return ansiUp.ansi_to_html(item.output).replace(/\n/g, "<br>");
+    const raw = ansiUp.ansi_to_html(item.output).replace(/\n/g, "<br>");
+    return DOMPurify.sanitize(raw);
   }, [item.output]);
 
   return (
@@ -159,7 +161,7 @@ export function AgentFeedbackToast({ item, onDismiss, showFocusButton }: AgentFe
           <Progress
             value={(timeLeft / arbiterTimeoutMs) * 100}
             size={3}
-            color="blue"
+            color="var(--arbiter)"
             animated
           />
         </div>

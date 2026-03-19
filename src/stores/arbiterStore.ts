@@ -6,6 +6,7 @@ import {
   listStories,
   decomposeRequest as apiDecomposeRequest,
 } from "@/lib/tauri";
+import { useNotificationStore } from "./notificationStore";
 
 interface ArbiterStoreState {
   arbiterState: Record<string, ArbiterState>;
@@ -37,6 +38,7 @@ export const useArbiterStore = create<ArbiterStoreState>((set, get) => ({
     } catch (err) {
       console.error("Failed to load arbiter state:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load arbiter state", String(err));
     }
   },
 
@@ -54,6 +56,7 @@ export const useArbiterStore = create<ArbiterStoreState>((set, get) => ({
       }
     } catch (err) {
       console.error("Failed to set trust level:", err);
+      useNotificationStore.getState().showToast("error", "Failed to set trust level", String(err));
     }
   },
 
@@ -68,6 +71,7 @@ export const useArbiterStore = create<ArbiterStoreState>((set, get) => ({
     } catch (err) {
       console.error("Failed to load stories:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to load stories", String(err));
     }
   },
 
@@ -82,6 +86,7 @@ export const useArbiterStore = create<ArbiterStoreState>((set, get) => ({
     } catch (err) {
       console.error("Failed to decompose request:", err);
       set({ loading: false });
+      useNotificationStore.getState().showToast("error", "Failed to decompose request", String(err));
     }
   },
 }));

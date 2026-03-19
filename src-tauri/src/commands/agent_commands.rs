@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use crate::agents::registry::get_agent_definitions;
 use crate::error::AppError;
 use crate::state::AgentType;
+use serde::{Deserialize, Serialize};
 
 /// Serializable DTO for agent definitions (sent to frontend)
 #[derive(Debug, Clone, Serialize, Deserialize)]

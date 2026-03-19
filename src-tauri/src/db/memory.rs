@@ -1,5 +1,5 @@
-use rusqlite::{params, Connection};
 use crate::state::{Consolidation, Memory};
+use rusqlite::{params, Connection};
 
 // --- Row helpers ---
 
@@ -46,7 +46,11 @@ fn sync_memory_fts_insert(conn: &Connection, memory: &Memory) -> Result<(), rusq
     Ok(())
 }
 
-fn sync_memory_fts_delete(conn: &Connection, rid: i64, memory: &Memory) -> Result<(), rusqlite::Error> {
+fn sync_memory_fts_delete(
+    conn: &Connection,
+    rid: i64,
+    memory: &Memory,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT INTO memories_fts(memories_fts, rowid, content, summary) VALUES('delete', ?1, ?2, ?3)",
         params![rid, memory.content, memory.summary],
@@ -58,7 +62,10 @@ fn sync_memory_fts_delete(conn: &Connection, rid: i64, memory: &Memory) -> Resul
 // consolidations_fts has content=consolidations but no content_rowid, so it uses the
 // implicit SQLite rowid of the consolidations table (not the id TEXT primary key).
 
-fn sync_consolidation_fts_insert(conn: &Connection, consolidation: &Consolidation) -> Result<(), rusqlite::Error> {
+fn sync_consolidation_fts_insert(
+    conn: &Connection,
+    consolidation: &Consolidation,
+) -> Result<(), rusqlite::Error> {
     let rowid: i64 = conn.query_row(
         "SELECT rowid FROM consolidations WHERE id = ?1",
         params![consolidation.id],
@@ -71,7 +78,10 @@ fn sync_consolidation_fts_insert(conn: &Connection, consolidation: &Consolidatio
     Ok(())
 }
 
-fn sync_consolidation_fts_delete(conn: &Connection, consolidation: &Consolidation) -> Result<(), rusqlite::Error> {
+fn sync_consolidation_fts_delete(
+    conn: &Connection,
+    consolidation: &Consolidation,
+) -> Result<(), rusqlite::Error> {
     let rowid: i64 = conn.query_row(
         "SELECT rowid FROM consolidations WHERE id = ?1",
         params![consolidation.id],
@@ -126,36 +136,37 @@ pub fn list_memories(
     match (session_id, visibility) {
         (Some(sid), Some(vis)) => {
             let mut stmt = conn.prepare(&format!(
-                "{} AND session_id = ?2 AND visibility = ?3 ORDER BY created_at DESC", base
+                "{} AND session_id = ?2 AND visibility = ?3 ORDER BY created_at DESC",
+                base
             ))?;
-            let rows = stmt.query_map(params![project_id, sid, vis], |row| row_to_memory(row))?;
+            let rows = stmt.query_map(params![project_id, sid, vis], row_to_memory)?;
             for row in rows {
                 memories.push(row?);
             }
         }
         (Some(sid), None) => {
             let mut stmt = conn.prepare(&format!(
-                "{} AND session_id = ?2 ORDER BY created_at DESC", base
+                "{} AND session_id = ?2 ORDER BY created_at DESC",
+                base
             ))?;
-            let rows = stmt.query_map(params![project_id, sid], |row| row_to_memory(row))?;
+            let rows = stmt.query_map(params![project_id, sid], row_to_memory)?;
             for row in rows {
                 memories.push(row?);
             }
         }
         (None, Some(vis)) => {
             let mut stmt = conn.prepare(&format!(
-                "{} AND visibility = ?2 ORDER BY created_at DESC", base
+                "{} AND visibility = ?2 ORDER BY created_at DESC",
+                base
             ))?;
-            let rows = stmt.query_map(params![project_id, vis], |row| row_to_memory(row))?;
+            let rows = stmt.query_map(params![project_id, vis], row_to_memory)?;
             for row in rows {
                 memories.push(row?);
             }
         }
         (None, None) => {
-            let mut stmt = conn.prepare(&format!(
-                "{} ORDER BY created_at DESC", base
-            ))?;
-            let rows = stmt.query_map(params![project_id], |row| row_to_memory(row))?;
+            let mut stmt = conn.prepare(&format!("{} ORDER BY created_at DESC", base))?;
+            let rows = stmt.query_map(params![project_id], row_to_memory)?;
             for row in rows {
                 memories.push(row?);
             }
@@ -171,11 +182,15 @@ pub fn get_memory(conn: &Connection, id: &str) -> Result<Memory, rusqlite::Error
          entities_json, topics_json, importance, consolidated, created_at \
          FROM memories WHERE id = ?1",
         params![id],
-        |row| row_to_memory(row),
+        row_to_memory,
     )
 }
 
-pub fn update_memory_visibility(conn: &Connection, id: &str, visibility: &str) -> Result<(), rusqlite::Error> {
+pub fn update_memory_visibility(
+    conn: &Connection,
+    id: &str,
+    visibility: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE memories SET visibility = ?1 WHERE id = ?2",
         params![visibility, id],
@@ -183,7 +198,10 @@ pub fn update_memory_visibility(conn: &Connection, id: &str, visibility: &str) -
     Ok(())
 }
 
-pub fn mark_memories_consolidated(conn: &Connection, ids: &[String]) -> Result<(), rusqlite::Error> {
+pub fn mark_memories_consolidated(
+    conn: &Connection,
+    ids: &[String],
+) -> Result<(), rusqlite::Error> {
     for id in ids {
         conn.execute(
             "UPDATE memories SET consolidated = 1 WHERE id = ?1",
@@ -216,6 +234,7 @@ pub fn search_memories(
     session_id: Option<&str>,
     limit: usize,
 ) -> Result<Vec<Memory>, rusqlite::Error> {
+    let safe_query = format!("\"{}\"", query.replace('"', "\"\""));
     let mut memories = Vec::new();
 
     let base_sql = "SELECT m.id, m.project_id, m.session_id, m.visibility, m.content, m.summary, \
@@ -235,20 +254,18 @@ pub fn search_memories(
                 base_sql
             );
             let mut stmt = conn.prepare(&sql)?;
-            let rows = stmt.query_map(params![query, project_id, sid, limit as i64], |row| {
-                row_to_memory(row)
-            })?;
+            let rows = stmt.query_map(
+                params![safe_query, project_id, sid, limit as i64],
+                row_to_memory,
+            )?;
             for row in rows {
                 memories.push(row?);
             }
         }
         None => {
-            let sql = format!(
-                "{} ORDER BY effective_importance DESC LIMIT ?3",
-                base_sql
-            );
+            let sql = format!("{} ORDER BY effective_importance DESC LIMIT ?3", base_sql);
             let mut stmt = conn.prepare(&sql)?;
-            let rows = stmt.query_map(params![query, project_id, limit as i64], |row| {
+            let rows = stmt.query_map(params![safe_query, project_id, limit as i64], |row| {
                 row_to_memory(row)
             })?;
             for row in rows {
@@ -261,7 +278,10 @@ pub fn search_memories(
 }
 
 /// Delete unconsolidated memories with effective_importance < 0.05
-pub fn prune_decayed_memories(conn: &Connection, project_id: &str) -> Result<usize, rusqlite::Error> {
+pub fn prune_decayed_memories(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<usize, rusqlite::Error> {
     // Collect memories that need to be pruned (FTS must be updated per row)
     let to_prune: Vec<(i64, Memory)> = {
         let mut stmt = conn.prepare(
@@ -316,16 +336,20 @@ pub fn prune_decayed_memories(conn: &Connection, project_id: &str) -> Result<usi
 }
 
 /// Get unconsolidated memories for a project, ordered by importance DESC.
-pub fn get_unconsolidated_memories(conn: &Connection, project_id: &str, limit: usize) -> Result<Vec<Memory>, rusqlite::Error> {
+pub fn get_unconsolidated_memories(
+    conn: &Connection,
+    project_id: &str,
+    limit: usize,
+) -> Result<Vec<Memory>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, project_id, session_id, visibility, content, summary, \
          entities_json, topics_json, importance, consolidated, created_at \
          FROM memories \
          WHERE project_id = ?1 AND consolidated = 0 \
          ORDER BY importance DESC \
-         LIMIT ?2"
+         LIMIT ?2",
     )?;
-    let rows = stmt.query_map(params![project_id, limit as i64], |row| row_to_memory(row))?;
+    let rows = stmt.query_map(params![project_id, limit as i64], row_to_memory)?;
     let mut memories = Vec::new();
     for row in rows {
         memories.push(row?);
@@ -344,7 +368,10 @@ pub fn count_unconsolidated(conn: &Connection, project_id: &str) -> Result<i64, 
 
 // --- Consolidation CRUD ---
 
-pub fn create_consolidation(conn: &Connection, consolidation: &Consolidation) -> Result<(), rusqlite::Error> {
+pub fn create_consolidation(
+    conn: &Connection,
+    consolidation: &Consolidation,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT INTO consolidations (id, project_id, source_ids_json, summary, insight, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -361,12 +388,15 @@ pub fn create_consolidation(conn: &Connection, consolidation: &Consolidation) ->
     Ok(())
 }
 
-pub fn list_consolidations(conn: &Connection, project_id: &str) -> Result<Vec<Consolidation>, rusqlite::Error> {
+pub fn list_consolidations(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Vec<Consolidation>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT id, project_id, source_ids_json, summary, insight, created_at \
-         FROM consolidations WHERE project_id = ?1 ORDER BY created_at DESC"
+         FROM consolidations WHERE project_id = ?1 ORDER BY created_at DESC",
     )?;
-    let rows = stmt.query_map(params![project_id], |row| row_to_consolidation(row))?;
+    let rows = stmt.query_map(params![project_id], row_to_consolidation)?;
     let mut consolidations = Vec::new();
     for row in rows {
         consolidations.push(row?);
@@ -379,14 +409,15 @@ pub fn search_consolidations(
     query: &str,
     project_id: &str,
 ) -> Result<Vec<Consolidation>, rusqlite::Error> {
+    let safe_query = format!("\"{}\"", query.replace('"', "\"\""));
     let mut stmt = conn.prepare(
         "SELECT c.id, c.project_id, c.source_ids_json, c.summary, c.insight, c.created_at \
          FROM consolidations c \
          JOIN consolidations_fts fts ON c.rowid = fts.rowid \
          WHERE consolidations_fts MATCH ?1 AND c.project_id = ?2 \
-         ORDER BY rank"
+         ORDER BY rank",
     )?;
-    let rows = stmt.query_map(params![query, project_id], |row| row_to_consolidation(row))?;
+    let rows = stmt.query_map(params![safe_query, project_id], row_to_consolidation)?;
     let mut consolidations = Vec::new();
     for row in rows {
         consolidations.push(row?);
@@ -399,7 +430,7 @@ pub fn delete_consolidation(conn: &Connection, id: &str) -> Result<(), rusqlite:
         "SELECT id, project_id, source_ids_json, summary, insight, created_at \
          FROM consolidations WHERE id = ?1",
         params![id],
-        |row| row_to_consolidation(row),
+        row_to_consolidation,
     )?;
     sync_consolidation_fts_delete(conn, &consolidation)?;
     conn.execute("DELETE FROM consolidations WHERE id = ?1", params![id])?;

@@ -5,8 +5,8 @@ pub mod linux;
 #[cfg(target_os = "macos")]
 pub mod macos;
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// What sandbox backends are available on this system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,12 +56,12 @@ pub fn detect_capabilities() -> SandboxCapabilities {
                 detail: "bubblewrap (bwrap) detected — namespace + filesystem isolation".into(),
             };
         }
-        return SandboxCapabilities {
+        SandboxCapabilities {
             platform: "linux".into(),
             available: false,
             backend: None,
             detail: "Install bubblewrap for agent sandboxing: sudo apt install bubblewrap".into(),
-        };
+        }
     }
 
     #[cfg(target_os = "macos")]
@@ -88,7 +88,8 @@ pub fn detect_capabilities() -> SandboxCapabilities {
             platform: "windows".into(),
             available: false,
             backend: None,
-            detail: "Agent sandboxing is not yet supported on Windows. Use WSL2 for isolation.".into(),
+            detail: "Agent sandboxing is not yet supported on Windows. Use WSL2 for isolation."
+                .into(),
         };
     }
 

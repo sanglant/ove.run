@@ -1,21 +1,29 @@
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use tauri::{AppHandle, Emitter};
 
 pub struct PtySession {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     master: Arc<Mutex<Box<dyn portable_pty::MasterPty + Send>>>,
     /// Keep the child alive; dropping it on some platforms signals the process.
-    _child: Box<dyn portable_pty::Child + Send + Sync>,
+    child: Box<dyn portable_pty::Child + Send + Sync>,
     shutdown_tx: std::sync::mpsc::Sender<()>,
+    /// Join handle for the reader thread; taken during kill so it can be joined.
+    reader_thread: Option<std::thread::JoinHandle<()>>,
     /// Fires once when the PTY reader thread detects process exit (EOF or error).
     exit_rx: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 pub struct PtyManager {
     sessions: HashMap<String, PtySession>,
+}
+
+impl Default for PtyManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PtyManager {
@@ -25,6 +33,7 @@ impl PtyManager {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn(
         &mut self,
         session_id: String,
@@ -93,7 +102,7 @@ impl PtyManager {
 
         let sid = session_id.clone();
         let app = app_handle.clone();
-        std::thread::spawn(move || {
+        let reader_thread = std::thread::spawn(move || {
             let mut buf = [0u8; 4096];
             loop {
                 // Check for shutdown signal (non-blocking)
@@ -124,8 +133,9 @@ impl PtyManager {
         let session = PtySession {
             writer,
             master,
-            _child: child,
+            child,
             shutdown_tx,
+            reader_thread: Some(reader_thread),
             exit_rx: Some(exit_rx),
         };
 
@@ -148,9 +158,7 @@ impl PtyManager {
             .write_all(&data)
             .map_err(|e| format!("Write error: {}", e))?;
 
-        writer
-            .flush()
-            .map_err(|e| format!("Flush error: {}", e))?;
+        writer.flush().map_err(|e| format!("Flush error: {}", e))?;
 
         Ok(())
     }
@@ -185,14 +193,87 @@ impl PtyManager {
     }
 
     pub fn kill(&mut self, session_id: &str) -> Result<(), String> {
-        let session = self
+        let mut session = self
             .sessions
             .remove(session_id)
             .ok_or_else(|| format!("Session {} not found", session_id))?;
 
-        // Signal the reader thread to stop
-        let _ = session.shutdown_tx.send(());
+        kill_session(&mut session);
 
         Ok(())
+    }
+
+    /// Kill every active session. Used during application shutdown.
+    pub fn kill_all(&mut self) {
+        for (_, mut session) in self.sessions.drain() {
+            kill_session(&mut session);
+        }
+    }
+}
+
+/// Gracefully shut down a single PTY session:
+/// 1. Close the writer (sends EOF / SIGHUP to the child on most platforms).
+/// 2. Wait up to 3 seconds for the reader thread to report exit.
+/// 3. Force-kill the child process if it has not exited yet.
+/// 4. Signal the reader thread to stop.
+fn kill_session(session: &mut PtySession) {
+    // Step 1: drop the writer to close stdin/send EOF to the child.
+    if let Ok(mut w) = session.writer.lock() {
+        let _ = w.flush();
+        // Replacing the writer with a no-op sink closes the underlying fd.
+        *w = Box::new(std::io::sink());
+    }
+
+    // Step 2: wait up to 200 ms for the child to exit on its own.
+    let exited = session
+        .child
+        .try_wait()
+        .map(|s| s.is_some())
+        .unwrap_or(false);
+
+    if !exited {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(200);
+        loop {
+            if std::time::Instant::now() >= deadline {
+                break;
+            }
+            match session.child.try_wait() {
+                Ok(Some(_)) => break,
+                _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+            }
+        }
+    }
+
+    // Step 3: force-kill if still alive.
+    let still_alive = session
+        .child
+        .try_wait()
+        .map(|s| s.is_none())
+        .unwrap_or(true);
+
+    if still_alive {
+        let _ = session.child.kill();
+    }
+
+    // Step 4: signal the reader thread to stop, then join it so the OS-level
+    // thread is fully cleaned up before this function returns.
+    let _ = session.shutdown_tx.send(());
+    if let Some(handle) = session.reader_thread.take() {
+        // The thread exits quickly after receiving the shutdown signal or when
+        // the PTY EOF was already delivered.  We join with a short busy-wait
+        // timeout so a stuck thread never blocks the caller indefinitely.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
+        loop {
+            if handle.is_finished() {
+                let _ = handle.join();
+                break;
+            }
+            if std::time::Instant::now() >= deadline {
+                // Thread did not exit in time — abandon the join to avoid
+                // blocking. The handle is dropped here which detaches the thread.
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
 }

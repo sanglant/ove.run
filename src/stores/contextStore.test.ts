@@ -131,4 +131,36 @@ describe("contextStore", () => {
       expect(units[0].is_bundled).toBe(false);
     });
   });
+
+  describe("search", () => {
+    it("replaces units with search results and clears loading", async () => {
+      useContextStore.setState({ units: [makeUnit("u1")] });
+      const results = [makeUnit("u2"), makeUnit("u3")];
+      mockInvoke.mockResolvedValueOnce(results);
+
+      await useContextStore.getState().search("hooks");
+
+      const state = useContextStore.getState();
+      expect(state.units).toHaveLength(2);
+      expect(state.units[0].id).toBe("u2");
+      expect(state.loading).toBe(false);
+    });
+
+    it("accepts an optional projectId argument", async () => {
+      mockInvoke.mockResolvedValueOnce([makeUnit("u1")]);
+
+      await useContextStore.getState().search("query", "p1");
+
+      expect(useContextStore.getState().units).toHaveLength(1);
+    });
+
+    it("resets loading and shows toast on error", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("fts error"));
+
+      await useContextStore.getState().search("query");
+
+      expect(useContextStore.getState().loading).toBe(false);
+      expect(useNotificationStore.getState().toasts[0]?.level).toBe("error");
+    });
+  });
 });

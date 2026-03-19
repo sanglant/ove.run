@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::state::QualityGateConfig;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct GateResult {
@@ -28,7 +28,11 @@ pub async fn run_quality_gates(config: &QualityGateConfig, project_path: &str) -
 async fn run_gate(name: &str, command: &str, cwd: &str) -> GateResult {
     let parts: Vec<&str> = command.split_whitespace().collect();
     if parts.is_empty() {
-        return GateResult { name: name.to_string(), passed: false, output: "Empty command".to_string() };
+        return GateResult {
+            name: name.to_string(),
+            passed: false,
+            output: "Empty command".to_string(),
+        };
     }
     let program = parts[0];
     let args = &parts[1..];
@@ -44,7 +48,11 @@ async fn run_gate(name: &str, command: &str, cwd: &str) -> GateResult {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let combined = format!("{}{}", stdout, stderr);
             // Limit output size
-            let truncated = if combined.len() > 5000 { combined[..5000].to_string() } else { combined.to_string() };
+            let truncated = if combined.len() > 5000 {
+                combined[..5000].to_string()
+            } else {
+                combined.to_string()
+            };
             GateResult {
                 name: name.to_string(),
                 passed: output.status.success(),
@@ -187,7 +195,7 @@ mod tests {
         };
         let results = run_quality_gates(&config, "/tmp").await;
         assert_eq!(results.len(), 2);
-        assert!(results[0].passed);  // build
+        assert!(results[0].passed); // build
         assert!(!results[1].passed); // test
         assert!(!all_gates_passed(&results));
     }

@@ -9,6 +9,7 @@ use crate::state::{AppState, Consolidation, Memory};
 
 use super::project_commands::run_arbiter_cli;
 
+
 const EXTRACTION_PROMPT_TEMPLATE: &str = r#"Analyze the following terminal output from an AI coding agent. Extract ONLY information that would be valuable in future sessions — things a developer would want to remember days or weeks later.
 
 Terminal output:
@@ -309,33 +310,13 @@ pub async fn arbiter_generate_memory(
     project_path: String,
     prompt: String,
 ) -> Result<Vec<Memory>, AppError> {
-    let (cli_command, model, timeout_seconds) = {
-        let settings = state.settings.read().await;
-        let provider = settings.global.arbiter_provider.clone();
-        let model = settings.global.arbiter_model.clone();
-        let timeout = settings.global.arbiter_timeout_seconds as u64;
-        let command = match provider.as_str() {
-            "claude" | "" => "claude".to_string(),
-            "gemini" => "gemini".to_string(),
-            "copilot" => "copilot".to_string(),
-            "codex" => "codex".to_string(),
-            other => other.to_string(),
-        };
-        (
-            command,
-            if model.is_empty() { None } else { Some(model) },
-            timeout,
-        )
-    };
-
     let full_prompt = GENERATE_MEMORY_PROMPT_TEMPLATE.replace("{user_prompt}", &prompt);
 
-    let response = run_arbiter_cli(
-        &full_prompt,
-        &project_path,
-        &cli_command,
-        model.as_deref(),
-        timeout_seconds,
+    let response = crate::commands::project_commands::arbiter_review(
+        full_prompt,
+        project_path,
+        None,
+        None,
     )
     .await?;
 
@@ -420,21 +401,6 @@ pub async fn arbiter_clean_memories(
     project_path: String,
     instruction: String,
 ) -> Result<Vec<String>, AppError> {
-    let (cli_command, model, timeout_seconds) = {
-        let settings = state.settings.read().await;
-        let provider = settings.global.arbiter_provider.clone();
-        let model = settings.global.arbiter_model.clone();
-        let timeout = settings.global.arbiter_timeout_seconds as u64;
-        let command = match provider.as_str() {
-            "claude" | "" => "claude".to_string(),
-            other => other.to_string(),
-        };
-        (
-            command,
-            if model.is_empty() { None } else { Some(model) },
-            timeout,
-        )
-    };
 
     // Load existing memories (up to 100, ordered by importance desc)
     let existing_memories = {
@@ -466,12 +432,11 @@ pub async fn arbiter_clean_memories(
         .replace("{user_instruction}", &user_instruction)
         .replace("{memories_list}", &memories_list);
 
-    let response = run_arbiter_cli(
-        &full_prompt,
-        &project_path,
-        &cli_command,
-        model.as_deref(),
-        timeout_seconds,
+    let response = crate::commands::project_commands::arbiter_review(
+        full_prompt,
+        project_path,
+        None,
+        None,
     )
     .await?;
 

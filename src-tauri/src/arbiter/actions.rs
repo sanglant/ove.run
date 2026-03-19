@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
-use crate::state::{Memory, ContextUnit, Story};
+use crate::state::{ContextUnit, Memory, Story};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum ArbiterAction {

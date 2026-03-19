@@ -44,7 +44,7 @@
 
 /* Output area */
 .output {
-  font-family: JetBrains Mono, Cascadia Code, monospace;
+  font-family: var(--mantine-font-family-monospace);
   font-size: 11px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -92,7 +92,7 @@
 
 .input {
   flex: 1;
-  font-family: JetBrains Mono, Cascadia Code, monospace;
+  font-family: var(--mantine-font-family-monospace);
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 4px;

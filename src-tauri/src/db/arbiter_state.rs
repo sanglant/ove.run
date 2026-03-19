@@ -1,11 +1,14 @@
-use rusqlite::{Connection, params};
 use crate::state::{ArbiterStateRow, TrustLevel};
+use rusqlite::{params, Connection};
 
-pub fn get_arbiter_state(conn: &Connection, project_id: &str) -> Result<Option<ArbiterStateRow>, rusqlite::Error> {
+pub fn get_arbiter_state(
+    conn: &Connection,
+    project_id: &str,
+) -> Result<Option<ArbiterStateRow>, rusqlite::Error> {
     let mut stmt = conn.prepare(
         "SELECT project_id, trust_level, loop_status, current_story_id, \
          iteration_count, max_iterations, last_activity_at \
-         FROM arbiter_state WHERE project_id = ?1"
+         FROM arbiter_state WHERE project_id = ?1",
     )?;
 
     let mut rows = stmt.query(params![project_id])?;
@@ -24,7 +27,10 @@ pub fn get_arbiter_state(conn: &Connection, project_id: &str) -> Result<Option<A
     }
 }
 
-pub fn upsert_arbiter_state(conn: &Connection, state: &ArbiterStateRow) -> Result<(), rusqlite::Error> {
+pub fn upsert_arbiter_state(
+    conn: &Connection,
+    state: &ArbiterStateRow,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "INSERT OR REPLACE INTO arbiter_state \
          (project_id, trust_level, loop_status, current_story_id, iteration_count, max_iterations, last_activity_at) \
@@ -42,7 +48,11 @@ pub fn upsert_arbiter_state(conn: &Connection, state: &ArbiterStateRow) -> Resul
     Ok(())
 }
 
-pub fn set_trust_level(conn: &Connection, project_id: &str, level: TrustLevel) -> Result<(), rusqlite::Error> {
+pub fn set_trust_level(
+    conn: &Connection,
+    project_id: &str,
+    level: TrustLevel,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE arbiter_state SET trust_level = ?1 WHERE project_id = ?2",
         params![level as i32, project_id],
@@ -50,7 +60,11 @@ pub fn set_trust_level(conn: &Connection, project_id: &str, level: TrustLevel) -
     Ok(())
 }
 
-pub fn set_loop_status(conn: &Connection, project_id: &str, status: &str) -> Result<(), rusqlite::Error> {
+pub fn set_loop_status(
+    conn: &Connection,
+    project_id: &str,
+    status: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE arbiter_state SET loop_status = ?1 WHERE project_id = ?2",
         params![status, project_id],
@@ -58,7 +72,11 @@ pub fn set_loop_status(conn: &Connection, project_id: &str, status: &str) -> Res
     Ok(())
 }
 
-pub fn set_current_story(conn: &Connection, project_id: &str, story_id: Option<&str>) -> Result<(), rusqlite::Error> {
+pub fn set_current_story(
+    conn: &Connection,
+    project_id: &str,
+    story_id: Option<&str>,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE arbiter_state SET current_story_id = ?1 WHERE project_id = ?2",
         params![story_id, project_id],
@@ -106,8 +124,9 @@ mod tests {
                 iteration_count INTEGER NOT NULL DEFAULT 0,
                 max_iterations INTEGER NOT NULL DEFAULT 10,
                 last_activity_at TEXT
-            );"
-        ).unwrap();
+            );",
+        )
+        .unwrap();
         conn
     }
 

@@ -10,9 +10,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), tauri::Error> {
 
     let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
-    let mut builder = TrayIconBuilder::new()
-        .menu(&menu)
-        .tooltip("ove.run");
+    let mut builder = TrayIconBuilder::new().menu(&menu).tooltip("ove.run");
 
     // Use the app's default window icon if available
     if let Some(icon) = app.default_window_icon() {

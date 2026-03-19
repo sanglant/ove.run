@@ -1,11 +1,11 @@
-use tauri::State;
-use uuid::Uuid;
-use chrono::Utc;
-use crate::error::{AppError, lock_err};
-use crate::state::{AppState, ArbiterStateRow, Story, TrustLevel};
-use crate::db::{arbiter_state, stories, context, memory};
 use crate::arbiter::actions::ArbiterAction;
 use crate::arbiter::dispatch;
+use crate::db::{arbiter_state, context, memory, stories};
+use crate::error::{lock_err, AppError};
+use crate::state::{AppState, ArbiterStateRow, Story, TrustLevel};
+use chrono::Utc;
+use tauri::State;
+use uuid::Uuid;
 
 #[tauri::command]
 pub async fn get_arbiter_state(
@@ -30,7 +30,7 @@ pub async fn set_trust_level(
             loop_status: "idle".to_string(),
             current_story_id: None,
             iteration_count: 0,
-            max_iterations: 50,
+            max_iterations: 10,
             last_activity_at: None,
         };
         arbiter_state::upsert_arbiter_state(&conn, &default)?;
@@ -59,7 +59,7 @@ pub async fn decompose_request(
     };
 
     // 2. Resolve CLI settings
-    let (cli_command, model) = {
+    let (cli_command, model, timeout_seconds) = {
         let settings = state.settings.read().await;
         let provider = &settings.global.arbiter_provider;
         let cmd = if provider.is_empty() {
@@ -68,7 +68,8 @@ pub async fn decompose_request(
             provider.clone()
         };
         let m = &settings.global.arbiter_model;
-        (cmd, if m.is_empty() { None } else { Some(m.clone()) })
+        let t = settings.global.arbiter_timeout_seconds as u64;
+        (cmd, if m.is_empty() { None } else { Some(m.clone()) }, t)
     };
 
     // 3. Dispatch DecomposeRequest action
@@ -77,10 +78,15 @@ pub async fn decompose_request(
         project_context: context_units,
         memories: memories_list,
     };
-    let response =
-        dispatch::dispatch(action, &project_path, &cli_command, model.as_deref())
-            .await
-            .map_err(AppError::Other)?;
+    let response = dispatch::dispatch(
+        action,
+        &project_path,
+        &cli_command,
+        model.as_deref(),
+        timeout_seconds,
+    )
+    .await
+    .map_err(AppError::Other)?;
 
     // 4. Convert StoryDrafts to Stories and save
     let drafts = response.stories.unwrap_or_default();
@@ -88,7 +94,8 @@ pub async fn decompose_request(
     let mut created_stories = Vec::new();
 
     // First pass: assign IDs, build title -> id map for depends_on resolution
-    let mut title_to_id: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut title_to_id: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
     for draft in &drafts {
         let id = Uuid::new_v4().to_string();
         title_to_id.insert(draft.title.clone(), id);
@@ -151,19 +158,21 @@ pub async fn delete_story(state: State<'_, AppState>, id: String) -> Result<(), 
 #[tauri::command]
 pub async fn reorder_stories(
     state: State<'_, AppState>,
-    project_id: String,
+    _project_id: String,
     story_ids: Vec<String>,
 ) -> Result<(), AppError> {
     let conn = state.db.lock().map_err(lock_err)?;
+    // SAFETY: unchecked_transaction does not require &mut Connection.
+    // The transaction is rolled back automatically on drop if commit() is not called.
+    let tx = conn.unchecked_transaction().map_err(AppError::Db)?;
     // First = highest priority (longest distance from 0)
     for (i, id) in story_ids.iter().enumerate() {
         let priority = (story_ids.len() - i) as i32;
-        if let Ok(mut story) = stories::get_story(&conn, id) {
+        if let Ok(mut story) = stories::get_story(&tx, id) {
             story.priority = priority;
-            stories::update_story(&conn, &story)?;
+            stories::update_story(&tx, &story).map_err(AppError::Db)?;
         }
     }
-    // Suppress unused variable warning from project_id (kept for API clarity)
-    let _ = project_id;
+    tx.commit().map_err(AppError::Db)?;
     Ok(())
 }

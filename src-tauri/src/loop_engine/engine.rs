@@ -3,9 +3,9 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
+use crate::agents::registry::get_agent_definitions;
 use crate::arbiter::actions::ArbiterAction;
 use crate::arbiter::dispatch;
-use crate::agents::registry::get_agent_definitions;
 use crate::db::arbiter_state;
 use crate::db::context::list_l0_summaries;
 use crate::db::init::DbPool;
@@ -39,18 +39,46 @@ pub enum LoopCommand {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum LoopEvent {
-    StatusChanged { status: String },
-    StoryStarted { story_id: String },
-    StoryCompleted { story_id: String },
-    StoryFailed { story_id: String, reason: String },
-    IterationCompleted { count: i32, max: i32 },
-    GateResult { story_id: String, gate: String, passed: bool, output: String },
-    CircuitBreakerTriggered { reason: String },
-    StoriesUpdated { project_id: String },
+    StatusChanged {
+        status: String,
+    },
+    StoryStarted {
+        story_id: String,
+    },
+    StoryCompleted {
+        story_id: String,
+    },
+    StoryFailed {
+        story_id: String,
+        reason: String,
+    },
+    IterationCompleted {
+        count: i32,
+        max: i32,
+    },
+    GateResult {
+        story_id: String,
+        gate: String,
+        passed: bool,
+        output: String,
+    },
+    CircuitBreakerTriggered {
+        reason: String,
+    },
+    StoriesUpdated {
+        project_id: String,
+    },
     LoopCompleted,
-    LoopFailed { reason: String },
-    LoopExhausted { incomplete: i64 },
-    ReasoningEntry { action: String, reasoning: String },
+    LoopFailed {
+        reason: String,
+    },
+    LoopExhausted {
+        incomplete: i64,
+    },
+    ReasoningEntry {
+        action: String,
+        reasoning: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -66,24 +94,27 @@ pub async fn run_loop(
     memory_worker_tx: mpsc::Sender<MemoryWorkerEvent>,
 ) {
     while let Some(cmd) = cmd_rx.recv().await {
-        match cmd {
-            LoopCommand::Start { project_id, project_path, user_request, session_id } => {
-                run_loop_lifecycle(
-                    &db,
-                    &pty_manager,
-                    &app_handle,
-                    &mut cmd_rx,
-                    &event_tx,
-                    &memory_worker_tx,
-                    &project_id,
-                    &project_path,
-                    user_request.as_deref(),
-                    session_id,
-                )
-                .await;
-            }
-            // Pause/Resume/Cancel are no-ops when the loop is not running.
-            _ => {}
+        // Pause/Resume/Cancel are no-ops when the loop is not running.
+        if let LoopCommand::Start {
+            project_id,
+            project_path,
+            user_request,
+            session_id,
+        } = cmd
+        {
+            run_loop_lifecycle(
+                &db,
+                &pty_manager,
+                &app_handle,
+                &mut cmd_rx,
+                &event_tx,
+                &memory_worker_tx,
+                &project_id,
+                &project_path,
+                user_request.as_deref(),
+                session_id,
+            )
+            .await;
         }
     }
 }
@@ -128,7 +159,11 @@ async fn set_status(
         let conn = lock_db(db)?;
         let _ = arbiter_state::set_loop_status(&conn, project_id, status);
     }
-    let _ = event_tx.send(LoopEvent::StatusChanged { status: status.to_string() }).await;
+    let _ = event_tx
+        .send(LoopEvent::StatusChanged {
+            status: status.to_string(),
+        })
+        .await;
     Ok(())
 }
 
@@ -155,17 +190,22 @@ fn load_quality_gate_config(db: &DbPool, project_id: &str) -> Result<QualityGate
     }
 }
 
-/// Derive arbiter CLI command from settings.
-fn arbiter_cli_command(db: &DbPool) -> Result<(String, Option<String>), String> {
+/// Derive arbiter CLI command and timeout from settings.
+fn arbiter_cli_command(db: &DbPool) -> Result<(String, Option<String>, u64), String> {
     let conn = lock_db(db)?;
     let settings = load_app_settings(&conn);
     let provider = settings.global.arbiter_provider.clone();
     let model = settings.global.arbiter_model.clone();
+    let timeout = settings.global.arbiter_timeout_seconds as u64;
     let command = match provider.as_str() {
         "" | "claude" => "claude".to_string(),
         other => other.to_string(),
     };
-    Ok((command, if model.is_empty() { None } else { Some(model) }))
+    Ok((
+        command,
+        if model.is_empty() { None } else { Some(model) },
+        timeout,
+    ))
 }
 
 /// Build the prompt text that will be delivered to the agent for a story.
@@ -217,11 +257,13 @@ async fn run_loop_lifecycle(
     set_status_best_effort(db, event_tx, project_id, "planning").await;
 
     if let Some(request) = user_request {
-        let (cli_command, model) = match arbiter_cli_command(db) {
+        let (cli_command, model, timeout_seconds) = match arbiter_cli_command(db) {
             Ok(v) => v,
             Err(e) => {
                 let _ = event_tx
-                    .send(LoopEvent::LoopFailed { reason: format!("Settings unavailable: {e}") })
+                    .send(LoopEvent::LoopFailed {
+                        reason: format!("Settings unavailable: {e}"),
+                    })
                     .await;
                 return;
             }
@@ -255,42 +297,59 @@ async fn run_loop_lifecycle(
             memories,
         };
 
-        match dispatch::dispatch(action, project_path, &cli_command, model.as_deref()).await {
+        match dispatch::dispatch(
+            action,
+            project_path,
+            &cli_command,
+            model.as_deref(),
+            timeout_seconds,
+        )
+        .await
+        {
             Ok(response) => {
                 if let Some(drafts) = response.stories {
-                    match lock_db(db) {
-                        Ok(conn) => {
-                            let now = chrono::Utc::now().to_rfc3339();
-                            for draft in drafts {
-                                let story = Story {
-                                    id: uuid::Uuid::new_v4().to_string(),
-                                    project_id: project_id.to_string(),
-                                    title: draft.title,
-                                    description: draft.description,
-                                    acceptance_criteria: Some(draft.acceptance_criteria),
-                                    priority: draft.priority,
-                                    status: "pending".to_string(),
-                                    depends_on_json: serde_json::to_string(&draft.depends_on)
-                                        .unwrap_or_else(|_| "[]".to_string()),
-                                    iteration_attempts: 0,
-                                    created_at: now.clone(),
-                                };
-                                let _ = stories::create_story(&conn, &story);
-                            }
+                    let now = chrono::Utc::now().to_rfc3339();
+                    let stories_to_create: Vec<Story> = drafts
+                        .into_iter()
+                        .map(|draft| Story {
+                            id: uuid::Uuid::new_v4().to_string(),
+                            project_id: project_id.to_string(),
+                            title: draft.title,
+                            description: draft.description,
+                            acceptance_criteria: Some(draft.acceptance_criteria),
+                            priority: draft.priority,
+                            status: "pending".to_string(),
+                            depends_on_json: serde_json::to_string(&draft.depends_on)
+                                .unwrap_or_else(|_| "[]".to_string()),
+                            iteration_attempts: 0,
+                            created_at: now.clone(),
+                        })
+                        .collect();
+
+                    // Perform the DB write in its own scope so the MutexGuard
+                    // is dropped before any await point.
+                    let batch_result: Result<(), String> = {
+                        match lock_db(db) {
+                            Ok(conn) => stories::create_stories_batch(&conn, &stories_to_create)
+                                .map_err(|e| {
+                                    tracing::error!(
+                                        "[loop_engine] create_stories_batch failed: {e}"
+                                    );
+                                    format!("Failed to persist stories: {e}")
+                                }),
+                            Err(e) => Err(format!("Failed to persist stories: {e}")),
                         }
-                        Err(e) => {
-                            let _ = event_tx
-                                .send(LoopEvent::LoopFailed {
-                                    reason: format!("Failed to persist stories: {e}"),
-                                })
-                                .await;
-                            return;
-                        }
+                    };
+                    if let Err(reason) = batch_result {
+                        let _ = event_tx.send(LoopEvent::LoopFailed { reason }).await;
+                        return;
                     }
 
                     // Notify frontend to reload stories
                     let _ = event_tx
-                        .send(LoopEvent::StoriesUpdated { project_id: project_id.to_string() })
+                        .send(LoopEvent::StoriesUpdated {
+                            project_id: project_id.to_string(),
+                        })
                         .await;
 
                     if let Some(reasoning) = response.reasoning {
@@ -386,7 +445,9 @@ async fn run_loop_lifecycle(
         let story = match lock_db(db) {
             Ok(conn) => stories::get_next_story(&conn, project_id).unwrap_or(None),
             Err(e) => {
-                tracing::error!("[loop_engine] get_next_story failed: {e}; retrying next iteration");
+                tracing::error!(
+                    "[loop_engine] get_next_story failed: {e}; retrying next iteration"
+                );
                 continue;
             }
         };
@@ -422,7 +483,9 @@ async fn run_loop_lifecycle(
         match check_circuit_breakers(&arbiter_st, &story, consecutive_no_commit) {
             CircuitBreakerAction::Pause(reason) => {
                 let _ = event_tx
-                    .send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() })
+                    .send(LoopEvent::CircuitBreakerTriggered {
+                        reason: reason.clone(),
+                    })
                     .await;
                 set_status_best_effort(db, event_tx, project_id, "paused").await;
                 // Wait for an explicit Resume or Cancel
@@ -443,7 +506,9 @@ async fn run_loop_lifecycle(
             }
             CircuitBreakerAction::Stop(reason) => {
                 let _ = event_tx
-                    .send(LoopEvent::CircuitBreakerTriggered { reason: reason.clone() })
+                    .send(LoopEvent::CircuitBreakerTriggered {
+                        reason: reason.clone(),
+                    })
                     .await;
                 let _ = event_tx.send(LoopEvent::LoopFailed { reason }).await;
                 set_status_best_effort(db, event_tx, project_id, "failed").await;
@@ -458,7 +523,9 @@ async fn run_loop_lifecycle(
         }
 
         let _ = event_tx
-            .send(LoopEvent::StoryStarted { story_id: story.id.clone() })
+            .send(LoopEvent::StoryStarted {
+                story_id: story.id.clone(),
+            })
             .await;
 
         // -------------------------------------------------------------------
@@ -577,7 +644,8 @@ async fn run_loop_lifecycle(
                 // Deliver prompt via PTY write after a brief startup delay
                 drop(pm); // release write lock before sleeping
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                let bytes = crate::loop_engine::prompt_delivery::deliver_interactive_prompt(&prompt);
+                let bytes =
+                    crate::loop_engine::prompt_delivery::deliver_interactive_prompt(&prompt);
                 let mut pm2 = pty_manager.write().await;
                 let _ = pm2.write(&pty_session_id, bytes);
             }
@@ -654,7 +722,7 @@ async fn run_loop_lifecycle(
         // Optional arbiter judgement
         let arbiter_passed = if gate_config.arbiter_judge {
             match arbiter_cli_command(db) {
-                Ok((cli_command, model)) => {
+                Ok((cli_command, model, timeout_seconds)) => {
                     let gate_triples: Vec<(String, bool, String)> = gate_results
                         .iter()
                         .map(|r| (r.name.clone(), r.passed, r.output.clone()))
@@ -664,13 +732,23 @@ async fn run_loop_lifecycle(
                         story: story.clone(),
                         test_output: gate_triples
                             .iter()
-                            .map(|(n, p, o)| format!("[{}] {}: {}", if *p { "PASS" } else { "FAIL" }, n, o))
+                            .map(|(n, p, o)| {
+                                format!("[{}] {}: {}", if *p { "PASS" } else { "FAIL" }, n, o)
+                            })
                             .collect::<Vec<_>>()
                             .join("\n"),
                         gate_results: gate_triples,
                     };
 
-                    match dispatch::dispatch(action, project_path, &cli_command, model.as_deref()).await {
+                    match dispatch::dispatch(
+                        action,
+                        project_path,
+                        &cli_command,
+                        model.as_deref(),
+                        timeout_seconds,
+                    )
+                    .await
+                    {
                         Ok(resp) => {
                             if let Some(reasoning) = &resp.reasoning {
                                 let _ = event_tx
@@ -705,12 +783,21 @@ async fn run_loop_lifecycle(
 
         if story_passed {
             if let Ok(conn) = lock_db(db) {
-                let _ = stories::update_story_status(&conn, &story.id, "completed");
-                let _ = arbiter_state::set_current_story(&conn, project_id, None);
+                if let Err(e) = stories::update_story_status(&conn, &story.id, "completed") {
+                    tracing::warn!(
+                        "[loop_engine] update_story_status(completed) for {}: {e}",
+                        story.id
+                    );
+                }
+                if let Err(e) = arbiter_state::set_current_story(&conn, project_id, None) {
+                    tracing::warn!("[loop_engine] set_current_story(None) failed: {e}");
+                }
             }
 
             let _ = event_tx
-                .send(LoopEvent::StoryCompleted { story_id: story.id.clone() })
+                .send(LoopEvent::StoryCompleted {
+                    story_id: story.id.clone(),
+                })
                 .await;
 
             // Trigger memory extraction for the completed story
@@ -724,7 +811,12 @@ async fn run_loop_lifecycle(
             consecutive_no_commit = 0;
         } else {
             if let Ok(conn) = lock_db(db) {
-                let _ = stories::increment_story_attempts(&conn, &story.id);
+                if let Err(e) = stories::increment_story_attempts(&conn, &story.id) {
+                    tracing::warn!(
+                        "[loop_engine] increment_story_attempts for {}: {e}",
+                        story.id
+                    );
+                }
             }
 
             let reason = if !gates_passed {
@@ -880,9 +972,15 @@ mod tests {
 
     #[test]
     fn build_story_prompt_with_acceptance_criteria() {
-        let story = make_story("Fix login", "Broken", Some("- Users can log in\n- Error message shown"));
+        let story = make_story(
+            "Fix login",
+            "Broken",
+            Some("- Users can log in\n- Error message shown"),
+        );
         let prompt = build_story_prompt(&story, "", "");
-        assert!(prompt.contains("## Acceptance Criteria\n- Users can log in\n- Error message shown"));
+        assert!(
+            prompt.contains("## Acceptance Criteria\n- Users can log in\n- Error message shown")
+        );
     }
 
     #[test]
@@ -925,6 +1023,10 @@ mod tests {
         let sections: Vec<&str> = prompt.split("\n\n").collect();
         // Expected: "# Task: T", "", "## Description\nD", "## Acceptance Criteria\nAC",
         //           "## Relevant Context from Memory\nM", "## Project Context Summaries\nL"
-        assert!(sections.len() >= 5, "Expected at least 5 sections separated by \\n\\n, got {}", sections.len());
+        assert!(
+            sections.len() >= 5,
+            "Expected at least 5 sections separated by \\n\\n, got {}",
+            sections.len()
+        );
     }
 }

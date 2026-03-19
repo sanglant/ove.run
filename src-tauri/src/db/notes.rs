@@ -51,7 +51,11 @@ pub fn create_note(conn: &Connection, note: &Note) -> Result<(), rusqlite::Error
     Ok(())
 }
 
-pub fn read_note(conn: &Connection, project_id: &str, note_id: &str) -> Result<Note, rusqlite::Error> {
+pub fn read_note(
+    conn: &Connection,
+    project_id: &str,
+    note_id: &str,
+) -> Result<Note, rusqlite::Error> {
     conn.query_row(
         "SELECT id, project_id, title, content, include_in_context, created_at, updated_at FROM notes WHERE id = ?1 AND project_id = ?2",
         params![note_id, project_id],
@@ -69,7 +73,12 @@ pub fn read_note(conn: &Connection, project_id: &str, note_id: &str) -> Result<N
     )
 }
 
-pub fn update_note(conn: &Connection, note_id: &str, title: &str, content: &str) -> Result<(), rusqlite::Error> {
+pub fn update_note(
+    conn: &Connection,
+    note_id: &str,
+    title: &str,
+    content: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE notes SET title = ?1, content = ?2, updated_at = datetime('now') WHERE id = ?3",
         params![title, content, note_id],
@@ -77,7 +86,11 @@ pub fn update_note(conn: &Connection, note_id: &str, title: &str, content: &str)
     Ok(())
 }
 
-pub fn delete_note(conn: &Connection, project_id: &str, note_id: &str) -> Result<(), rusqlite::Error> {
+pub fn delete_note(
+    conn: &Connection,
+    project_id: &str,
+    note_id: &str,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "DELETE FROM notes WHERE id = ?1 AND project_id = ?2",
         params![note_id, project_id],
@@ -85,7 +98,11 @@ pub fn delete_note(conn: &Connection, project_id: &str, note_id: &str) -> Result
     Ok(())
 }
 
-pub fn set_include_in_context(conn: &Connection, note_id: &str, include: bool) -> Result<(), rusqlite::Error> {
+pub fn set_include_in_context(
+    conn: &Connection,
+    note_id: &str,
+    include: bool,
+) -> Result<(), rusqlite::Error> {
     conn.execute(
         "UPDATE notes SET include_in_context = ?1 WHERE id = ?2",
         params![include, note_id],

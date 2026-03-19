@@ -8,8 +8,13 @@ use crate::db::memory;
 use crate::state::Consolidation;
 
 pub enum MemoryWorkerEvent {
-    ConsolidateProject { project_id: String, project_path: String },
-    PruneProject { project_id: String },
+    ConsolidateProject {
+        project_id: String,
+        project_path: String,
+    },
+    PruneProject {
+        project_id: String,
+    },
     Shutdown,
 }
 
@@ -34,9 +39,16 @@ INSIGHT: <the single most actionable takeaway for future sessions, 1 sentence>"#
 pub async fn run_memory_worker(db: DbPool, mut rx: mpsc::Receiver<MemoryWorkerEvent>) {
     while let Some(event) = rx.recv().await {
         match event {
-            MemoryWorkerEvent::ConsolidateProject { project_id, project_path } => {
+            MemoryWorkerEvent::ConsolidateProject {
+                project_id,
+                project_path,
+            } => {
                 if let Err(e) = consolidate_project(&db, &project_id, &project_path).await {
-                    tracing::error!("[memory_worker] consolidation error for {}: {}", project_id, e);
+                    tracing::error!(
+                        "[memory_worker] consolidation error for {}: {}",
+                        project_id,
+                        e
+                    );
                 }
             }
             MemoryWorkerEvent::PruneProject { project_id } => {
@@ -51,20 +63,26 @@ pub async fn run_memory_worker(db: DbPool, mut rx: mpsc::Receiver<MemoryWorkerEv
 
 fn prune_project(db: &DbPool, project_id: &str) -> Result<(), String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let pruned = memory::prune_decayed_memories(&conn, project_id)
-        .map_err(|e| e.to_string())?;
+    let pruned = memory::prune_decayed_memories(&conn, project_id).map_err(|e| e.to_string())?;
     if pruned > 0 {
-        tracing::info!("[memory_worker] pruned {} decayed memories for {}", pruned, project_id);
+        tracing::info!(
+            "[memory_worker] pruned {} decayed memories for {}",
+            pruned,
+            project_id
+        );
     }
     Ok(())
 }
 
-async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) -> Result<(), String> {
+async fn consolidate_project(
+    db: &DbPool,
+    project_id: &str,
+    project_path: &str,
+) -> Result<(), String> {
     // 1. Check if there are enough unconsolidated memories
     let count = {
         let conn = db.lock().map_err(|e| e.to_string())?;
-        memory::count_unconsolidated(&conn, project_id)
-            .map_err(|e| e.to_string())?
+        memory::count_unconsolidated(&conn, project_id).map_err(|e| e.to_string())?
     };
 
     if count < CONSOLIDATION_THRESHOLD {
@@ -83,20 +101,24 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
     }
 
     // 3. Read arbiter settings from db
-    let (cli_command, model) = {
+    let (cli_command, model, timeout_seconds) = {
         let conn = db.lock().map_err(|e| e.to_string())?;
         let settings = crate::db::settings::load_app_settings(&conn);
         let provider = settings.global.arbiter_provider.clone();
         let model = settings.global.arbiter_model.clone();
+        let timeout = settings.global.arbiter_timeout_seconds as u64;
         let command = match provider.as_str() {
-            "" => "claude".to_string(),
-            "claude" => "claude".to_string(),
+            "" | "claude" => "claude".to_string(),
             "gemini" => "gemini".to_string(),
             "copilot" => "copilot".to_string(),
             "codex" => "codex".to_string(),
             other => other.to_string(),
         };
-        (command, if model.is_empty() { None } else { Some(model) })
+        (
+            command,
+            if model.is_empty() { None } else { Some(model) },
+            timeout,
+        )
     };
 
     // 4. Build prompt with memory contents
@@ -110,9 +132,15 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
     let prompt = CONSOLIDATION_PROMPT_TEMPLATE.replace("{memories}", &memories_text);
 
     // 5. Call arbiter
-    let response = run_arbiter_cli(&prompt, project_path, &cli_command, model.as_deref())
-        .await
-        .map_err(|e| e.to_string())?;
+    let response = run_arbiter_cli(
+        &prompt,
+        project_path,
+        &cli_command,
+        model.as_deref(),
+        timeout_seconds,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     // 6. Parse SUMMARY: and INSIGHT: lines
     let mut summary = String::new();
@@ -134,10 +162,9 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
         ));
     }
 
-    // 7. Create Consolidation entry
+    // 7. Create Consolidation entry and mark source memories consolidated atomically
     let source_ids: Vec<String> = memories.iter().map(|m| m.id.clone()).collect();
-    let source_ids_json = serde_json::to_string(&source_ids)
-        .unwrap_or_else(|_| "[]".to_string());
+    let source_ids_json = serde_json::to_string(&source_ids).unwrap_or_else(|_| "[]".to_string());
 
     let consolidation = Consolidation {
         id: Uuid::new_v4().to_string(),
@@ -150,15 +177,12 @@ async fn consolidate_project(db: &DbPool, project_id: &str, project_path: &str) 
 
     {
         let conn = db.lock().map_err(|e| e.to_string())?;
-        memory::create_consolidation(&conn, &consolidation)
-            .map_err(|e| e.to_string())?;
-    }
-
-    // 8. Mark source memories as consolidated
-    {
-        let conn = db.lock().map_err(|e| e.to_string())?;
-        memory::mark_memories_consolidated(&conn, &source_ids)
-            .map_err(|e| e.to_string())?;
+        // SAFETY: unchecked_transaction does not require &mut Connection.
+        // The transaction is rolled back automatically on drop if commit() is not called.
+        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        memory::create_consolidation(&tx, &consolidation).map_err(|e| e.to_string())?;
+        memory::mark_memories_consolidated(&tx, &source_ids).map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
     }
 
     tracing::info!(
