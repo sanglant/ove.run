@@ -10,6 +10,7 @@ import { BugsPanel } from "@/features/bugs/components/BugsPanel";
 import { MemoryPanel } from "@/features/memory/components/MemoryPanel";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { StatsPanel } from "@/features/stats/components/StatsPanel";
+import { McpManagerPanel } from "@/features/mcp/components/McpManagerPanel";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
 import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { AgentFeedbackToast } from "@/features/arbiter/components/AgentFeedbackToast";
@@ -26,6 +27,7 @@ import { useUpdateChecker } from "@/hooks/useUpdateChecker";
 import { useTour } from "@/hooks/useTour";
 import { useTourStore } from "@/stores/tourStore";
 import { initLoopListener } from "@/stores/loopStore";
+import { initMcpListeners } from "@/stores/mcpStore";
 import cn from "clsx";
 import classes from "./App.module.css";
 
@@ -43,6 +45,11 @@ export default function App() {
 
   useEffect(() => {
     const cleanup = initLoopListener();
+    return cleanup;
+  }, []);
+
+  useEffect(() => {
+    const cleanup = initMcpListeners();
     return cleanup;
   }, []);
 
@@ -168,6 +175,15 @@ export default function App() {
             <div className={classes.panelContainer}>
               <ErrorBoundary label="Notifications">
                 <NotificationCenter />
+              </ErrorBoundary>
+            </div>
+          )}
+
+          {/* MCP Manager panel */}
+          {activePanel === "mcp" && (
+            <div className={classes.panelContainer}>
+              <ErrorBoundary label="MCP">
+                <McpManagerPanel />
               </ErrorBoundary>
             </div>
           )}

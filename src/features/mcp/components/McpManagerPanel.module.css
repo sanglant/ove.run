@@ -1,0 +1,154 @@
+/* ── Server cards ── */
+
+.serverCard {
+  padding: 10px 14px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--bg-elevated);
+  transition: background 150ms ease;
+}
+
+.serverCard:hover {
+  background: color-mix(in srgb, var(--bg-elevated) 90%, var(--border));
+}
+
+.serverCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.serverCardChevron {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.serverCardChevron[data-expanded="true"] {
+  transform: rotate(90deg);
+}
+
+.serverCardActions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.serverCard:hover .serverCardActions {
+  opacity: 1;
+}
+
+.serverCardContent {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--mantine-radius-xs);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+}
+
+/* ── Sessions ── */
+
+.sessionRow {
+  padding: 6px 10px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--bg-elevated);
+}
+
+/* ── Sections ── */
+
+.section {
+  margin-top: var(--mantine-spacing-md);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Question cards ── */
+
+.questionCard {
+  padding: 12px 14px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--bg-elevated);
+  border-left: 3px solid var(--mantine-color-orange-5);
+}
+
+/* ── Activity log ── */
+
+.activityRow {
+  padding: 4px 10px;
+  border-radius: var(--mantine-radius-xs);
+  transition: background 100ms ease;
+}
+
+.activityRow:hover {
+  background: var(--border);
+}
+
+/* ── Modal ── */
+
+.modalSections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 20px;
+}
+
+.configSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.configLabel {
+  font-size: var(--mantine-font-size-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.configHint {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.configHint code {
+  font-family: var(--mantine-font-family-monospace);
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--border);
+  color: var(--mantine-color-orange-4);
+}
+
+.errorText {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-red-5);
+  padding: 6px 10px;
+  border-radius: var(--mantine-radius-xs);
+  background: color-mix(in srgb, var(--mantine-color-red-9) 15%, transparent);
+}
+
+.previewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewContent {
+  padding: 16px 18px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  max-height: 320px;
+  overflow-y: auto;
+}

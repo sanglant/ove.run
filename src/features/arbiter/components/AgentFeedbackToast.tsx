@@ -11,6 +11,7 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useProjectStore } from "@/stores/projectStore";
 import { arbiterAnswer, arbiterProcessCompletion } from "@/lib/arbiter";
 import { sendKeys, toBytes } from "@/lib/pty-utils";
+import { answerMcpQuestion } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { AnsiUp } from "ansi_up";
 import DOMPurify from "dompurify";
@@ -41,22 +42,43 @@ export function AgentFeedbackToast({ item, onDismiss, showFocusButton }: AgentFe
 
   const handleSendKeys = useCallback(
     async (keys: number[]) => {
-      try {
-        await sendKeys(item.sessionId, keys);
-      } catch (err) {
-        console.error("Failed to write to PTY:", err);
+      if (item.source === "mcp") {
+        // MCP-sourced question — answer via MCP response channel
+        const text = keys.length > 0
+          ? String.fromCharCode(...keys).replace(/\r$/, "")
+          : "";
+        try {
+          await answerMcpQuestion(item.id, text);
+        } catch (err) {
+          console.error("Failed to answer MCP question:", err);
+        }
+      } else {
+        // PTY-sourced question — write keys to terminal
+        try {
+          await sendKeys(item.sessionId, keys);
+        } catch (err) {
+          console.error("Failed to write to PTY:", err);
+        }
       }
       updateStatus(item.sessionId, "working");
       onDismiss();
     },
-    [item.sessionId, onDismiss, updateStatus],
+    [item.id, item.source, item.sessionId, onDismiss, updateStatus],
   );
 
   const handleFreeTextSubmit = useCallback(() => {
     if (!freeText.trim()) return;
-    const bytes = toBytes(freeText + "\r");
-    handleSendKeys(bytes);
-  }, [freeText, handleSendKeys]);
+    if (item.source === "mcp") {
+      answerMcpQuestion(item.id, freeText.trim()).catch((err) => {
+        console.error("Failed to answer MCP question:", err);
+      });
+      updateStatus(item.sessionId, "working");
+      onDismiss();
+    } else {
+      const bytes = toBytes(freeText + "\r");
+      handleSendKeys(bytes);
+    }
+  }, [freeText, item.id, item.source, item.sessionId, handleSendKeys, updateStatus, onDismiss]);
 
   const handleFocusTerminal = useCallback(() => {
     setActiveSession(item.sessionId);

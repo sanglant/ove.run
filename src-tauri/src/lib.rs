@@ -21,7 +21,10 @@ pub mod tray;
 
 use crate::db::init::init_db;
 use commands::agent_commands::list_agent_types;
-use commands::mcp_commands::{cleanup_mcp_config, prepare_mcp_config};
+use commands::mcp_commands::{
+    answer_mcp_question, cleanup_mcp_config, get_mcp_server_status, list_mcp_activities,
+    list_pending_questions, prepare_mcp_config,
+};
 use commands::arbiter_commands::{
     decompose_request, delete_story, get_arbiter_state, list_stories, reorder_stories,
     set_trust_level, update_story,
@@ -109,14 +112,26 @@ pub fn run() {
                 crate::bundled::seed::sync_bundled_content(&conn).ok();
             }
 
+            // Create MCP subsystem managers before both the MCP server and AppState
+            // so they can be cloned into both.
+            let question_manager = crate::mcp::questions::QuestionManager::new();
+            let activity_store = crate::mcp::activity::ActivityStore::new();
+            let mcp_channels = crate::mcp::channels::McpChannels::new();
+
             // Start MCP server — bind synchronously so port is known before AppState is built.
             // start_server returns immediately after binding; the serve loop runs in the Tokio runtime
             // via tauri::async_runtime::spawn inside start_server.
-            let mcp_port = crate::mcp::server::start_server(db.clone())
-                .unwrap_or_else(|e| {
-                    tracing::error!("[mcp] failed to start: {e}");
-                    0
-                });
+            let mcp_port = crate::mcp::server::start_server(
+                db.clone(),
+                question_manager.clone(),
+                activity_store.clone(),
+                mcp_channels.clone(),
+                app.handle().clone(),
+            )
+            .unwrap_or_else(|e| {
+                tracing::error!("[mcp] failed to start: {e}");
+                0
+            });
 
             // Load persisted data from SQLite
             let loaded_projects = {
@@ -130,6 +145,7 @@ pub fn run() {
 
             // Build AppState with pre-loaded data
             let pty_manager = Arc::new(RwLock::new(pty::manager::PtyManager::new()));
+            let mcp_channels_loop = mcp_channels.clone();
             let app_state = AppState {
                 db: db.clone(),
                 pty_manager: pty_manager.clone(),
@@ -139,6 +155,9 @@ pub fn run() {
                 memory_worker_tx: memory_tx.clone(),
                 loop_cmd_tx,
                 mcp_port,
+                question_manager,
+                activity_store,
+                mcp_channels,
             };
 
             let app_handle = app.handle().clone();
@@ -171,6 +190,7 @@ pub fn run() {
                         loop_cmd_rx,
                         loop_event_tx,
                         mtx_loop,
+                        mcp_channels_loop,
                     ));
                 });
             }
@@ -328,6 +348,10 @@ pub fn run() {
             // MCP commands
             prepare_mcp_config,
             cleanup_mcp_config,
+            answer_mcp_question,
+            list_mcp_activities,
+            list_pending_questions,
+            get_mcp_server_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

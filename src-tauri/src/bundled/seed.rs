@@ -1,3 +1,4 @@
+use super::mcp_units::BUNDLED_MCP_UNITS;
 use super::personas::BundledUnit;
 use super::personas::BUNDLED_PERSONAS;
 use super::skills::BUNDLED_SKILLS;
@@ -7,7 +8,7 @@ use crate::state::ContextUnit;
 use rusqlite::Connection;
 
 const SEED_VERSION_KEY: &str = "bundled_seed_version";
-const CURRENT_SEED_VERSION: &str = "2";
+const CURRENT_SEED_VERSION: &str = "3";
 
 /// Sync bundled content with the database.
 /// On version mismatch: upserts all bundled units by slug.
@@ -26,6 +27,11 @@ pub fn sync_bundled_content(conn: &Connection) -> Result<(), String> {
     }
 
     for bundled in BUNDLED_SKILLS {
+        upsert_bundled(conn, bundled)?;
+        active_slugs.push(bundled.slug);
+    }
+
+    for bundled in BUNDLED_MCP_UNITS {
         upsert_bundled(conn, bundled)?;
         active_slugs.push(bundled.slug);
     }

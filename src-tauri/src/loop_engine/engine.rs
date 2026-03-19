@@ -15,6 +15,7 @@ use crate::db::stories;
 use crate::loop_engine::circuit_breaker::{check_circuit_breakers, CircuitBreakerAction};
 use crate::loop_engine::prompt_delivery::build_spawn_args;
 use crate::loop_engine::quality_gates::{all_gates_passed, run_quality_gates};
+use crate::mcp::channels::McpChannels;
 use crate::memory_worker::MemoryWorkerEvent;
 use crate::pty::manager::PtyManager;
 use crate::state::{ArbiterStateRow, QualityGateConfig, Story, TrustLevel};
@@ -92,6 +93,7 @@ pub async fn run_loop(
     mut cmd_rx: mpsc::Receiver<LoopCommand>,
     event_tx: mpsc::Sender<LoopEvent>,
     memory_worker_tx: mpsc::Sender<MemoryWorkerEvent>,
+    mcp_channels: McpChannels,
 ) {
     while let Some(cmd) = cmd_rx.recv().await {
         // Pause/Resume/Cancel are no-ops when the loop is not running.
@@ -109,6 +111,7 @@ pub async fn run_loop(
                 &mut cmd_rx,
                 &event_tx,
                 &memory_worker_tx,
+                &mcp_channels,
                 &project_id,
                 &project_path,
                 user_request.as_deref(),
@@ -245,6 +248,7 @@ async fn run_loop_lifecycle(
     cmd_rx: &mut mpsc::Receiver<LoopCommand>,
     event_tx: &mpsc::Sender<LoopEvent>,
     memory_worker_tx: &mpsc::Sender<MemoryWorkerEvent>,
+    mcp_channels: &McpChannels,
     project_id: &str,
     project_path: &str,
     user_request: Option<&str>,
@@ -603,6 +607,9 @@ async fn run_loop_lifecycle(
             None => format!("loop-{}-{}", project_id, story.id),
         };
 
+        // Register MCP completion channel for this session
+        let mut mcp_completion_rx = mcp_channels.register(&pty_session_id).await;
+
         // Kill previous agent in this session before respawning for next story
         if session_id.is_some() {
             let mut pm = pty_manager.write().await;
@@ -667,6 +674,10 @@ async fn run_loop_lifecycle(
                     // PTY process exited naturally — proceed to quality gates
                     AgentWaitOutcome::ProceedToGates
                 }
+                _ = mcp_completion_rx.changed() => {
+                    // Agent reported completion via MCP — gates already ran in MCP handler
+                    AgentWaitOutcome::McpCompleted
+                }
                 cmd = cmd_rx.recv() => {
                     handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
@@ -678,6 +689,10 @@ async fn run_loop_lifecycle(
         } else {
             // exit_rx unavailable (already taken or spawn failed) — fall back to timeout only
             tokio::select! {
+                _ = mcp_completion_rx.changed() => {
+                    // Agent reported completion via MCP — gates already ran in MCP handler
+                    AgentWaitOutcome::McpCompleted
+                }
                 cmd = cmd_rx.recv() => {
                     handle_agent_wait_cmd(cmd, db, event_tx, pty_manager, &pty_session_id, project_id, cmd_rx).await
                 }
@@ -688,8 +703,134 @@ async fn run_loop_lifecycle(
         };
 
         match outcome {
-            AgentWaitOutcome::ExitLifecycle => return,
-            AgentWaitOutcome::SkipToNextIteration => continue,
+            AgentWaitOutcome::ExitLifecycle => {
+                mcp_channels.unregister(&pty_session_id).await;
+                return;
+            }
+            AgentWaitOutcome::SkipToNextIteration => {
+                mcp_channels.unregister(&pty_session_id).await;
+                continue;
+            }
+            AgentWaitOutcome::McpCompleted => {
+                // Kill the PTY session since we got MCP completion
+                {
+                    let mut pm = pty_manager.write().await;
+                    let _ = pm.kill(&pty_session_id);
+                }
+                // Read the completion signal
+                let signal = mcp_completion_rx.borrow().clone();
+                if let Some(sig) = signal {
+                    let story_passed = sig.gates_passed && sig.judgment_passed.unwrap_or(true);
+
+                    // Emit gate results event
+                    let _ = event_tx
+                        .send(LoopEvent::GateResult {
+                            story_id: story.id.clone(),
+                            gate: "mcp_report".into(),
+                            passed: sig.gates_passed,
+                            output: sig.reasoning.unwrap_or_default(),
+                        })
+                        .await;
+
+                    if story_passed {
+                        if let Ok(conn) = lock_db(db) {
+                            if let Err(e) =
+                                stories::update_story_status(&conn, &story.id, "completed")
+                            {
+                                tracing::warn!(
+                                    "[loop_engine] update_story_status(completed) for {}: {e}",
+                                    story.id
+                                );
+                            }
+                            if let Err(e) =
+                                arbiter_state::set_current_story(&conn, project_id, None)
+                            {
+                                tracing::warn!(
+                                    "[loop_engine] set_current_story(None) failed: {e}"
+                                );
+                            }
+                        }
+                        let _ = event_tx
+                            .send(LoopEvent::StoryCompleted {
+                                story_id: story.id.clone(),
+                            })
+                            .await;
+
+                        // Trigger memory extraction for the completed story
+                        let _ = memory_worker_tx
+                            .send(MemoryWorkerEvent::ConsolidateProject {
+                                project_id: project_id.to_string(),
+                                project_path: project_path.to_string(),
+                            })
+                            .await;
+
+                        consecutive_no_commit = 0;
+                    } else {
+                        let reason =
+                            "Quality gates or arbiter judgment failed via MCP report".to_string();
+                        if let Ok(conn) = lock_db(db) {
+                            if let Err(e) = stories::increment_story_attempts(&conn, &story.id) {
+                                tracing::warn!(
+                                    "[loop_engine] increment_story_attempts for {}: {e}",
+                                    story.id
+                                );
+                            }
+                        }
+                        let _ = event_tx
+                            .send(LoopEvent::StoryFailed {
+                                story_id: story.id.clone(),
+                                reason,
+                            })
+                            .await;
+                        consecutive_no_commit += 1;
+                    }
+                }
+                // Unregister the channel and skip to next iteration
+                mcp_channels.unregister(&pty_session_id).await;
+
+                if let Ok(conn) = lock_db(db) {
+                    let _ = arbiter_state::increment_iteration(&conn, project_id);
+                    let _ = arbiter_state::update_last_activity(&conn, project_id);
+                }
+
+                let updated_state =
+                    load_or_init_state(db, project_id).unwrap_or(ArbiterStateRow {
+                        project_id: project_id.to_string(),
+                        trust_level: TrustLevel::Autonomous,
+                        loop_status: "running".to_string(),
+                        current_story_id: None,
+                        iteration_count: 0,
+                        max_iterations: 10,
+                        last_activity_at: None,
+                    });
+                let _ = event_tx
+                    .send(LoopEvent::IterationCompleted {
+                        count: updated_state.iteration_count,
+                        max: updated_state.max_iterations,
+                    })
+                    .await;
+
+                // Check whether all stories are now complete
+                let all_done = match lock_db(db) {
+                    Ok(conn) => {
+                        stories::all_stories_complete(&conn, project_id).unwrap_or(false)
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "[loop_engine] all_stories_complete check failed: {e}"
+                        );
+                        false
+                    }
+                };
+
+                if all_done {
+                    let _ = event_tx.send(LoopEvent::LoopCompleted).await;
+                    set_status_best_effort(db, event_tx, project_id, "completed").await;
+                    return;
+                }
+
+                continue; // Skip to next iteration
+            }
             AgentWaitOutcome::ProceedToGates => {}
         }
 
@@ -835,6 +976,9 @@ async fn run_loop_lifecycle(
             consecutive_no_commit += 1;
         }
 
+        // Unregister MCP completion channel for this session
+        mcp_channels.unregister(&pty_session_id).await;
+
         // -------------------------------------------------------------------
         // Phase: Loop bookkeeping
         // -------------------------------------------------------------------
@@ -885,6 +1029,8 @@ async fn run_loop_lifecycle(
 enum AgentWaitOutcome {
     /// Agent finished or timed out — proceed to quality gates.
     ProceedToGates,
+    /// Agent reported completion via MCP — gates already ran in MCP handler.
+    McpCompleted,
     /// Paused then resumed — skip quality gates and retry the story.
     SkipToNextIteration,
     /// Cancelled (or channel closed) — exit the lifecycle entirely.

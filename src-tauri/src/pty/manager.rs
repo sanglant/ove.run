@@ -70,6 +70,11 @@ impl PtyManager {
         for (key, value) in &env {
             cmd.env(key, value);
         }
+        // Inject ove.run session context for MCP tools
+        cmd.env("OVE_SESSION_ID", &session_id);
+        cmd.env("OVE_PROJECT_PATH", &cwd);
+        // Enable Claude Code agent teams by default
+        cmd.env("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "1");
 
         // Destructure the pair to get master and slave separately.
         // spawn_command consumes the slave, so after this call the slave is gone

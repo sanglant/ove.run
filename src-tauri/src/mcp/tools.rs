@@ -1,5 +1,9 @@
 use crate::db::init::DbPool;
+use crate::mcp::activity::{ActivityStore, McpActivity};
+use crate::mcp::channels::McpChannels;
+use crate::mcp::questions::QuestionManager;
 use serde_json::Value;
+use tauri::Emitter;
 
 // ── Project path → project_id resolution ─────────────────────────────────
 
@@ -169,6 +173,293 @@ pub fn handle_list_notes(db: &DbPool, project_path: &str) -> Value {
         })
         .collect();
     serde_json::json!(items)
+}
+
+// ── Async tool handlers (check_in, request_guidance, report_completion) ──
+
+pub async fn handle_check_in(
+    db: &DbPool,
+    activity_store: &ActivityStore,
+    app_handle: &tauri::AppHandle,
+    project_path: &str,
+    session_id: &str,
+    task_summary: &str,
+    status: &str,
+) -> Value {
+    // 1. Resolve project_id
+    let project_id = match resolve_project_id(db, project_path) {
+        Some(id) => id,
+        None => return serde_json::json!({"error": "project not found"}),
+    };
+
+    // 2. Search memories relevant to task_summary
+    let memories = {
+        let conn = match db.lock() {
+            Ok(c) => c,
+            Err(_) => return serde_json::json!({"error": "db unavailable"}),
+        };
+        crate::db::memory::search_memories(&conn, task_summary, &project_id, None, 5)
+            .unwrap_or_default()
+    };
+    let memory_items: Vec<Value> = memories
+        .iter()
+        .map(|m| {
+            serde_json::json!({
+                "content": m.content,
+                "summary": m.summary,
+                "importance": m.importance,
+            })
+        })
+        .collect();
+
+    // 3. List L0 context summaries
+    let context = {
+        let conn = match db.lock() {
+            Ok(c) => c,
+            Err(_) => return serde_json::json!({"error": "db unavailable"}),
+        };
+        crate::db::context::list_context_units(&conn, Some(&project_id)).unwrap_or_default()
+    };
+    let context_items: Vec<Value> = context
+        .iter()
+        .filter(|u| !u.is_bundled)
+        .map(|u| {
+            serde_json::json!({
+                "id": u.id,
+                "name": u.name,
+                "type": u.unit_type,
+                "l0_summary": u.l0_summary,
+            })
+        })
+        .collect();
+
+    // 4. Record activity
+    activity_store
+        .record(McpActivity {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            session_id: session_id.to_string(),
+            tool_name: "check_in".to_string(),
+            status: Some(status.to_string()),
+            task_summary: Some(task_summary.to_string()),
+            question: None,
+            gate_passed: None,
+        })
+        .await;
+
+    // 5. Emit status update event
+    let _ = app_handle.emit(
+        "mcp-status-update",
+        serde_json::json!({
+            "session_id": session_id,
+            "status": status,
+            "task_summary": task_summary,
+        }),
+    );
+
+    serde_json::json!({
+        "memories": memory_items,
+        "context": context_items,
+        "pending_instructions": [],
+        "acknowledged": true,
+    })
+}
+
+pub async fn handle_request_guidance(
+    db: &DbPool,
+    question_manager: &QuestionManager,
+    activity_store: &ActivityStore,
+    app_handle: &tauri::AppHandle,
+    project_path: &str,
+    session_id: &str,
+    question: &str,
+    options: Vec<String>,
+    allow_free_input: bool,
+) -> Value {
+    let _project_id = match resolve_project_id(db, project_path) {
+        Some(id) => id,
+        None => return serde_json::json!({"error": "project not found"}),
+    };
+
+    let question_id = uuid::Uuid::new_v4().to_string();
+
+    // Emit status = needs_input
+    let _ = app_handle.emit(
+        "mcp-status-update",
+        serde_json::json!({
+            "session_id": session_id,
+            "status": "needs_input",
+        }),
+    );
+
+    // Emit question event for frontend
+    let _ = app_handle.emit(
+        &format!("mcp-question-{}", session_id),
+        serde_json::json!({
+            "question_id": question_id,
+            "question": question,
+            "options": options,
+            "allow_free_input": allow_free_input,
+        }),
+    );
+
+    // Record activity
+    activity_store
+        .record(McpActivity {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            session_id: session_id.to_string(),
+            tool_name: "request_guidance".to_string(),
+            status: Some("needs_input".to_string()),
+            task_summary: None,
+            question: Some(question.to_string()),
+            gate_passed: None,
+        })
+        .await;
+
+    // Submit question and wait for response (5 minute timeout)
+    let rx = question_manager
+        .submit_question(
+            question_id.clone(),
+            session_id.to_string(),
+            _project_id,
+            question.to_string(),
+            options,
+            allow_free_input,
+        )
+        .await;
+
+    let response = match tokio::time::timeout(std::time::Duration::from_secs(300), rx).await {
+        Ok(Ok(resp)) => resp,
+        Ok(Err(_)) => {
+            // Receiver dropped (question was cancelled externally)
+            crate::mcp::questions::QuestionResponse {
+                response: "Question was cancelled. Use your best judgment.".to_string(),
+                option_index: None,
+                auto_resolved: true,
+            }
+        }
+        Err(_) => {
+            // Timeout — cancel and return default
+            let _ = question_manager.cancel_question(&question_id).await;
+            crate::mcp::questions::QuestionResponse {
+                response: "No response received within timeout. Use your best judgment."
+                    .to_string(),
+                option_index: None,
+                auto_resolved: true,
+            }
+        }
+    };
+
+    // Emit status = working (question answered, agent resumes)
+    let _ = app_handle.emit(
+        "mcp-status-update",
+        serde_json::json!({
+            "session_id": session_id,
+            "status": "working",
+        }),
+    );
+
+    serde_json::json!({
+        "response": response.response,
+        "option_index": response.option_index,
+        "auto_resolved": response.auto_resolved,
+    })
+}
+
+pub async fn handle_report_completion(
+    db: &DbPool,
+    activity_store: &ActivityStore,
+    completion_channels: &McpChannels,
+    app_handle: &tauri::AppHandle,
+    project_path: &str,
+    session_id: &str,
+    summary: &str,
+    files_changed: Vec<String>,
+    _confidence: Option<&str>,
+) -> Value {
+    let project_id = match resolve_project_id(db, project_path) {
+        Some(id) => id,
+        None => return serde_json::json!({"error": "project not found"}),
+    };
+
+    // Run quality gates if configured
+    let gate_config = {
+        let conn = match db.lock() {
+            Ok(c) => c,
+            Err(_) => return serde_json::json!({"error": "db unavailable"}),
+        };
+        let key = format!("quality_gates_{}", project_id);
+        match crate::db::settings::get_setting(&conn, &key) {
+            Ok(Some(json)) => {
+                serde_json::from_str::<crate::state::QualityGateConfig>(&json).ok()
+            }
+            _ => None,
+        }
+    };
+
+    let mut gate_output = Vec::new();
+    let mut all_gates_passed = true;
+
+    if let Some(config) = gate_config {
+        let results =
+            crate::loop_engine::quality_gates::run_quality_gates(&config, project_path).await;
+        for result in &results {
+            if !result.passed {
+                all_gates_passed = false;
+            }
+            gate_output.push(serde_json::json!({
+                "name": result.name,
+                "passed": result.passed,
+                "output": result.output,
+            }));
+        }
+    }
+
+    // Record activity
+    activity_store
+        .record(McpActivity {
+            id: uuid::Uuid::new_v4().to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            session_id: session_id.to_string(),
+            tool_name: "report_completion".to_string(),
+            status: Some("finished".to_string()),
+            task_summary: Some(summary.to_string()),
+            question: None,
+            gate_passed: Some(all_gates_passed),
+        })
+        .await;
+
+    // Signal completion channel (for loop engine)
+    completion_channels
+        .signal(
+            session_id,
+            crate::mcp::channels::CompletionSignal {
+                session_id: session_id.to_string(),
+                story_id: None,
+                gates_passed: all_gates_passed,
+                judgment_passed: None,
+                reasoning: None,
+            },
+        )
+        .await;
+
+    // Emit status update
+    let _ = app_handle.emit(
+        "mcp-status-update",
+        serde_json::json!({
+            "session_id": session_id,
+            "status": "finished",
+            "summary": summary,
+            "files_changed": files_changed,
+            "gate_results": gate_output,
+        }),
+    );
+
+    serde_json::json!({
+        "gate_results": gate_output,
+        "acknowledged": true,
+    })
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────

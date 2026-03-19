@@ -158,9 +158,10 @@ export interface FeedbackItem {
   allowFreeInput: boolean;
   timestamp: string;
   arbiterEnabled: boolean;
+  source?: "mcp" | "pty";
 }
 
-export type ContextUnitType = "persona" | "skill" | "knowledge" | "reference";
+export type ContextUnitType = "persona" | "skill" | "knowledge" | "reference" | "mcp";
 export type ContextScope = "global" | "project";
 
 export interface ContextUnit {

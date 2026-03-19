@@ -13,6 +13,7 @@ import {
   Folder,
   Brain,
   BarChart3,
+  Plug,
   Shield,
   Trash2,
   FolderOpen,
@@ -259,6 +260,11 @@ export function Sidebar() {
       icon: <BarChart3 size={16} />,
       label: "Stats",
       tourId: "sidebar-stats",
+    },
+    {
+      id: "mcp" as const,
+      icon: <Plug size={16} />,
+      label: "MCP",
     },
     {
       id: "settings" as const,

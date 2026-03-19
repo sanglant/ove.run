@@ -13,28 +13,25 @@ import { useProjectStore } from "@/stores/projectStore";
 import { spawnPty, writePty, resizePty, killPty, listAgentTypes, sendDesktopNotification, prepareMcpConfig, cleanupMcpConfig } from "@/lib/tauri";
 import { toBytes } from "@/lib/pty-utils";
 import { listen } from "@tauri-apps/api/event";
-import { detectStatusFromOutput } from "@/lib/patterns";
+// Detection fallback imports (currently disabled — MCP tools are primary)
+// import { detectStatusFromOutput } from "@/lib/patterns";
 import { useAgentFeedbackStore } from "@/stores/agentFeedbackStore";
-import { parseFeedbackOptions, cleanTerminalOutput } from "@/lib/feedbackParser";
+// import { parseFeedbackOptions, cleanTerminalOutput } from "@/lib/feedbackParser";
 import type { AgentSession, AgentDefinition, AgentStatus } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * Read the last N lines from xterm's active buffer.
- * Uses translateToString(true) which trims trailing whitespace per line,
- * eliminating the Ink space-padding issue natively.
- */
-function readXtermBuffer(term: Terminal, lineCount = 40): string {
-  const buf = term.buffer.active;
-  const totalLines = buf.length;
-  const start = Math.max(0, totalLines - lineCount);
-  const lines: string[] = [];
-  for (let i = start; i < totalLines; i++) {
-    const line = buf.getLine(i);
-    if (line) lines.push(line.translateToString(true));
-  }
-  return lines.join("\n");
-}
+// Detection fallback helper (currently disabled — MCP tools are primary)
+// function readXtermBuffer(term: Terminal, lineCount = 40): string {
+//   const buf = term.buffer.active;
+//   const totalLines = buf.length;
+//   const start = Math.max(0, totalLines - lineCount);
+//   const lines: string[] = [];
+//   for (let i = start; i < totalLines; i++) {
+//     const line = buf.getLine(i);
+//     if (line) lines.push(line.translateToString(true));
+//   }
+//   return lines.join("\n");
+// }
 
 const ARBITER_SIDEBAR_DEFAULT_RATIO = 0.7;
 const ARBITER_SIDEBAR_MIN_TERMINAL_WIDTH = 280;
@@ -57,6 +54,8 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
   isVisibleRef.current = isVisible;
   const unlistenOutputRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
+  const unlistenMcpStatusRef = useRef<(() => void) | null>(null);
+  const unlistenMcpQuestionRef = useRef<(() => void) | null>(null);
 
   // Arbiter integrated sidebar split ratio (terminal width / total width)
   const [splitRatio, setSplitRatio] = useState(ARBITER_SIDEBAR_DEFAULT_RATIO);
@@ -73,7 +72,7 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
 
   // Track user typing to suppress feedback/arbiter while composing input
   const lastUserInputRef = useRef(0);
-  const USER_TYPING_DEBOUNCE_MS = 2000;
+  // const USER_TYPING_DEBOUNCE_MS = 2000; // Used by detection fallback
 
   // Grace period: suppress feedback modal AND arbiter auto-answer for resumed
   // sessions on startup.  Terminal may already show a stale needs_input prompt
@@ -128,10 +127,10 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
           return;
         }
 
-        // Inject ove-run MCP config for Claude Code sessions
-        if (session.agentType === "claude" && projectPath) {
+        // Inject ove-run MCP config for agent sessions (all except plain terminal)
+        if (session.agentType !== "terminal" && projectPath) {
           try {
-            await prepareMcpConfig(projectPath);
+            await prepareMcpConfig(projectPath, session.agentType);
           } catch (err) {
             console.warn("MCP config injection failed (non-fatal):", err);
           }
@@ -230,67 +229,69 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
       term.write(bytes, () => {
         if (cancelledOutput) return;
 
-        // Read directly from xterm's processed buffer — handles ANSI stripping
-        // and trailing whitespace trimming natively, avoiding all custom buffer bugs
-        const screenText = readXtermBuffer(term, 40);
-        const detected = detectStatusFromOutput(agentDefRef.current, screenText);
-        if (detected && detected !== lastStatusRef.current) {
-          const prevStatus = lastStatusRef.current;
-          lastStatusRef.current = detected;
-          updateStatus(session.id, detected);
-
-          // Send notification for important status changes
-          if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
-            const notifTitle = detected === "finished" ? "Agent Finished" : "Input Required";
-            const notifBody = `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`;
-            addNotification({
-              id: uuidv4(),
-              title: notifTitle,
-              body: notifBody,
-              sessionId: session.id,
-              timestamp: new Date().toISOString(),
-            });
-            // System notification when app is not focused
-            if (!document.hasFocus()) {
-              sendDesktopNotification(notifTitle, notifBody).catch(() => {});
-            }
-          }
-
-          // Enqueue feedback — skip during startup grace period and while
-          // the user is actively typing to avoid interrupting input composition
-          const isUserTyping = Date.now() - lastUserInputRef.current < USER_TYPING_DEBOUNCE_MS;
-          if (!feedbackSuppressedRef.current && !isUserTyping) {
-            const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
-            const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
-
-            if (detected === "needs_input") {
-              const parsed = parseFeedbackOptions(feedbackOutput);
-              useAgentFeedbackStore.getState().enqueue({
-                id: uuidv4(),
-                sessionId: session.id,
-                projectId: session.projectId,
-                type: "question",
-                output: feedbackOutput,
-                parsedOptions: parsed.options,
-                allowFreeInput: parsed.allowFreeInput,
-                timestamp: new Date().toISOString(),
-                arbiterEnabled: !!project?.arbiter_enabled,
-              });
-            } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
-              useAgentFeedbackStore.getState().enqueue({
-                id: uuidv4(),
-                sessionId: session.id,
-                projectId: session.projectId,
-                type: "response",
-                output: feedbackOutput,
-                parsedOptions: [],
-                allowFreeInput: false,
-                timestamp: new Date().toISOString(),
-                arbiterEnabled: !!project?.arbiter_enabled,
-              });
-            }
-          }
-        }
+        // ──────────────────────────────────────────────────────────────
+        // DETECTION FALLBACK (currently disabled — MCP tools are primary)
+        // To re-enable regex-based detection as fallback alongside MCP:
+        // 1. Uncomment this block
+        // 2. Add a StatusReconciler that prefers MCP when fresh (<30s)
+        //    and falls back to detection when MCP is stale
+        // ──────────────────────────────────────────────────────────────
+        //
+        // const screenText = readXtermBuffer(term, 40);
+        // const detected = detectStatusFromOutput(agentDefRef.current, screenText);
+        // if (detected && detected !== lastStatusRef.current) {
+        //   const prevStatus = lastStatusRef.current;
+        //   lastStatusRef.current = detected;
+        //   updateStatus(session.id, detected);
+        //
+        //   if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
+        //     const notifTitle = detected === "finished" ? "Agent Finished" : "Input Required";
+        //     const notifBody = `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`;
+        //     addNotification({
+        //       id: uuidv4(),
+        //       title: notifTitle,
+        //       body: notifBody,
+        //       sessionId: session.id,
+        //       timestamp: new Date().toISOString(),
+        //     });
+        //     if (!document.hasFocus()) {
+        //       sendDesktopNotification(notifTitle, notifBody).catch(() => {});
+        //     }
+        //   }
+        //
+        //   const isUserTyping = Date.now() - lastUserInputRef.current < USER_TYPING_DEBOUNCE_MS;
+        //   if (!feedbackSuppressedRef.current && !isUserTyping) {
+        //     const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+        //     const feedbackOutput = cleanTerminalOutput(readXtermBuffer(term, 30));
+        //
+        //     if (detected === "needs_input") {
+        //       const parsed = parseFeedbackOptions(feedbackOutput);
+        //       useAgentFeedbackStore.getState().enqueue({
+        //         id: uuidv4(),
+        //         sessionId: session.id,
+        //         projectId: session.projectId,
+        //         type: "question",
+        //         output: feedbackOutput,
+        //         parsedOptions: parsed.options,
+        //         allowFreeInput: parsed.allowFreeInput,
+        //         timestamp: new Date().toISOString(),
+        //         arbiterEnabled: !!project?.arbiter_enabled,
+        //       });
+        //     } else if ((detected === "idle" || detected === "finished") && prevStatus === "working") {
+        //       useAgentFeedbackStore.getState().enqueue({
+        //         id: uuidv4(),
+        //         sessionId: session.id,
+        //         projectId: session.projectId,
+        //         type: "response",
+        //         output: feedbackOutput,
+        //         parsedOptions: [],
+        //         allowFreeInput: false,
+        //         timestamp: new Date().toISOString(),
+        //         arbiterEnabled: !!project?.arbiter_enabled,
+        //       });
+        //     }
+        //   }
+        // }
       });
     }).then((unlisten) => {
       if (cancelledOutput) {
@@ -314,6 +315,76 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
         unlisten();
       } else {
         unlistenExitRef.current = unlisten;
+      }
+    });
+
+    // Listen for MCP-based status updates (primary status source)
+    let cancelledMcpStatus = false;
+    listen<{
+      session_id: string;
+      status: string;
+      task_summary?: string;
+    }>(`mcp-status-update`, (event) => {
+      if (cancelledMcpStatus) return;
+      if (event.payload.session_id !== session.id) return;
+
+      const detected = event.payload.status as any;
+      if (detected && detected !== lastStatusRef.current) {
+        lastStatusRef.current = detected;
+        updateStatus(session.id, detected);
+
+        // Send notification for important status changes
+        if (settings.global.notifications_enabled && (detected === "finished" || detected === "needs_input")) {
+          const notifTitle = detected === "finished" ? "Agent Finished" : "Input Required";
+          const notifBody = `${session.label} ${detected === "finished" ? "has completed" : "needs your input"}`;
+          addNotification({
+            id: uuidv4(),
+            title: notifTitle,
+            body: notifBody,
+            sessionId: session.id,
+            timestamp: new Date().toISOString(),
+          });
+          if (!document.hasFocus()) {
+            sendDesktopNotification(notifTitle, notifBody).catch(() => {});
+          }
+        }
+      }
+    }).then((unlisten) => {
+      if (cancelledMcpStatus) {
+        unlisten();
+      } else {
+        unlistenMcpStatusRef.current = unlisten;
+      }
+    });
+
+    // Listen for MCP-based questions (from request_guidance tool)
+    let cancelledMcpQuestion = false;
+    listen<{
+      question_id: string;
+      question: string;
+      options: string[];
+      allow_free_input: boolean;
+    }>(`mcp-question-${session.id}`, (event) => {
+      if (cancelledMcpQuestion) return;
+
+      const project = useProjectStore.getState().projects.find((p) => p.id === session.projectId);
+      useAgentFeedbackStore.getState().enqueue({
+        id: event.payload.question_id,
+        sessionId: session.id,
+        projectId: session.projectId,
+        type: "question",
+        output: event.payload.question,
+        parsedOptions: event.payload.options.map((opt) => ({ label: opt, keys: [] })),
+        allowFreeInput: event.payload.allow_free_input,
+        timestamp: new Date().toISOString(),
+        arbiterEnabled: !!project?.arbiter_enabled,
+        source: "mcp",
+      });
+    }).then((unlisten) => {
+      if (cancelledMcpQuestion) {
+        unlisten();
+      } else {
+        unlistenMcpQuestionRef.current = unlisten;
       }
     });
 
@@ -349,12 +420,16 @@ export function TerminalPanel({ session, isVisible, isFocused, projectPath }: Te
     return () => {
       cancelledOutput = true;
       cancelledExit = true;
+      cancelledMcpStatus = true;
+      cancelledMcpQuestion = true;
       unlistenOutputRef.current?.();
       unlistenExitRef.current?.();
+      unlistenMcpStatusRef.current?.();
+      unlistenMcpQuestionRef.current?.();
       observer.disconnect();
 
-      if (session.agentType === "claude" && projectPath) {
-        cleanupMcpConfig(projectPath).catch(() => {/* non-fatal */});
+      if (session.agentType !== "terminal" && projectPath) {
+        cleanupMcpConfig(projectPath, session.agentType).catch(() => {/* non-fatal */});
       }
       killPty(session.id).catch(() => {});
       term.dispose();

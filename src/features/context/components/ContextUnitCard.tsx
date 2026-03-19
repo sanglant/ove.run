@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge, ActionIcon, Collapse, Text, Tooltip, Switch } from "@mantine/core";
 import { Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, Star, Copy } from "lucide-react";
 import type { ContextUnit, ContextUnitType } from "@/types";
+import { MarkdownViewer } from "@/components/shared/MarkdownViewer";
 import classes from "./ContextPanel.module.css";
 
 const TYPE_COLORS: Record<ContextUnitType, string> = {
@@ -9,6 +10,7 @@ const TYPE_COLORS: Record<ContextUnitType, string> = {
   skill: "green",
   knowledge: "yellow",
   reference: "gray",
+  mcp: "orange",
 };
 
 const TYPE_LABELS: Record<ContextUnitType, string> = {
@@ -16,6 +18,7 @@ const TYPE_LABELS: Record<ContextUnitType, string> = {
   skill: "Skill",
   knowledge: "Knowledge",
   reference: "Reference",
+  mcp: "MCP",
 };
 
 interface ContextUnitCardProps {
@@ -202,7 +205,9 @@ export function ContextUnitCard({ unit, onEdit, onDelete, onGenerateSummary, onD
             <span>Full content</span>
           </button>
           <Collapse in={contentOpen}>
-            <pre className={classes.sectionPre}>{unit.l2_content}</pre>
+            <div className={classes.sectionPre}>
+              <MarkdownViewer content={unit.l2_content} />
+            </div>
           </Collapse>
         </div>
       )}

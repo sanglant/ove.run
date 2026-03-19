@@ -397,10 +397,14 @@ export async function loadLayout(): Promise<string | null> {
   return invoke("load_layout");
 }
 
-export async function prepareMcpConfig(projectPath: string): Promise<void> {
-  return invoke("prepare_mcp_config", { projectPath });
+export async function prepareMcpConfig(projectPath: string, agentType?: string): Promise<void> {
+  return invoke("prepare_mcp_config", { projectPath, agentType: agentType ?? null });
 }
 
-export async function cleanupMcpConfig(projectPath: string): Promise<void> {
-  return invoke("cleanup_mcp_config", { projectPath });
+export async function cleanupMcpConfig(projectPath: string, agentType?: string): Promise<void> {
+  return invoke("cleanup_mcp_config", { projectPath, agentType: agentType ?? null });
+}
+
+export async function answerMcpQuestion(questionId: string, response: string, optionIndex?: number): Promise<void> {
+  return invoke("answer_mcp_question", { questionId, response, optionIndex: optionIndex ?? null });
 }

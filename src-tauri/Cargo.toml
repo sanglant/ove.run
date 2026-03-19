@@ -35,3 +35,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ignore = "0.4"
 axum = { version = "0.8", features = [] }
+toml = "0.8"

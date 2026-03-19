@@ -123,6 +123,50 @@ pub fn all_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["project_path"]
             }),
         },
+        ToolDefinition {
+            name: "check_in".into(),
+            description: "Call this before starting work on a task. Returns relevant project context, memories, and any pending instructions. You MUST call this tool at the start of each task to get the latest project context. Read session_id from the OVE_SESSION_ID environment variable and project_path from OVE_PROJECT_PATH.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "project_path": { "type": "string", "description": "Absolute path to the project root (read from OVE_PROJECT_PATH env var)" },
+                    "session_id": { "type": "string", "description": "PTY session ID (read from OVE_SESSION_ID env var)" },
+                    "task_summary": { "type": "string", "description": "Brief description of what you're about to work on" },
+                    "status": { "type": "string", "enum": ["starting", "working", "blocked"], "description": "Current status" }
+                },
+                "required": ["project_path", "session_id", "task_summary", "status"]
+            }),
+        },
+        ToolDefinition {
+            name: "request_guidance".into(),
+            description: "Call when you need a decision from the user, encounter an ambiguity, or want to confirm an approach before proceeding. This will pause and wait for the user's response. Read session_id from OVE_SESSION_ID and project_path from OVE_PROJECT_PATH.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "project_path": { "type": "string", "description": "Absolute path to the project root" },
+                    "session_id": { "type": "string", "description": "PTY session ID" },
+                    "question": { "type": "string", "description": "What you need decided or clarified" },
+                    "options": { "type": "array", "items": { "type": "string" }, "description": "Possible choices (optional)" },
+                    "allow_free_input": { "type": "boolean", "description": "Whether free text input is allowed (default true)" }
+                },
+                "required": ["project_path", "session_id", "question"]
+            }),
+        },
+        ToolDefinition {
+            name: "report_completion".into(),
+            description: "Call when you have completed the assigned task. Provides a summary of what was done. This triggers quality gate checks (build, lint, test) and returns results so you can fix issues before finishing. Read session_id from OVE_SESSION_ID and project_path from OVE_PROJECT_PATH.".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "project_path": { "type": "string", "description": "Absolute path to the project root" },
+                    "session_id": { "type": "string", "description": "PTY session ID" },
+                    "summary": { "type": "string", "description": "Summary of what was accomplished" },
+                    "files_changed": { "type": "array", "items": { "type": "string" }, "description": "List of files modified (optional)" },
+                    "confidence": { "type": "string", "enum": ["high", "medium", "low"], "description": "Confidence level (optional)" }
+                },
+                "required": ["project_path", "session_id", "summary"]
+            }),
+        },
     ]
 }
 
@@ -157,8 +201,8 @@ mod tests {
     }
 
     #[test]
-    fn all_tool_definitions_returns_six_tools() {
-        assert_eq!(all_tool_definitions().len(), 6);
+    fn all_tool_definitions_returns_nine_tools() {
+        assert_eq!(all_tool_definitions().len(), 9);
     }
 
     #[test]

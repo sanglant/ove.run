@@ -16,6 +16,9 @@ pub struct AppState {
     pub memory_worker_tx: tokio::sync::mpsc::Sender<crate::memory_worker::MemoryWorkerEvent>,
     pub loop_cmd_tx: tokio::sync::mpsc::Sender<crate::loop_engine::engine::LoopCommand>,
     pub mcp_port: u16,
+    pub question_manager: crate::mcp::questions::QuestionManager,
+    pub activity_store: crate::mcp::activity::ActivityStore,
+    pub mcp_channels: crate::mcp::channels::McpChannels,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
