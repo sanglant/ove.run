@@ -2774,7 +2774,7 @@ dependencies = [
 
 [[package]]
 name = "ove-run"
-version = "0.1.7"
+version = "1.0.2"
 dependencies = [
  "axum",
  "chrono",
